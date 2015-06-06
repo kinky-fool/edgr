@@ -4,8 +4,29 @@ if [[ $1 =~ ^[0-9]*$ ]]; then
   num=$1
 fi
 
+time=300
+if [[ $2 =~ ^[0-9]*$ ]]; then
+  time=$(($2 * 60))
+elif [[ $2 =~ ^[0-9]*s$ ]]; then
+  time=${2%%s*}
+fi
+
 image_src=$HOME/files/images/sexy/
 image_dst=/tmp/edging
+
+delay=20
+delay=$((delay + $((RANDOM%20))))
+delay=$((delay + $((RANDOM%20))))
+delay=$((delay - $((RANDOM%10))))
+delay=$((delay - $((RANDOM%10))))
+if [[ $delay -lt 8 ]]; then
+  delay=8
+fi
+delay=$(echo "$delay / 10" | bc -l)
+
+config="$HOME/.config/geeqie/geeqierc.xml"
+sed -rie "s/(slideshow.delay\s*=).*$/\1 \"$delay\"/" "$config"
+sed -rie "s/(slideshow.repeat\s*=).*/\1 \"true\"/" "$config"
 
 mkdir -p "$image_dst"
 
@@ -16,6 +37,20 @@ find "$image_src" -regextype posix-egrep -iregex '.*\.(jpe?g|nef)' \
   cp "$file" "$image_dst"
 done
 
-/usr/bin/geeqie -f -s "$image_dst"
+/usr/bin/geeqie -f -s "$image_dst" &>/dev/null &
+pid=$!
 
+for i in $(seq 1 $time); do
+  sleep 1
+  if ! ps $pid &>/dev/null; then
+    break
+  fi
+done
+
+if ps $pid &>/dev/null; then
+  kill $pid
+fi
+
+# clean up
+sed -rie "s/(slideshow.repeat\s*=).*/\1 \"false\"/" "$config"
 rm -rf "$image_dst"
