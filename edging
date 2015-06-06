@@ -1,0 +1,21 @@
+#!/bin/bash
+num=50
+if [[ $1 =~ ^[0-9]*$ ]]; then
+  num=$1
+fi
+
+image_src=$HOME/files/images/sexy/
+image_dst=/tmp/edging
+
+mkdir -p "$image_dst"
+
+find "$image_src" -regextype posix-egrep -iregex '.*\.(jpe?g|nef)' \
+  | shuf \
+  | head -n${num} \
+  | while read file; do
+  cp "$file" "$image_dst"
+done
+
+/usr/bin/geeqie -f -s "$image_dst"
+
+rm -rf "$image_dst"
