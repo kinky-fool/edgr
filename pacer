@@ -1,0 +1,186 @@
+#!/bin/bash
+
+min=50
+max=180
+pace="$min"
+direction='up'
+race_to_max=0
+drop_to_half=0
+
+program="/tmp/ctronome.$$"
+
+main() {
+  # If pace is at half of the maximum or below
+  if [[ "$pace" -le $(((max-min) / 2 + min )) ]]; then
+    if [[ "$direction" == 'down' && $((RANDOM%4)) -eq 0 ]]; then
+      echo "# Going up!"
+      direction='up'
+    fi
+    if [[ $((RANDOM%6)) -eq 0 ]]; then
+      echo "# Racing to $max BPM"
+      race_to_max=1
+    fi
+    if [[ "$pace" -le $(((max-min) / 4 + min)) ]]; then
+      if [[ $((RANDOM%8)) -eq 0 ]]; then
+        echo "# Minimum pace set to $pace BPM"
+        min="$pace"
+      fi
+    fi
+  else
+    # If pace is higher than 3/4 max
+    if [[ "$pace" -ge $(( ((max-min) / 4) * 3 + min )) ]]; then
+      if [[ "$direction" == 'up' && $((RANDOM%4)) -eq 0 ]]; then
+        echo "# Going down..."
+        direction='down'
+      fi
+    fi
+    if [[ $direction == 'up' && \
+          "$pace" -eq "$max" || $((RANDOM%6)) -eq 0 ]]; then
+      echo "# Dropping to half..."
+      drop_to_half=1
+    fi
+  fi
+
+  if [[ "$pace" -ge "$max" ]]; then
+    direction='down'
+  fi
+
+  if [[ "$pace" -le "$min" ]]; then
+    direction='up'
+  fi
+
+  delta=0
+  for i in $(seq 1 $((RANDOM%5 + 2))); do
+    delta=$((delta + RANDOM%20))
+  done
+
+  new_pace=$((pace + delta))
+  if [[ "$((RANDOM%6))" == 0 ]]; then
+    # Randomly go down
+    new_pace=$((pace - (delta + 20)))
+  fi
+
+  if [[ "$direction" == 'down' ]]; then
+    new_pace=$((pace - (delta + 20)))
+  else
+    if [[ "$((RANDOM%6))" == 0 ]]; then
+      # Randomly go up
+      new_pace=$((pace + delta))
+    fi
+  fi
+
+  if [[ "$new_pace" -ge "$max" ]]; then
+    new_pace="$max"
+  fi
+
+  if [[ "$new_pace" -le "$min" ]]; then
+    min=$((min + 10))
+    new_pace="$min"
+  fi
+
+  # Step increment
+  step=$(good_step $pace $new_pace 4)
+
+  # Time at each step (in seconds)
+  step_sex=$((RANDOM%5 + 1))
+
+  finale=$((RANDOM % 10 + RANDOM % 10 + 2))
+
+  if [[ "$race_to_max" -eq 1 ]]; then
+    new_pace=$max
+    step=$(good_step $pace $new_pace 6)
+    step_sex=1
+    finale=$((RANDOM % 10 + 10))
+    race_to_max=0
+  fi
+
+  if [[ "$drop_to_half" -eq 1 ]]; then
+    drop_to_half=0
+    new_pace=$(((max-min)/2 + min))
+    step_sex=1
+    if [[ $((RANDOM%4)) -eq 0 ]]; then
+      race_to_max=1
+    fi
+  fi
+
+  tempo_ramp $pace $new_pace $step $step_sex $finale #> "$program"
+#  /usr/bin/aoss $HOME/bin/ctronome -c 1 \
+#    -w1 $HOME/toys/tick.wav -w2 $HOME/toys/tock.wav \
+#    -p "$program"
+#  rm -f "$program"
+  pace=$new_pace
+  step_max=5
+}
+
+good_step() {
+  pace=$1
+  new_pace=$2
+  step_max=$3
+
+  spread=$((pace - new_pace))
+  if [[ "$spread" -lt 0 ]]; then
+    spread=$((spread * -1))
+  fi
+
+  step=$(((RANDOM % step_max) + (RANDOM % step_max) + 1))
+  while [[ $((spread % step)) -ne 0 ]]; do
+    step=$(((RANDOM % step_max) + (RANDOM % step_max) + 1))
+  done
+  echo $step
+}
+
+tempo_ramp() {
+  # begin       = start tempo
+  # end         = end tempo
+  # step        = bpm to increment by
+  # step_sex    = seconds for each step
+  # finale      = seconds for final tempo
+  local begin end step step_sex finale beats
+
+  if [[ "$1" =~ ^[0-9]+$ ]]; then
+    begin="$1"
+  else
+    begin="$min"
+  fi
+
+  if [[ "$2" =~ ^[0-9]+$ ]]; then
+    end="$2"
+  else
+    end="$max"
+  fi
+
+  if [[ "$3" =~ ^[0-9]+$ ]]; then
+    step="$3"
+  else
+    step=1
+  fi
+
+  if [[ "$4" =~ ^[0-9]+$ ]]; then
+    step_sex="$4"
+  else
+    step_sex=1
+  fi
+
+  if [[ "$5" =~ ^[0-9]+$ ]]; then
+    finale="$5"
+  else
+    finale=30
+  fi
+
+  if [[ "$begin" -gt "$end" ]]; then
+    step=$((step*-1))
+  fi
+
+  echo "# begin: $begin end: $end step: $step"
+
+  for i in $(seq "$begin" "$step" "$((end - step))"); do
+    beats=$(echo "$i / 60 * $step_sex" | bc -l)
+    printf "%0.0f %g/4 2/8\n" "$beats" "$i"
+  done
+  beats=$(echo "$i / 60 * $finale" | bc -l)
+  printf "%0.0f %g/4 2/8\n" "$beats" "$end"
+}
+
+for i in $(seq 1 10); do
+  main
+done
