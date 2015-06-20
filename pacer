@@ -184,3 +184,18 @@ tempo_ramp() {
 for i in $(seq 1 $1); do
   main
 done
+
+#for i in $(seq 1 6); do
+#  if [[ $((RANDOM%3)) -ne 0 ]]; then
+#    for i in $(seq 1 $((RANDOM%5+2))); do
+#      main
+#    done
+#    # Green Light
+#    printf "# Green Light\n5 350/4 2/8\n1 120/4 2/8\n5 350/4 2/8\n"
+#    for i in $(seq 1 $((RANDOM%2+1))); do
+#      main
+#    done
+#    # Yellow Light
+#    printf "# Yellow Light\n5 350/4 2/8\n1 120/4 2/8\n"
+#  fi
+#done
