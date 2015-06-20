@@ -181,6 +181,6 @@ tempo_ramp() {
   printf "%0.0f %g/4 2/8\n" "$beats" "$end"
 }
 
-for i in $(seq 1 10); do
+for i in $(seq 1 $1); do
   main
 done
