@@ -1,0 +1,114 @@
+#!/usr/bin/perl
+
+use warnings;
+use strict;
+
+use Getopt::Std;
+use POSIX; # For floor()
+
+my %opts = ();
+Getopt::Std::getopts('rhs:e:p:S:',\%opts);
+
+sub usage {
+  my $message = shift;
+
+  print STDERR <<EOL;
+Usage: $0 -f # -t # -T # -s #
+
+Generate a program file for ctronome that smoothly increases or
+decreases in tempo.
+
+  -s <bpm>                From beats per minute
+  -e <bpm>                To beats per minute
+  -p <seconds>            Period; Seconds to get from start to end
+  -S <seconds>            Steady beats; number of seconds at to BPM
+  -r                      Random Steady and Period
+  -h                      This
+
+EOL
+
+  if ($message && $message ne '') {
+    print STDERR "$message\n\n";
+  }
+
+  exit;
+}
+
+foreach my $opt (keys %opts) {
+  if ($opt eq 'h') {
+    usage();
+  } elsif ($opts{$opt} !~ /^[0-9]+$/) {
+    usage("The value for -$opt must be digits only");
+  }
+}
+
+my $start   = $opts{s} || 50;
+my $end     = $opts{e} || 180;
+my $period  = $opts{p} || 30;
+my $steady  = $opts{S} || 30;
+
+if ($opts{r}) {
+  $period = int(rand(int(abs($start-$end)/3)));
+  $period = $period + int(rand(int(abs($start-$end)/3)));
+  $steady = $period;
+  if (int(rand(5)) == 0) {
+    $period = int($period / 3);
+  }
+  if (int(rand(3)) == 0) {
+    $period = int($period / 2);
+  }
+  if (int(rand(8)) == 0) {
+    $period = $period * 2;
+  }
+
+  if (int(rand(6)) == 0) {
+    $steady = int(2 * ($steady / 3));
+  }
+  if (int(rand(3)) == 0) {
+    $steady = int($steady / 3);
+  }
+  if (int(rand(5)) == 0) {
+    $steady = $steady * 2;
+  }
+}
+
+# Tempo curve
+my $bpm_diff  = abs($start - $end);
+my $bpm_avg   = ($start + $end) / 2;
+
+# Number of beats during the tempo curve
+my $beats     = ceil(($bpm_avg / 60) * $period);
+
+my $all = 0;
+my $every_nth = 0;
+my $total_time = 0;
+
+# Number of beats per BPM change
+$all = floor($beats/$bpm_diff);
+# Every nth BPM change
+if ($beats % $bpm_diff != 0) {
+  $every_nth  = floor($bpm_diff / ($beats % $bpm_diff));
+}
+
+foreach my $change (0 .. ($bpm_diff-1)) {
+  my $beats = $all;
+  if ($every_nth > 0 && ($change % $every_nth) == 0) {
+    $beats++;
+  }
+  if ($beats > 0) {
+    my $bpm = $start + $change;
+    if ($start > $end) {
+       $bpm = $start - $change;
+    }
+    $total_time = $total_time + ($beats / ($bpm/60));
+    printf "%g %g/4 2/8\n",$beats,$bpm;
+  }
+}
+
+my $steady_beats = ceil(($end / 60) * $steady);
+$total_time = $total_time + ($steady_beats / ($end/60));
+printf "%g %g/4 2/8\n",$steady_beats,$end;
+
+printf "# %0.2f seconds\n",$total_time;
+
+exit;
