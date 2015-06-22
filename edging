@@ -1,46 +1,108 @@
 #!/bin/bash
-num=50
-if [[ $1 =~ ^[0-9]*$ ]]; then
-  num=$1
+
+right=5
+if [[ -n "$1" ]]; then
+  if [[ "$1" =~ ^[0-9]*$ ]]; then
+    right="$1"
+  fi
 fi
 
-time=300
-if [[ $2 =~ ^[0-9]*$ ]]; then
-  time=$(($2 * 60))
-elif [[ $2 =~ ^[0-9]*s$ ]]; then
-  time=${2%%s*}
+
+wrong=10
+if [[ -n "$2" ]]; then
+  if [[ "$2" =~ ^[0-9]*$ ]]; then
+    wrong="$2"
+  fi
 fi
 
-image_src=$HOME/files/images/sexy/
-image_dst=/tmp/edging
+win_streak=1
+if [[ -n "$3" ]]; then
+  if [[ "$3" =~ ^[0-9]*$ ]]; then
+    win_streak="$3"
+  fi
+fi
+
+lose_streak=5
+if [[ -n "$4" ]]; then
+  if [[ "$4" =~ ^[0-9]*$ ]]; then
+    lose_streak="$4"
+  fi
+fi
+
+score=60
+if [[ -n "$5" ]]; then
+  if [[ "$5" =~ ^[0-9]*$ ]]; then
+    score="$5"
+  fi
+fi
 
 delay=20
-delay=$((delay + $((RANDOM%20))))
-delay=$((delay + $((RANDOM%20))))
-delay=$((delay - $((RANDOM%10))))
-delay=$((delay - $((RANDOM%10))))
-if [[ $delay -lt 8 ]]; then
-  delay=8
-fi
-delay=$(echo "$delay / 10" | bc -l)
+
+for i in $(seq 1 $win_streak); do
+  if [[ $((RANDOM%2)) -eq 1 ]]; then
+    delay=$((delay + 3))
+  fi
+done
+
+delay=$(printf "%0.2g" "$(echo "$delay / 10" | bc)")
 
 config="$HOME/.config/geeqie/geeqierc.xml"
 sed -rie "s/(slideshow.delay\s*=).*$/\1 \"$delay\"/" "$config"
 sed -rie "s/(slideshow.repeat\s*=).*/\1 \"true\"/" "$config"
 
-mkdir -p "$image_dst"
+#config="$HOME/.config/mirage/miragerc"
+#sed -rie "s/^(slideshow_delay =).*$/\1 $delay/" "$config"
 
-find "$image_src" -regextype posix-egrep -iregex '.*\.(jpe?g|nef)' \
+img_dst=/tmp/edging
+mkdir -p "$img_dst"
+
+seed=$((right * (right - (right * score / 100))))
+image_src=$HOME/files/images/sexy/
+
+while read file; do
+  base_filename=${file##*/}
+  link_name=$(printf "%s-%s" "seed" "$base_filename")
+  ln -s "$file" "$img_dst/$link_name"
+done < <(find "$img_src" -regextype posix-egrep -iregex '.*\.(jpe?g|nef)' \
   | shuf \
-  | head -n${num} \
-  | while read file; do
-  cp "$file" "$image_dst"
-done
+  | head -n ${seed})
 
-/usr/bin/geeqie -f -s "$image_dst" &>/dev/null &
+echo "$seed sexy + possible edging photos"
+
+safe=$((right * win_streak))
+image_src=$HOME/files/images/sexy/
+
+while read file; do
+  base_filename=${file##*/}
+  link_name=$(printf "%s-%s" "safe" "$base_filename")
+  ln -s "$file" "$img_dst/$link_name"
+done < <(find "$img_src" -maxdepth 1 -regextype posix-egrep \
+  -iregex '.*\.(jpe?g|nef)' \
+  | shuf \
+  | head -n ${safe})
+
+echo "$safe safe photos"
+
+edge=$((lose_streak + wrong))
+image_src=$HOME/files/images/sexy/edges/
+
+while read file; do
+  base_filename=${file##*/}
+  link_name=$(printf "%s-%s" "edge" "$base_filename")
+  ln -s "$file" "$img_dst/$link_name"
+done < <(find "$img_src" -regextype posix-egrep -iregex '.*\.(jpe?g|nef)' \
+  | shuf \
+  | head -n ${edge})
+
+echo "$edge edging photos"
+
+#/usr/bin/mirage -f -s -o "$HOME/toys/track-edges /tmp/$$.edges %F" "$img_dst" &
+/usr/bin/geeqie -f -s "$img_dst" &>/dev/null &
 pid=$!
 
-for i in $(seq 1 $time); do
+seconds=$(((wrong * 20) - ((right * 10 * score) / 100)))
+echo "$seconds"
+for i in $(seq 1 $seconds); do
   sleep 1
   if ! ps $pid &>/dev/null; then
     break
@@ -53,4 +115,4 @@ fi
 
 # clean up
 sed -rie "s/(slideshow.repeat\s*=).*/\1 \"false\"/" "$config"
-rm -rf "$image_dst"
+rm -rf "$img_dst"
