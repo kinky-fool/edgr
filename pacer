@@ -50,7 +50,7 @@ main() {
   fi
 
   delta=0
-  for i in $(seq 1 $((RANDOM%5 + 2))); do
+  for i in $(seq 1 $((RANDOM%2 + 2))); do
     delta=$((delta + RANDOM%20))
   done
 
@@ -78,107 +78,34 @@ main() {
     new_pace="$min"
   fi
 
-  # Step increment
-  step=$(good_step $pace $new_pace 4)
-
-  # Time at each step (in seconds)
-  step_sex=$((RANDOM%5 + 1))
-
-  finale=$((RANDOM % 10 + RANDOM % 10 + 2))
+  build=0
+  steady=0
+  while [[ $((build + steady)) -le 45 || $((build + steady)) -gt 120 ]]; do
+    build=$((RANDOM%10 + RANDOM%20 + RANDOM%30 + 3))
+    steady=$((RANDOM%15 + RANDOM%15 + RANDOM%15 + 3))
+  done
 
   if [[ "$race_to_max" -eq 1 ]]; then
     new_pace=$max
-    step=$(good_step $pace $new_pace 6)
-    step_sex=1
-    finale=$((RANDOM % 10 + 10))
+    build=$((new_pace - pace))
+    steady=$((RANDOM%10 + RANDOM%20 + RANDOM%30 + 3))
     race_to_max=0
   fi
 
   if [[ "$drop_to_half" -eq 1 ]]; then
-    drop_to_half=0
     new_pace=$(((max-min)/2 + min))
-    step_sex=1
+    build=$((RANDOM%6 + RANDOM%6 + RANDOM%6 + 3))
+    steady=$((RANDOM%6 + RANDOM%6))
     if [[ $((RANDOM%4)) -eq 0 ]]; then
       race_to_max=1
     fi
+    drop_to_half=0
   fi
 
-  tempo_ramp $pace $new_pace $step $step_sex $finale #> "$program"
-#  /usr/bin/aoss $HOME/bin/ctronome -c 1 \
-#    -w1 $HOME/toys/tick.wav -w2 $HOME/toys/tock.wav \
-#    -p "$program"
-#  rm -f "$program"
+  echo "# start: $pace end: $new_pace period: ${build}s steady: ${steady}s"
+  change-pace -s $pace -e $new_pace -p $build -S $steady
   pace=$new_pace
   step_max=5
-}
-
-good_step() {
-  pace=$1
-  new_pace=$2
-  step_max=$3
-
-  spread=$((pace - new_pace))
-  if [[ "$spread" -lt 0 ]]; then
-    spread=$((spread * -1))
-  fi
-
-  step=$(((RANDOM % step_max) + (RANDOM % step_max) + 1))
-  while [[ $((spread % step)) -ne 0 ]]; do
-    step=$(((RANDOM % step_max) + (RANDOM % step_max) + 1))
-  done
-  echo $step
-}
-
-tempo_ramp() {
-  # begin       = start tempo
-  # end         = end tempo
-  # step        = bpm to increment by
-  # step_sex    = seconds for each step
-  # finale      = seconds for final tempo
-  local begin end step step_sex finale beats
-
-  if [[ "$1" =~ ^[0-9]+$ ]]; then
-    begin="$1"
-  else
-    begin="$min"
-  fi
-
-  if [[ "$2" =~ ^[0-9]+$ ]]; then
-    end="$2"
-  else
-    end="$max"
-  fi
-
-  if [[ "$3" =~ ^[0-9]+$ ]]; then
-    step="$3"
-  else
-    step=1
-  fi
-
-  if [[ "$4" =~ ^[0-9]+$ ]]; then
-    step_sex="$4"
-  else
-    step_sex=1
-  fi
-
-  if [[ "$5" =~ ^[0-9]+$ ]]; then
-    finale="$5"
-  else
-    finale=30
-  fi
-
-  if [[ "$begin" -gt "$end" ]]; then
-    step=$((step*-1))
-  fi
-
-  echo "# begin: $begin end: $end step: $step"
-
-  for i in $(seq "$begin" "$step" "$((end - step))"); do
-    beats=$(echo "$i / 60 * $step_sex" | bc -l)
-    printf "%0.0f %g/4 2/8\n" "$beats" "$i"
-  done
-  beats=$(echo "$i / 60 * $finale" | bc -l)
-  printf "%0.0f %g/4 2/8\n" "$beats" "$end"
 }
 
 for i in $(seq 1 $1); do
