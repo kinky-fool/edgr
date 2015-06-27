@@ -2,115 +2,105 @@
 
 min=50
 max=180
-pace="$min"
-direction='up'
-race_to_max=0
-drop_to_half=0
+
+RANDOM=$$$(date +%s)
+
 
 program="/tmp/ctronome.$$"
 
 main() {
-  # If pace is at half of the maximum or below
-  if [[ "$pace" -le $(((max-min) / 2 + min )) ]]; then
-    if [[ "$direction" == 'down' && $((RANDOM%4)) -eq 0 ]]; then
-      echo "# Going up!"
-      direction='up'
-    fi
-    if [[ $((RANDOM%6)) -eq 0 ]]; then
-      echo "# Racing to $max BPM"
-      race_to_max=1
-    fi
-    if [[ "$pace" -le $(((max-min) / 4 + min)) ]]; then
-      if [[ $((RANDOM%8)) -eq 0 ]]; then
-        echo "# Minimum pace set to $pace BPM"
-        min="$pace"
-      fi
-    fi
-  else
-    # If pace is higher than 3/4 max
-    if [[ "$pace" -ge $(( ((max-min) / 4) * 3 + min )) ]]; then
-      if [[ "$direction" == 'up' && $((RANDOM%4)) -eq 0 ]]; then
-        echo "# Going down..."
-        direction='down'
-      fi
-    fi
-    if [[ $direction == 'up' && \
-          "$pace" -eq "$max" || $((RANDOM%6)) -eq 0 ]]; then
-      echo "# Dropping to half..."
-      drop_to_half=1
-    fi
+  count=20
+  if [[ "$1" =~ ^[0-9][0-9]*$ ]]; then
+    count=$1
   fi
 
-  if [[ "$pace" -ge "$max" ]]; then
-    direction='down'
-  fi
+  half=$((count / 2))
+  count=$((count + RANDOM%half - RANDOM%half))
 
-  if [[ "$pace" -le "$min" ]]; then
+  pace=$((RANDOM%$((max - min)) + min))
+  direction='down'
+  if [[ $((RANDOM%3)) ]]; then
     direction='up'
   fi
+  race_to_max=0
+  drop_to_half=0
 
-  delta=0
-  for i in $(seq 1 $((RANDOM%2 + 2))); do
-    delta=$((delta + RANDOM%20))
-  done
+  for i in $(seq 1 $count); do
+    builds=(5 5 5 5 10 10 15 15 30 45 60)
+    steadies=(5 10 15 15 30 30 30 45 45 60)
 
-  new_pace=$((pace + delta))
-  if [[ "$((RANDOM%6))" == 0 ]]; then
-    # Randomly go down
-    new_pace=$((pace - (delta + 20)))
-  fi
-
-  if [[ "$direction" == 'down' ]]; then
-    new_pace=$((pace - (delta + 20)))
-  else
-    if [[ "$((RANDOM%6))" == 0 ]]; then
-      # Randomly go up
-      new_pace=$((pace + delta))
+    range=$((max - min))
+    quarter_pace=$(((range / 4) + min))
+    if [[ "$direction" == 'up' ]]; then
+      if [[ "$pace" -gt $((quarter_pace * 3)) ]]; then
+        if [[ $((RANDOM%3)) -eq 0 ]]; then
+          direction='down'
+        fi
+      fi
+      if [[ $((RANDOM%12)) -eq 0 ]]; then
+        direction='down'
+      fi
+      if [[ "$pace" -ge "$max" ]]; then
+        direction='down'
+        builds=(5 5 5 10 10 15 15)
+      fi
+    else
+      if [[ "$pace" -le $((quarter_pace * 2)) ]]; then
+        if [[ $((RANDOM%3)) -eq 0 ]]; then
+          direction='up'
+        fi
+      fi
+      if [[ $((RANDOM%6)) -eq 0 ]]; then
+        direction='up'
+      fi
+      if [[ "$pace" -le "$min" ]]; then
+        direction='up'
+      fi
     fi
-  fi
 
-  if [[ "$new_pace" -ge "$max" ]]; then
-    new_pace="$max"
-  fi
+    delta=10
+    for i in $(seq 1 $((RANDOM%2 + 2))); do
+      delta=$((delta + RANDOM%10 + 1))
+    done
 
-  if [[ "$new_pace" -le "$min" ]]; then
-    min=$((min + 10))
-    new_pace="$min"
-  fi
-
-  build=0
-  steady=0
-  while [[ $((build + steady)) -le 45 || $((build + steady)) -gt 120 ]]; do
-    build=$((RANDOM%10 + RANDOM%20 + RANDOM%30 + 3))
-    steady=$((RANDOM%15 + RANDOM%15 + RANDOM%15 + 3))
-  done
-
-  if [[ "$race_to_max" -eq 1 ]]; then
-    new_pace=$max
-    build=$((new_pace - pace))
-    steady=$((RANDOM%10 + RANDOM%20 + RANDOM%30 + 3))
-    race_to_max=0
-  fi
-
-  if [[ "$drop_to_half" -eq 1 ]]; then
-    new_pace=$(((max-min)/2 + min))
-    build=$((RANDOM%6 + RANDOM%6 + RANDOM%6 + 3))
-    steady=$((RANDOM%6 + RANDOM%6))
-    if [[ $((RANDOM%4)) -eq 0 ]]; then
-      race_to_max=1
+    new_pace=$((pace + delta))
+    if [[ "$direction" == 'down' ]]; then
+      new_pace=$((pace - delta))
     fi
-    drop_to_half=0
-  fi
 
-  echo "# start: $pace end: $new_pace period: ${build}s steady: ${steady}s"
-  change-pace -s $pace -e $new_pace -p $build -S $steady
-  pace=$new_pace
-  step_max=5
+    if [[ $((RANDOM%6)) -eq 0 ]]; then
+      if [[ $((RANDOM%100)) -gt $(((pace - min) / range)) ]]; then
+        new_pace=$max
+      fi
+      if [[ $pace -le $quarter_pace ]]; then
+        new_pace=$max
+      fi
+      if [[ $((RANDOM%100)) -gt $(((range - (pace - min)) / range)) ]]; then
+        new_pace=$(((range / 2) + min))
+      fi
+    fi
+
+    if [[ $new_pace -ge $max ]]; then
+      new_pace=$max
+      builds=(3 3 5 5 5 10 10 15)
+      steadies=(10 10 10 15 15 15 30 30 60)
+    fi
+
+    if [[ $new_pace -le $min ]]; then
+      new_pace="$min"
+      min=$((min + 10))
+    fi
+
+    build=${builds[$RANDOM % ${#builds[@]}]}
+    steady=${steadies[$RANDOM % ${#steadies[@]}]}
+
+    echo "# start: $pace end: $new_pace period: ${build}s steady: ${steady}s"
+    change-pace -s $pace -e $new_pace -p $build -S $steady
+    pace=$new_pace
+  done
 }
 
-for i in $(seq 1 $1); do
-  main
-done
+main "$@"
 
 #for i in $(seq 1 6); do
 #  if [[ $((RANDOM%3)) -ne 0 ]]; then
