@@ -44,7 +44,7 @@ for i in $(seq 1 $win_streak); do
   fi
 done
 
-delay=$(printf "%0.2g" "$(echo "$delay / 10" | bc)")
+delay=$(printf "%0.2g" "$(echo "(16 + 2 * $win_streak) / 10" | bc -l)")
 
 config="$HOME/.config/geeqie/geeqierc.xml"
 sed -rie "s/(slideshow.delay\s*=).*$/\1 \"$delay\"/" "$config"
@@ -56,52 +56,22 @@ sed -rie "s/(slideshow.repeat\s*=).*/\1 \"true\"/" "$config"
 img_dst=/tmp/edging
 mkdir -p "$img_dst"
 
-seed=$((right * (right - (right * score / 100))))
-image_src=$HOME/files/images/sexy/
+seed=$(((right + wrong) * 5))
 
-while read file; do
-  base_filename=${file##*/}
-  link_name=$(printf "%s-%s" "seed" "$base_filename")
-  ln -s "$file" "$img_dst/$link_name"
-done < <(find "$img_src" -regextype posix-egrep -iregex '.*\.(jpe?g|nef)' \
-  | shuf \
-  | head -n ${seed})
+safe="$right + ($win_streak * 10)"
+safe=$(printf "%.0f" $(echo "$safe" | bc -l))
 
-echo "$seed sexy + possible edging photos"
+edge="($lose_streak * $wrong * ((100 - $score) / 100))"
+edge="$wrong + ($lose_streak * 15)"
+edge=$(printf "%.0f" $(echo "$edge" | bc -l))
 
-safe=$((right * win_streak))
-image_src=$HOME/files/images/sexy/
-
-while read file; do
-  base_filename=${file##*/}
-  link_name=$(printf "%s-%s" "safe" "$base_filename")
-  ln -s "$file" "$img_dst/$link_name"
-done < <(find "$img_src" -maxdepth 1 -regextype posix-egrep \
-  -iregex '.*\.(jpe?g|nef)' \
-  | shuf \
-  | head -n ${safe})
-
-echo "$safe safe photos"
-
-edge=$((lose_streak + wrong))
-image_src=$HOME/files/images/sexy/edges/
-
-while read file; do
-  base_filename=${file##*/}
-  link_name=$(printf "%s-%s" "edge" "$base_filename")
-  ln -s "$file" "$img_dst/$link_name"
-done < <(find "$img_src" -regextype posix-egrep -iregex '.*\.(jpe?g|nef)' \
-  | shuf \
-  | head -n ${edge})
-
-echo "$edge edging photos"
-
-#/usr/bin/mirage -f -s -o "$HOME/toys/track-edges /tmp/$$.edges %F" "$img_dst" &
-/usr/bin/geeqie -f -s "$img_dst" &>/dev/null &
+$HOME/toys/sexy-slideshow $safe $edge $seed 0 &
 pid=$!
 
-seconds=$(((wrong * 20) - ((right * 10 * score) / 100)))
+seconds=$(printf "%.0f" \
+  $(echo "$lose_streak * 30 * ((100 - $score) / 100)" | bc -l))
 echo "$seconds"
+
 for i in $(seq 1 $seconds); do
   sleep 1
   if ! ps $pid &>/dev/null; then

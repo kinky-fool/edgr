@@ -1,15 +1,10 @@
 #!/bin/bash
-num=50
-if [[ -n "$1" && "$1" =~ ^[0-9]*$ ]]; then
-  num=$1
-fi
-
 time=300
-if [[ -n "$2" ]]; then
-  if [[ "$2" =~ ^[0-9]*$ ]]; then
-    time="$(($2 * 60))"
-  elif [[ "$2" =~ ^[0-9]*s$ ]]; then
-    time="${2%%s*}"
+if [[ -n "$1" ]]; then
+  if [[ "$1" =~ ^[0-9]*$ ]]; then
+    time="$(($1 * 60))"
+  elif [[ "$1" =~ ^[0-9]*s$ ]]; then
+    time="${1%%s*}"
   fi
 fi
 
@@ -17,37 +12,7 @@ config="$HOME/.config/geeqie/geeqierc.xml"
 sed -rie "s/(slideshow.delay\s*=).*$/\1 \"5\"/" "$config"
 sed -rie "s/(slideshow.repeat\s*=).*/\1 \"true\"/" "$config"
 
-image_dst=$HOME/files/stroking
-mkdir -p "$image_dst"
-
-(
-  find $HOME/files/images/sexy -regextype posix-egrep \
-    -iregex '.*\.(jpe?g|nef)';
-  find $HOME/files/images -regextype posix-egrep \
-    -iregex '.*\.(jpe?g|nef)';
-  find $HOME/files/downloads/images -regextype posix-egrep \
-    -iregex '.*\.(jpe?g|nef)';
-) | shuf \
-  | head -n$((num / 2)) \
-  | while read file; do
-    ln -s "$file" "$image_dst/"
-  done
-
-find $HOME/files/images/sexy -regextype posix-egrep \
-  -iregex '.*\.(jpe?g|nef)' | shuf \
-  | head -n$((num / 4)) \
-  | while read file; do
-    ln -s "$file" "$image_dst/"
-  done
-
-find $HOME/files/images/sexy/edges -regextype posix-egrep \
-  -iregex '.*\.(jpe?g|nef)' | shuf \
-  | head -n$((num / 4)) \
-  | while read file; do
-    ln -s "$file" "$image_dst/"
-  done
-
-/usr/bin/geeqie -f -s "$image_dst" &>/dev/null &
+$HOME/toys/sexy-slideshow 50 50 100 150 &
 pid=$!
 
 for i in $(seq 1 $time); do

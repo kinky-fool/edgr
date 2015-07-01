@@ -84,11 +84,15 @@ my $every_nth = 0;
 my $total_time = 0;
 
 # Number of beats per BPM change
-$all = floor($beats/$bpm_diff);
-# Every nth BPM change
-if ($beats % $bpm_diff != 0) {
-  $every_nth  = floor($bpm_diff / ($beats % $bpm_diff));
+if ($bpm_diff > 0) {
+  $all = floor($beats/$bpm_diff);
+  # Every nth BPM change
+  if ($beats % $bpm_diff != 0) {
+    $every_nth  = floor($bpm_diff / ($beats % $bpm_diff));
+  }
 }
+
+print "# start: $start end: $end period: $period steady: $steady\n";
 
 foreach my $change (0 .. ($bpm_diff-1)) {
   my $beats = $all;
