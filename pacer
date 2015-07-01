@@ -27,7 +27,7 @@ while [[ $long_enough -eq 0 || $count -gt 0 ]]; do
 
   if [[ $long_enough -eq 1 ]]; then
     count=$((count - (RANDOM%2+1)))
-    if [[ $((RANDOM%5)) -eq 0 ]]; then
+    if [[ $((RANDOM%4)) -eq 0 ]]; then
       count=$((count + RANDOM%3))
     fi
   fi
