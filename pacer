@@ -1,10 +1,13 @@
 #!/bin/bash
 
 RANDOM=$$$(date +%s)
-min=110
-max=140
 hard_max=190
-hard_min=70
+hard_min=80
+hard_range=$((hard_max - hard_min))
+base_min=$(printf "%.0f" $(echo "$hard_min + ($hard_range) * 3 / 10" | bc -l))
+base_max=$(printf "%.0f" $(echo "$hard_min + ($hard_range) * 7 / 10" | bc -l))
+min=$base_min
+max=$base_max
 pace=$((RANDOM%$((max - min)) + min))
 direction='up'
 
@@ -26,6 +29,10 @@ count=5
 while [[ $long_enough -eq 0 || $count -gt 0 ]]; do
 
   if [[ $long_enough -eq 1 ]]; then
+    max=$hard_max
+    if [[ $count -gt 0 && $((RANDOM%count)) -eq 0 ]]; then
+      direction='up'
+    fi
     count=$((count - (RANDOM%2+1)))
     if [[ $((RANDOM%4)) -eq 0 ]]; then
       count=$((count + RANDOM%3))
@@ -34,6 +41,28 @@ while [[ $long_enough -eq 0 || $count -gt 0 ]]; do
 
   range=$((max - min))
   percent=$(printf "%.0f" $(echo "(($pace - $min) / $range) * 100" | bc -l))
+
+  if [[ $((RANDOM%100)) -gt $percent ]]; then
+    direction='up'
+  fi
+
+  if [[ $pace -ge $max ]]; then
+    direction='down'
+    max=$((max + (RANDOM%10+1)))
+    max=$((max + (RANDOM%10+1)))
+    if [[ $max -ge $hard_max ]]; then
+      max=$hard_max
+    fi
+  fi
+
+  if [[ $pace -le $min ]]; then
+    direction='up'
+    min=$((min - (RANDOM%10+1)))
+    min=$((min - (RANDOM%10+1)))
+    if [[ $min -le $hard_min ]]; then
+      min=$hard_min
+    fi
+  fi
 
   build=$((2 + (RANDOM%9)))
   steady=$((5 + (RANDOM%16)))
@@ -47,10 +76,9 @@ while [[ $long_enough -eq 0 || $count -gt 0 ]]; do
     # More steady time, as pace increases
     steady=$(printf "%.0f" $(echo "$steady * $percent / 100" | bc -l))
     new_pace=$((pace + delta))
+    # Climb to $min from $hard_min
     if [[ $pace -le $hard_min ]]; then
-      max=$hard_max
-      min=$(printf "%.0f" \
-        $(echo "$hard_min + ($max - $hard_min) * 3 / 10" | bc -l))
+      min=$base_min
       new_pace=$min
     fi
   else
@@ -61,80 +89,42 @@ while [[ $long_enough -eq 0 || $count -gt 0 ]]; do
     # Shorter steady time at higher paces
     steady=$(printf "%.0f" $(echo "$build * (100 - $percent) / 100" | bc -l))
     new_pace=$((pace - delta))
+    # Drop to $max from $hard_max
     if [[ $pace -ge $hard_max ]]; then
-      min=$hard_min
-      max=$(printf "%.0f" $(echo "$min + ($hard_max - $min) * 7 / 10" | bc -l))
+      max=$base_max
       new_pace=$max
     fi
   fi
 
   # Get lucky and power through the painfully long fast pace build?
+  # 20% = 1 in 4, 90% = 1 in 11, etc
   chance=$(printf "%.0f" $(echo "2 + $percent / 10" | bc -l))
   if [[ $((RANDOM%chance)) -eq 0 ]]; then
-    direction='up'
     new_pace=$max
   fi
 
   # Get lucky and drop to minimum
   chance=$(printf "%.0f" $(echo "4 + (100 - $percent) / 10" | bc -l))
   if [[ $((RANDOM%chance)) -eq 0 ]]; then
-    direction='down'
     new_pace=$min
   fi
 
   if [[ $new_pace -ge $max ]]; then
-    # Get our limits in line
-    if [[ $max -ge $hard_max ]]; then
-      max=$hard_max
-    fi
-
     if [[ $pace -lt $((max - 1)) && $((RANDOM%3)) -eq 0 ]]; then
       # Randomly prevent from maxing out
       new_pace=$((pace + RANDOM % (max - pace)))
     else
-      # Head back down
-      direction='down'
       new_pace=$max
-
       build=$((2 + RANDOM%5))
-      steady=$((10 + RANDOM%31))
-
-      max=$((max + (RANDOM%10+1)))
-      if [[ $max -gt $hard_max ]]; then
-        max=$hard_max
-      fi
-
-      min=$((min + (RANDOM%10+1)))
-      if [[ $min -gt $max ]]; then
-        min=$max
-      fi
+      steady=$((20 + RANDOM%21))
     fi
-  fi
-
-  if [[ $new_pace -le $min ]]; then
-    # Get limits in line
-    if [[ $min -le $hard_min ]]; then
-      min=$hard_min
-    fi
-
-    if [[ $pace -gt $((min + 1)) && $((RANDOM%6)) -eq 0 ]]; then
+  elif [[ $new_pace -le $min ]]; then
+    if [[ $pace -gt $((min + 1)) && $((RANDOM%3)) -eq 0 ]]; then
       new_pace=$((pace - RANDOM % (pace - min)))
     else
-      direction='up'
       new_pace=$min
-
       build=$((5 + RANDOM%16))
       steady=$((5 + RANDOM%6))
-
-      min=$((min - (RANDOM%10+1)))
-      if [[ $min -lt $hard_min ]]; then
-        min=$hard_min
-      fi
-
-      max=$((max - (RANDOM%10+1)))
-      if [[ $max -lt $min ]]; then
-        max=$min
-      fi
     fi
   fi
 
@@ -146,7 +136,6 @@ while [[ $long_enough -eq 0 || $count -gt 0 ]]; do
       END {printf ("%.0f\n", t)}' "$prog")
     if [[ $length -ge $time ]]; then
       long_enough=1
-      max=$hard_max
     fi
   fi
 done
