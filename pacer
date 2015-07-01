@@ -35,14 +35,6 @@ while [[ $long_enough -eq 0 || $count -gt 0 ]]; do
   range=$((max - min))
   percent=$(printf "%.0f" $(echo "(($pace - $min) / $range) * 100" | bc -l))
 
-  if [[ $((RANDOM%6)) -eq 0 ]]; then
-    direction='up'
-  fi
-
-  if [[ $((RANDOM%8)) -eq 0 ]]; then
-    direction='down'
-  fi
-
   build=$((2 + (RANDOM%9)))
   steady=$((5 + (RANDOM%16)))
   delta=$((20 + (RANDOM%21)))
@@ -55,6 +47,12 @@ while [[ $long_enough -eq 0 || $count -gt 0 ]]; do
     # More steady time, as pace increases
     steady=$(printf "%.0f" $(echo "$steady * $percent / 100" | bc -l))
     new_pace=$((pace + delta))
+    if [[ $pace -le $hard_min ]]; then
+      max=$hard_max
+      min=$(printf "%.0f" \
+        $(echo "$hard_min + ($max - $hard_min) * 3 / 10" | bc -l))
+      new_pace=$min
+    fi
   else
     # Shorter build period when fast
     build=$(printf "%.0f" $(echo "$build * (100 - $percent) / 100" | bc -l))
@@ -63,17 +61,25 @@ while [[ $long_enough -eq 0 || $count -gt 0 ]]; do
     # Shorter steady time at higher paces
     steady=$(printf "%.0f" $(echo "$build * (100 - $percent) / 100" | bc -l))
     new_pace=$((pace - delta))
+    if [[ $pace -ge $hard_max ]]; then
+      min=$hard_min
+      max=$(printf "%.0f" $(echo "$min + ($hard_max - $min) * 7 / 10" | bc -l))
+      new_pace=$max
+    fi
   fi
 
   # Get lucky and power through the painfully long fast pace build?
-  chance=$(printf "%.0f" $(echo "10 * (100 - $percent) / 100" | bc -l))
-
-  if [[ $chance -le 0 ]]; then
-    chance=1
+  chance=$(printf "%.0f" $(echo "2 + $percent / 10" | bc -l))
+  if [[ $((RANDOM%chance)) -eq 0 ]]; then
+    direction='up'
+    new_pace=$max
   fi
 
+  # Get lucky and drop to minimum
+  chance=$(printf "%.0f" $(echo "4 + (100 - $percent) / 10" | bc -l))
   if [[ $((RANDOM%chance)) -eq 0 ]]; then
-    new_pace=$max
+    direction='down'
+    new_pace=$min
   fi
 
   if [[ $new_pace -ge $max ]]; then
@@ -134,16 +140,6 @@ while [[ $long_enough -eq 0 || $count -gt 0 ]]; do
 
   change-pace -s $pace -e $new_pace -p $build -S $steady >> "$prog"
   pace=$new_pace
-
-  # Set max to lower value, if maxed out
-  if [[ $max -ge $hard_max ]]; then
-    max=$(printf "%.0f" $(echo "$min + ($hard_max - $min) * 7 / 10" | bc -l))
-  fi
-
-  # Set min to a higher value if at maximum minimum (that's fun to say)
-  if [[ $min -le $hard_min ]]; then
-    min=$(printf "%.0f" $(echo "$max - ($max - $hard_min) * 7 / 10" | bc -l))
-  fi
 
   if [[ $long_enough -eq 0 ]]; then
     length=$(awk 'BEGIN {t=0} /sec/ {t+=$2} \
