@@ -1,212 +1,170 @@
-#!/bin/bash
+#!/usr/bin/perl
 
-RANDOM=$$$(date +%s)
-hard_max=190
-hard_min=80
-hard_range=$((hard_max - hard_min))
-base_min=$(printf "%.0f" $(echo "$hard_min + ($hard_range) * 3 / 10" | bc -l))
-base_max=$(printf "%.0f" $(echo "$hard_min + ($hard_range) * 7 / 10" | bc -l))
-min=$base_min
-max=$base_max
-pace=$((RANDOM%$((max - min)) + min))
-direction='up'
-evil=1
-elapsed=0
+use strict;
+use warnings;
 
-time=1200
-if [[ -n "$1" ]]; then
-  if [[ "$1" =~ ^[0-9]*$ ]]; then
-    time="$(($1 * 60))"
-  elif [[ "$1" =~ ^[0-9]*s$ ]]; then
-    time="${1%%s*}"
-  fi
-fi
+use Getopt::Long;
+#use POSIX; # for floor();
 
-prog="/tmp/pace$$"
-echo > "$prog"
+srand("$$" . time);
 
-long_enough=0
-count=5
+my $hard_max    = 190;
+my $hard_min    = 80;
+my $base_max    = $hard_min + ($hard_max - $hard_min) * 7 / 10;
+my $base_min    = $hard_min + ($hard_max - $hard_min) * 3 / 10;
 
-while [[ $long_enough -eq 0 || $count -gt 0 ]]; do
+my $min         = $base_min;
+my $max         = $base_max;
 
-  if [[ $elapsed -ge $((time - 60)) ]]; then
-    if [[ $long_enough -gt 0 ]]; then
-      max=$hard_max
-      if [[ $count -gt 0 && $((RANDOM%count)) -eq 0 ]]; then
-        direction='up'
-      fi
-      count=$((count - (RANDOM%2+1)))
-    fi
-    if [[ $((RANDOM%4)) -eq 0 ]]; then
-      count=$((count + RANDOM%3))
-    fi
-  fi
+my $pace        = int(rand($max - $min)) + $min;
+my $evil        = 1;
+my $count       = 5;
 
-  range=$((max - min))
-  percent=$(printf "%.0f" $(echo "(($pace - $min) / $range) * 100" | bc -l))
 
-  if [[ $((RANDOM%100)) -gt $percent ]]; then
-    direction='up'
-  fi
+my $minutes     = 15;
+my $seconds     = 0;
 
-  if [[ $pace -ge $max ]]; then
-    direction='down'
-    max=$((max + (RANDOM%10+1)))
-    max=$((max + (RANDOM%10+1)))
-    if [[ $max -ge $hard_max ]]; then
-      max=$hard_max
-    fi
-  fi
+GetOptions(
+  "hardmax=i" => \$hard_max,
+  "hardmin=i" => \$hard_min,
+  "max=i"     => \$max,
+  "min=i"     => \$min,
+  "pace=i"    => \$pace,
+  "evil=i"    => \$evil,
+  "count=i"   => \$count,
+  "s=i"       => \$seconds,
+  "m=i"       => \$minutes,
+) or die("Error in args; Did you pass a string for a number?\n");
 
-  if [[ $pace -le $min ]]; then
-    direction='up'
-    min=$((min - (RANDOM%10+1)))
-    min=$((min - (RANDOM%10+1)))
-    if [[ $min -le $hard_min ]]; then
-      min=$hard_min
-    fi
-  fi
+my $direction   = 'up';
+my $elapsed     = 0;
+my $long_enough = 0;
 
-  build=$((2 + (RANDOM%9)))
-  steady=$((5 + (RANDOM%16)))
-  delta=$((20 + (RANDOM%21)))
+$seconds        = $seconds + ($minutes * 60);
 
-  if [[ "$direction" == 'up' ]]; then
-    # Longer build when speeding up
-    build=$(printf "%.0f" $(echo "$build * $percent / 100" | bc -l))
-    # Smaller steps when speeding up
-    delta=$(printf "%.0f" $(echo "$delta * (100 - $percent) / 100" | bc -l))
-    # More steady time, as pace increases
-    steady=$(printf "%.0f" $(echo "$steady * $percent / 100" | bc -l))
-    new_pace=$((pace + delta))
-    # Climb to $min from $hard_min
-    if [[ $pace -le $hard_min ]]; then
-      min=$base_min
-      new_pace=$min
-    fi
-  else
-    # Shorter build period when fast
-    build=$(printf "%.0f" $(echo "$build * (100 - $percent) / 100" | bc -l))
-    # Larger steps when fast, to get slower quicker
-    delta=$(printf "%.0f" $(echo "$delta * $percent / 100" | bc -l))
-    # Shorter steady time at higher paces
-    steady=$(printf "%.0f" $(echo "$build * (100 - $percent) / 100" | bc -l))
-    new_pace=$((pace - delta))
-    # Drop to $max from $hard_max
-    if [[ $pace -ge $hard_max ]]; then
-      max=$base_max
-      new_pace=$max
-    fi
-  fi
+while ($count > 0 or $long_enough == 0) {
+  if ($elapsed > ($seconds - 60)) {
+    if ($long_enough > 0) {
+      $max = $hard_max;
+      if ($count > 0 and int(rand($count)) == 0) {
+        $direction = 'up';
+      }
+      $count -= int(rand(2)) + 1;
+    }
+    if (int(rand(4)) == 0) {
+      $count = $count + int(rand(3));
+    }
+  }
 
-  # Get lucky and power through the painfully long fast pace build?
-  # 20% = 1 in 4, 90% = 1 in 11, etc
-  chance=$(printf "%.0f" $(echo "2 + $percent / 10" | bc -l))
-  if [[ $((RANDOM%chance)) -eq 0 ]]; then
-    new_pace=$max
-  fi
+  #my $percent = ($pace - $min) / ($max - $min) * 100;
+  my $percent = int(($pace - $hard_min) / ($hard_max - $hard_min) * 100);
 
-  # Get lucky and drop to minimum
-  chance=$(printf "%.0f" $(echo "4 + (100 - $percent) / 10" | bc -l))
-  if [[ $((RANDOM%chance)) -eq 0 ]]; then
-    new_pace=$min
-  fi
+  if (int(rand(100)) + 1 > $percent) {
+    $direction = 'up';
+  }
 
-  if [[ $new_pace -ge $max ]]; then
-    if [[ $pace -lt $((max - 1)) && $((RANDOM%3)) -eq 0 ]]; then
-      # Randomly prevent from maxing out
-      new_pace=$((pace + RANDOM % (max - pace)))
-    else
-      new_pace=$max
-      build=$((2 + RANDOM%5))
-      steady=$((20 + RANDOM%21))
-    fi
-  elif [[ $new_pace -le $min ]]; then
-    if [[ $pace -gt $((min + 1)) && $((RANDOM%3)) -eq 0 ]]; then
-      new_pace=$((pace - RANDOM % (pace - min)))
-    else
-      new_pace=$min
-      build=$((5 + RANDOM%16))
-      steady=$((5 + RANDOM%6))
-    fi
-  fi
+  if ($pace >= $max) {
+    $direction = 'down';
+    $max += int(rand(10)) + int(rand(10)) + 1;
+    if ($max >= $hard_max) {
+      $max = $hard_max;
+    }
+  }
 
-  change-pace -s $pace -e $new_pace -p $build -S $steady >> "$prog"
-  pace=$new_pace
+  if ($pace <= $min) {
+    $direction = 'up';
+    $min -= int(rand(10)) + int(rand(10)) + 1;
+    if ($min <= $hard_min) {
+      $min = $hard_min;
+    }
+  }
 
-  if [[ $long_enough -eq 0 ]]; then
-    elapsed=$(awk 'BEGIN {t=0} /sec/ {t+=$2} \
-      END {printf ("%.0f\n", t)}' "$prog")
-    if [[ $elapsed -ge $time ]]; then
-      long_enough=1
-      if [[ $evil -gt 0 ]]; then
-        hard_max=$(printf "%.0f" \
-          $(echo "$hard_max + ($hard_max - $hard_min) / 5" | bc -l))
-      fi
-    fi
-  fi
-done
+  # Initialize $new_pace
+  my $new_pace = $pace;
+  my $delta = int(rand(16)) + 15;
+  if ($direction eq 'up') {
+    # Smaller steps as pace increases
+    $delta = $delta * (100 - $percent) / 100;
+    $new_pace = $pace + $delta;
+    if ($new_pace > $max) {
+      $new_pace = $max;
+    }
+  } else {
+    # Smaller steps as pace decreases
+    $delta = $delta * $percent / 100;
+    $new_pace = $pace - $delta;
+    if ($new_pace < $min) {
+      $new_pace = $min;
+    }
+  }
 
-cat "$prog"
-#
-#  if [[ $pace -gt $((max - (range / 10))) ]]; then
-#    if [[ $((RANDOM%4)) -eq 0 ]]; then
-#      build=$((RANDOM%2 + RANDOM%2 + RANDOM%2 + 2))
-#      steady=$((RANDOM%2 + RANDOM%2 + RANDOM%2 + 2))
-#      # Quickly drop to half
-#      new_pace=$((min + (range / 2)))
-#      echo "# start: $pace end: $new_pace period: $build steady: $steady"
-#      change-pace -s $pace -e $new_pace -p $build -S $steady
-#      old_pace=$pace
-#      pace=$new_pace
-#      new_pace=$old_pace
-#      if [[ $((RANDOM%4)) -eq 0 ]]; then
-#        steady=20
-#        if [[ $((RANDOM%3)) ]]; then
-#          steady=$((steady + RANDOM%15 + RANDOM%15))
-#        else
-#          steady=$((steady - RANDOM%15))
-#        fi
-#        # Quickly go back up to near max pace
-#        echo "# start: $pace end: $new_pace period: $build steady: $steady"
-#        change-pace -s $pace -e $new_pace -p $build -S $steady
-#        pace=$new_pace
-#      fi
-#    fi
-#  elif [[ $((RANDOM%8)) -eq 0 ]]; then
-#    direction='up'
-#    up_and_down=1
-#    while [[ $up_and_down -ne 0 ]]; do
-#      max=$((max + 10))
-#      if [[ $max -gt $hard_max ]]; then
-#        max=$hard_max
-#      fi
-#      echo "# Going up then down"
-#      build=5
-#      if [[ $((RANDOM%3)) ]]; then
-#        build=$((build - RANDOM%4))
-#      else
-#        build=$((build + RANDOM%6))
-#      fi
-#      steady=20
-#      if [[ $((RANDOM%3)) ]]; then
-#        steady=$((steady + RANDOM%10 + RANDOM%10 + RANDOM%20))
-#      else
-#        steady=$((steady + RANDOM%15 - RANDOM%15))
-#      fi
-#      old_pace=$pace
-#      new_pace=$max
-#      echo "# start: $pace end: $new_pace period: $build steady: $steady"
-#      change-pace -s $pace -e $new_pace -p $build -S $steady
-#      steady=$((10 - RANDOM%8))
-#
-#      echo "# start: $pace end: $new_pace period: $build steady: $steady"
-#      change-pace -s $new_pace -e $old_pace -p $build -S $steady
-#
-#      pace=$old_pace
-#      if [[ $((RANDOM%3)) -ne 0 ]]; then
-#        up_and_down=0
-#      fi
-#    done
-#  fi
+  if ($pace < $max and int(rand($percent / 10)) + 2 == 0) {
+    $new_pace = $max;
+  }
+
+  if ($pace > $min and int(rand((100-$percent)/10)) + 3 == 0) {
+    $new_pace = $min;
+  }
+
+  my $build = int(rand(9)) + 2;
+  my $steady  = int(rand(16)) + 5;
+
+
+  if ($new_pace == $max) {
+    if ($pace < ($max - 1) and int(rand(3)) == 0) {
+      # Randomly prevent pace from hitting max, this time
+      $new_pace = $pace + int(rand($max - $pace)) + 1;
+      $steady += 5;
+    } else {
+      $build  = int(rand(5)) + 2;
+      $steady = int(rand(31)) + 15;
+    }
+  }
+
+  if ($new_pace == $min) {
+    if ($pace > ($min + 1) and int(rand(3)) == 0) {
+      # Randomly prevent pace from hitting min, this time
+      $new_pace = $pace - int(rand($pace - $min)) + 1;
+      $steady += 5;
+    } else {
+      $build  = int(rand(5)) + 2;
+      $steady = int(rand(31)) + 15;
+    }
+  }
+
+  $percent = ($new_pace - $hard_min) / ($hard_max - $hard_min);
+
+  if ($direction eq 'up') {
+    $build  = $build * $percent;
+    $steady = $steady * $percent;
+  } else {
+    $build  = $build * (1 - $percent);
+    $steady = $steady * (1 - $percent);
+  }
+
+  $build = int($build);
+  $steady = int($steady);
+  $new_pace = int($new_pace);
+
+  my $command = "$ENV{'HOME'}/toys/change-pace";
+  my $args    = "-s $pace -e $new_pace -p $build -S $steady";
+  if (open my $pipe,'-|',"$command $args") {
+    foreach my $line (<$pipe>) {
+      if ($line =~ /# ([0-9\.]+) seconds/i) {
+        $elapsed += $1;
+      }
+      print $line;
+    }
+  } else {
+    print STDERR "Could not run $command: $!\n";
+    exit 1;
+  }
+  $pace = $new_pace;
+
+  if ($long_enough == 0 and $elapsed >= $seconds) {
+    $long_enough = 1;
+    if ($evil > 0) {
+      $hard_max = $hard_max + ($hard_max - $hard_min) / 5;
+    }
+  }
+}
