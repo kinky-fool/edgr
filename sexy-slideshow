@@ -9,13 +9,36 @@ rand_pics="$HOME/files/images/ $HOME/files/downloads/images/"
 
 source "$HOME/.config/sexy-slideshow"
 
-safe=$1
-edge=$2
-seed=$3
-rand=$4
+safe=10
+edge=10
+seed=10
+rand=10
 
-rm -rf "$img_dst"
-mkdir -p "$img_dst"
+if [[ -n "$1" && "$1" =~ ^[0-9]+$ ]]; then
+  safe=$1
+fi
+
+if [[ -n "$2" && "$2" =~ ^[0-9]+$ ]]; then
+  edge=$2
+fi
+
+if [[ -n "$3" && "$3" =~ ^[0-9]+$ ]]; then
+  seed=$3
+fi
+
+if [[ -n "$4" && "$4" =~ ^[0-9]+$ ]]; then
+  rand=$4
+fi
+
+do_cleanup() {
+  local pid
+  pid=$1
+  if ps $pid &>/dev/null; then
+    kill $pid
+  fi
+  rm -rf "$img_dst"
+  exit
+}
 
 link_files() {
   count=$1
@@ -33,6 +56,8 @@ link_files() {
   echo "$count $name photos"
 }
 
+mkdir -p "$img_dst"
+
 link_files "$safe" "$safe_pics" "safe"
 link_files "$edge" "$edge_pics" "edge"
 link_files "$seed" "$seed_pics" "seed"
@@ -40,7 +65,13 @@ link_files "$rand" "$rand_pics" "rand"
 
 /usr/bin/geeqie -f -s "$img_dst" &>/dev/null &
 viewer_pid=$!
-trap "kill $viewer_pid; exit" SIGINT SIGTERM
+
+# Catch C-c or kill TERM (from other scripts ;)
+trap "do_cleanup $viewer_pid" SIGINT SIGTERM
+
+# Loop while waiting for something else to kill us
 while ps $viewer_pid &>/dev/null; do
-  sleep 1
+  continue
 done
+
+do_cleanup $viewer_pid
