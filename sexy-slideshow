@@ -2,6 +2,8 @@
 
 img_dst=/tmp/sexy_slideshow
 
+viewer_conf="$HOME/.config/geeqie/geeqierc.xml"
+
 safe_pics="$HOME/files/images/sexy/safe/"
 edge_pics="$HOME/files/images/sexy/edges/"
 seed_pics="$HOME/files/images/sexy/"
@@ -13,6 +15,7 @@ safe=10
 edge=10
 seed=10
 rand=10
+delay=4
 
 if [[ -n "$1" && "$1" =~ ^[0-9]+$ ]]; then
   safe=$1
@@ -30,6 +33,10 @@ if [[ -n "$4" && "$4" =~ ^[0-9]+$ ]]; then
   rand=$4
 fi
 
+if [[ -n "$5" && "$5" =~ ^[0-9\.]+$ ]]; then
+  delay=$5
+fi
+
 do_cleanup() {
   local pid
   pid=$1
@@ -37,6 +44,7 @@ do_cleanup() {
     kill $pid
   fi
   rm -rf "$img_dst"
+  sed -rie "s/(slideshow.repeat\s*=).*/\1 \"false\"/" "$viewer_conf"
   exit
 }
 
@@ -55,6 +63,10 @@ link_files() {
 
   echo "$count $name photos"
 }
+
+# Set up viewer config
+sed -rie "s/(slideshow.delay\s*=).*$/\1 \"$delay\"/" "$viewer_conf"
+sed -rie "s/(slideshow.repeat\s*=).*/\1 \"true\"/" "$viewer_conf"
 
 mkdir -p "$img_dst"
 
