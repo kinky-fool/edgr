@@ -57,7 +57,7 @@ while ($count > 0 or $long_enough == 0) {
   }
 
   #my $percent = ($pace - $min) / ($max - $min) * 100;
-  my $percent = int(($pace - $hard_min) / ($hard_max - $hard_min) * 100);
+  my $percent = ($pace - $hard_min) / ($hard_max - $hard_min);
 
   if (int(rand(100)) + 1 > $percent) {
     $direction = 'up';
@@ -65,7 +65,7 @@ while ($count > 0 or $long_enough == 0) {
 
   if ($pace >= $max) {
     $direction = 'down';
-    $max += int(rand(10)) + int(rand(10)) + 1;
+    $max += int(rand(10) + rand(10)) + 1;
     if ($max >= $hard_max) {
       $max = $hard_max;
     }
@@ -73,25 +73,26 @@ while ($count > 0 or $long_enough == 0) {
 
   if ($pace <= $min) {
     $direction = 'up';
-    $min -= int(rand(10)) + int(rand(10)) + 1;
+    $min -= int(rand(10) + rand(10)) + 1;
     if ($min <= $hard_min) {
       $min = $hard_min;
     }
   }
 
   # Initialize $new_pace
-  my $new_pace = $pace;
-  my $delta = int(rand(16)) + 15;
+  my $new_pace  = $pace;
+  my $delta     = int(rand(10)) + 5;
+
   if ($direction eq 'up') {
     # Smaller steps as pace increases
-    $delta = $delta * (100 - $percent) / 100;
+    $delta += int(rand(30 * (1 - $percent)));
     $new_pace = $pace + $delta;
     if ($new_pace > $max) {
       $new_pace = $max;
     }
   } else {
     # Smaller steps as pace decreases
-    $delta = $delta * $percent / 100;
+    $delta += int(rand(30 * $percent));
     $new_pace = $pace - $delta;
     if ($new_pace < $min) {
       $new_pace = $min;
@@ -111,9 +112,9 @@ while ($count > 0 or $long_enough == 0) {
 
 
   if ($new_pace == $max) {
-    if ($pace < ($max - 1) and int(rand(3)) == 0) {
+    if ($pace < ($max - 1) and int(rand(4)) == 0) {
       # Randomly prevent pace from hitting max, this time
-      $new_pace = $pace + int(rand($max - $pace)) + 1;
+      $new_pace = $pace + int(rand($max - $pace));
       $steady += 5;
     } else {
       $build  = int(rand(5)) + 2;
@@ -122,9 +123,9 @@ while ($count > 0 or $long_enough == 0) {
   }
 
   if ($new_pace == $min) {
-    if ($pace > ($min + 1) and int(rand(3)) == 0) {
+    if ($pace > ($min + 1) and int(rand(4)) == 0) {
       # Randomly prevent pace from hitting min, this time
-      $new_pace = $pace - int(rand($pace - $min)) + 1;
+      $new_pace = $pace - int(rand($pace - $min));
       $steady += 5;
     } else {
       $build  = int(rand(5)) + 2;
