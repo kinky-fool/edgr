@@ -8,11 +8,7 @@ if [[ -n "$1" ]]; then
   fi
 fi
 
-config="$HOME/.config/geeqie/geeqierc.xml"
-sed -rie "s/(slideshow.delay\s*=).*$/\1 \"5\"/" "$config"
-sed -rie "s/(slideshow.repeat\s*=).*/\1 \"true\"/" "$config"
-
-$HOME/toys/sexy-slideshow 50 50 100 150 &
+$HOME/toys/sexy-slideshow 50 50 100 150 4 &
 pid=$!
 
 for i in $(seq 1 $time); do
@@ -26,7 +22,3 @@ done
 if ps $pid &>/dev/null; then
   kill $pid
 fi
-
-# clean up
-sed -rie "s/(slideshow.repeat\s*=).*/\1 \"false\"/" "$config"
-rm -rf "$image_dst"
