@@ -1,23 +1,26 @@
 #!/bin/bash
 
+verbose=0
+minutes=5
+min_arg=0
 
-count=5
-if [[ "$1" =~ ^[0-9]+$ ]]; then
-  count=$1
+while getopts "m:v" OPTION; do
+  case "$OPTION" in
+    m) min_arg="$OPTARG" ;;
+    v) verbose=$((verbose + 1)) ;;
+    *) ;;
+  esac
+done
+
+if [[ -n "$min_arg" && "$min_arg" =~ ^[0-9]+$ ]]; then
+  minutes=$min_arg
 fi
 
-max=200
-min=80
-
-config="$HOME/.config/geeqie/geeqierc.xml"
-sed -rie "s/(slideshow.delay\s*=).*$/\1 \"4\"/" "$config"
-sed -rie "s/(slideshow.repeat\s*=).*/\1 \"true\"/" "$config"
-
-$HOME/toys/sexy-slideshow 20 50 100 250 &
+$HOME/toys/sexy-slideshow 20 50 100 250 4 &
 sexy_pid=$!
 
 program="/tmp/stroke-program.$$"
-"$HOME/toys/pacer" -m $count -max $max -min $min > "$program"
+"$HOME/toys/pacer" -m $minutes > "$program"
 echo "Tempo Ramps:  $(grep '# start:' "$program" | wc -l)"
 
 last_bpm=0
@@ -25,23 +28,21 @@ aoss "$HOME/bin/ctronome" -c 1 -w1 "$HOME/toys/tick.wav" \
   -w2 "$HOME/toys/tock.wav" -p "$program" | while read info; do
     bpm=$(echo "$info" | grep -e '^BPM:' | cut -c6-)
     if [[ -n "$bpm" ]]; then
-      percent=$(printf "%0.0f" "$(echo "($bpm-$min) / ($max-$min)" | bc -l)")
-      $HOME/toys/show-bpm "$bpm"
-     # if [[ $bpm -gt $last_bpm ]]; then
-     #   "$HOME/toys/show-bpm" "+"
-     # elif [[ $bpm -lt $last_bpm ]]; then
-     #   "$HOME/toys/show-bpm" "-"
-     # else
-     #   "$HOME/toys/show-bpm" "$bpm"
-     # fi
-      last_bpm=$bpm
+      if [[ $verbose -eq 2 ]]; then
+        $HOME/toys/show-bpm "$bpm"
+      elif [[ $verbose -eq 1 ]]; then
+        if [[ $bpm -gt $last_bpm ]]; then
+          "$HOME/toys/show-bpm" "+"
+        elif [[ $bpm -lt $last_bpm ]]; then
+          "$HOME/toys/show-bpm" "-"
+        else
+          "$HOME/toys/show-bpm" "$bpm"
+        fi
+        last_bpm=$bpm
+      fi
     fi
   done
 
 if ps $sexy_pid &>/dev/null; then
   kill $sexy_pid
 fi
-
-# clean up
-sed -rie "s/(slideshow.repeat\s*=).*/\1 \"false\"/" "$config"
-rm -f "$program"
