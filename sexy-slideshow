@@ -83,7 +83,7 @@ trap "do_cleanup $viewer_pid" SIGINT SIGTERM
 
 # Loop while waiting for something else to kill us
 while ps $viewer_pid &>/dev/null; do
-  continue
+  sleep 1
 done
 
 do_cleanup $viewer_pid
