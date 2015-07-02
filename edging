@@ -1,39 +1,28 @@
 #!/bin/bash
 
 right=5
-if [[ -n "$1" ]]; then
-  if [[ "$1" =~ ^[0-9]*$ ]]; then
-    right="$1"
-  fi
+if [[ -n "$1" && "$1" =~ ^[0-9]*$ ]]; then
+  right="$1"
 fi
 
-
 wrong=10
-if [[ -n "$2" ]]; then
-  if [[ "$2" =~ ^[0-9]*$ ]]; then
-    wrong="$2"
-  fi
+if [[ -n "$2" && "$2" =~ ^[0-9]*$ ]]; then
+  wrong="$2"
 fi
 
 win_streak=1
-if [[ -n "$3" ]]; then
-  if [[ "$3" =~ ^[0-9]*$ ]]; then
-    win_streak="$3"
-  fi
+if [[ -n "$3" && "$3" =~ ^[0-9]*$ ]]; then
+  win_streak="$3"
 fi
 
 lose_streak=5
-if [[ -n "$4" ]]; then
-  if [[ "$4" =~ ^[0-9]*$ ]]; then
-    lose_streak="$4"
-  fi
+if [[ -n "$4" && "$4" =~ ^[0-9]*$ ]]; then
+  lose_streak="$4"
 fi
 
 score=60
-if [[ -n "$5" ]]; then
-  if [[ "$5" =~ ^[0-9]*$ ]]; then
-    score="$5"
-  fi
+if [[ -n "$5" && "$5" =~ ^[0-9]*$ ]]; then
+  score="$5"
 fi
 
 delay=20
@@ -46,15 +35,7 @@ done
 
 delay=$(printf "%0.2g" "$(echo "(16 + 2 * $win_streak) / 10" | bc -l)")
 
-config="$HOME/.config/geeqie/geeqierc.xml"
-sed -rie "s/(slideshow.delay\s*=).*$/\1 \"$delay\"/" "$config"
-sed -rie "s/(slideshow.repeat\s*=).*/\1 \"true\"/" "$config"
-
-#config="$HOME/.config/mirage/miragerc"
-#sed -rie "s/^(slideshow_delay =).*$/\1 $delay/" "$config"
-
 img_dst=/tmp/edging
-mkdir -p "$img_dst"
 
 seed=$(((right + wrong) * 5))
 
@@ -65,7 +46,7 @@ edge="($lose_streak * $wrong * ((100 - $score) / 100))"
 edge="$wrong + ($lose_streak * 15)"
 edge=$(printf "%.0f" $(echo "$edge" | bc -l))
 
-$HOME/toys/sexy-slideshow $safe $edge $seed 0 &
+$HOME/toys/sexy-slideshow $safe $edge $seed 0 $delay &
 pid=$!
 
 seconds=$(printf "%.0f" \
@@ -82,7 +63,3 @@ done
 if ps $pid &>/dev/null; then
   kill $pid
 fi
-
-# clean up
-sed -rie "s/(slideshow.repeat\s*=).*/\1 \"false\"/" "$config"
-rm -rf "$img_dst"
