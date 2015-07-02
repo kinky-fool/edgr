@@ -10,6 +10,8 @@ min=$base_min
 max=$base_max
 pace=$((RANDOM%$((max - min)) + min))
 direction='up'
+evil=1
+elapsed=0
 
 time=1200
 if [[ -n "$1" ]]; then
@@ -28,12 +30,14 @@ count=5
 
 while [[ $long_enough -eq 0 || $count -gt 0 ]]; do
 
-  if [[ $long_enough -eq 1 ]]; then
-    max=$hard_max
-    if [[ $count -gt 0 && $((RANDOM%count)) -eq 0 ]]; then
-      direction='up'
+  if [[ $elapsed -ge $((time - 60)) ]]; then
+    if [[ $long_enough -gt 0 ]]; then
+      max=$hard_max
+      if [[ $count -gt 0 && $((RANDOM%count)) -eq 0 ]]; then
+        direction='up'
+      fi
+      count=$((count - (RANDOM%2+1)))
     fi
-    count=$((count - (RANDOM%2+1)))
     if [[ $((RANDOM%4)) -eq 0 ]]; then
       count=$((count + RANDOM%3))
     fi
@@ -132,10 +136,14 @@ while [[ $long_enough -eq 0 || $count -gt 0 ]]; do
   pace=$new_pace
 
   if [[ $long_enough -eq 0 ]]; then
-    length=$(awk 'BEGIN {t=0} /sec/ {t+=$2} \
+    elapsed=$(awk 'BEGIN {t=0} /sec/ {t+=$2} \
       END {printf ("%.0f\n", t)}' "$prog")
-    if [[ $length -ge $time ]]; then
+    if [[ $elapsed -ge $time ]]; then
       long_enough=1
+      if [[ $evil -gt 0 ]]; then
+        hard_max=$(printf "%.0f" \
+          $(echo "$hard_max + ($hard_max - $hard_min) / 5" | bc -l))
+      fi
     fi
   fi
 done
