@@ -16,8 +16,10 @@ my $base_min    = $hard_min + ($hard_max - $hard_min) * 3 / 10;
 my $min         = $base_min;
 my $max         = $base_max;
 
-my $evil        = 1;
-my $count       = 5;
+my $evil        = 2;
+my $maxed       = 0;
+my $max_count   = 10;
+my $count       = $max_count;
 my $pace        = 0;
 
 my $dice        = 0;
@@ -34,6 +36,7 @@ GetOptions(
   "pace=i"    => \$pace,
   "evil=i"    => \$evil,
   "count=i"   => \$count,
+  "maxed=i"   => \$maxed,
   "s=i"       => \$seconds,
   "m=i"       => \$minutes,
   "dice=i"    => \$dice,
@@ -60,17 +63,33 @@ if ($dice > 0) {
   }
 }
 
-while ($count > 0 or $long_enough == 0) {
-  if ($elapsed > ($seconds - 60)) {
-    if ($long_enough > 0) {
-      $max = $hard_max;
-      if ($count > 0 and int(rand($count)) == 0) {
-        $direction = 'up';
+while ($count > 0 or $maxed > 0) {
+  if ($elapsed > ($seconds - 180)) {
+    if ($evil > 0) {
+      if (int(rand(5)) == 0) {
+        $hard_max += int(($hard_max - $hard_min) / 10);
+        $evil--;
       }
-      $count -= int(rand(2)) + 1;
     }
-    if (int(rand(4)) == 0) {
-      $count = $count + int(rand(3));
+    $max = $hard_max;
+    if ($count > 0 and int(rand($count)) == 0) {
+      $direction = 'up';
+    }
+    $count--;
+    if ($elapsed > $seconds) {
+      $count -= int(rand(2));
+      $count += int(rand(2));
+    } else {
+      $count -= int(rand(2) + rand(2) + rand(2));
+      $count += int(rand(2) + rand(2) + rand(2));
+    }
+
+    if ($count < -2) {
+      $count = 1;
+    }
+
+    if ($count > $max_count) {
+      $count = $max_count;
     }
   }
 
@@ -95,6 +114,7 @@ while ($count > 0 or $long_enough == 0) {
     if ($max >= $hard_max) {
       $max = $hard_max;
     }
+    $maxed--;
   }
 
   if ($pace <= $min) {
