@@ -8,7 +8,7 @@ use Getopt::Long;
 
 srand("$$" . time);
 
-my $hard_max    = 190;
+my $hard_max    = 180;
 my $hard_min    = 80;
 my $base_max    = $hard_min + ($hard_max - $hard_min) * 7 / 10;
 my $base_min    = $hard_min + ($hard_max - $hard_min) * 3 / 10;
@@ -215,11 +215,21 @@ while ($count > 0 or $maxed > 0) {
     exit 1;
   }
   $pace = $new_pace;
+}
 
-  if ($long_enough == 0 and $elapsed >= $seconds) {
-    $long_enough = 1;
-    if ($evil > 0) {
-      $hard_max = $hard_max + ($hard_max - $hard_min) / 5;
-    }
+print "# Approximately ",sec2human($elapsed),"\n";
+
+sub sec2human {
+  my $secs = shift;
+  if ($secs >= 365*24*60*60) {
+    return sprintf '%.1f years', $secs/(365+*24*60*60);
+  } elsif ($secs >= 24*60*60) {
+    return sprintf '%.1f days', $secs/(24*60*60);
+  } elsif ($secs >= 60*60) {
+    return sprintf '%.1f hours', $secs/(60*60);
+  } elsif ($secs >= 60) {
+    return sprintf '%.1f minutes', $secs/60;
+  } else {
+    return sprintf '%.1f seconds', $secs;
   }
 }
