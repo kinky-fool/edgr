@@ -3,8 +3,8 @@
 use strict;
 use warnings;
 
+use Math::Random;
 use Getopt::Long;
-#use POSIX; # for floor();
 
 srand("$$" . time);
 
@@ -73,7 +73,7 @@ while ($count > 0 or $long_enough == 0) {
 
   if ($pace >= $max) {
     $direction = 'down';
-    $max += int(rand(10) + rand(10)) + 1;
+    $max += int(random_normal(1,15,2));
     if ($max >= $hard_max) {
       $max = $hard_max;
     }
@@ -81,7 +81,7 @@ while ($count > 0 or $long_enough == 0) {
 
   if ($pace <= $min) {
     $direction = 'up';
-    $min -= int(rand(10) + rand(10)) + 1;
+    $min -= int(random_normal(1,15,2));
     if ($min <= $hard_min) {
       $min = $hard_min;
     }
@@ -89,18 +89,24 @@ while ($count > 0 or $long_enough == 0) {
 
   # Initialize $new_pace
   my $new_pace  = $pace;
-  my $delta     = int(rand(10)) + 5;
+  my $period    = int(random_normal(1,20,2));
+
+  my $delta;
+  my $build;
+  my $steady;
 
   if ($direction eq 'up') {
     # Smaller steps as pace increases
-    $delta += int(rand(30 * (1 - $percent)));
+    my $weight = int(20 * (1 - $percent)) + 1;
+    $delta = int(random_normal(1,$weight,$weight / 5));
     $new_pace = $pace + $delta;
     if ($new_pace > $max) {
       $new_pace = $max;
     }
   } else {
     # Smaller steps as pace decreases
-    $delta += int(rand(30 * $percent));
+    my $weight = int(20 * $percent) + 1;
+    $delta = int(random_normal(1,$weight,$weight / 5));
     $new_pace = $pace - $delta;
     if ($new_pace < $min) {
       $new_pace = $min;
@@ -115,10 +121,6 @@ while ($count > 0 or $long_enough == 0) {
     $new_pace = $min;
   }
 
-  my $build = int(rand(9)) + 2;
-  my $steady  = int(rand(16)) + 5;
-
-
   if ($new_pace == $max) {
     if ($pace < ($max - 1) and int(rand(4)) == 0) {
       # Randomly prevent pace from hitting max, this time
@@ -126,10 +128,8 @@ while ($count > 0 or $long_enough == 0) {
       if (int(rand(3)) == 0) {
         $direction = 'down';
       }
-      $steady += 5;
     } else {
-      $build  = int(rand(5)) + 2;
-      $steady = int(rand(31)) + 15;
+      $period *= 1.5;
     }
   }
 
@@ -140,10 +140,8 @@ while ($count > 0 or $long_enough == 0) {
       if (int(rand(3)) == 0) {
         $direction = 'up';
       }
-      $steady += 5;
     } else {
-      $build  = int(rand(5)) + 2;
-      $steady = int(rand(31)) + 15;
+      $period *= 1.5;
     }
   }
 
