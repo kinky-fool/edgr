@@ -16,10 +16,12 @@ my $base_min    = $hard_min + ($hard_max - $hard_min) * 3 / 10;
 my $min         = $base_min;
 my $max         = $base_max;
 
-my $pace        = int(rand($max - $min)) + $min;
 my $evil        = 1;
 my $count       = 5;
+my $pace        = 0;
 
+my $dice        = 0;
+my $dead_dice   = 0;
 
 my $minutes     = 15;
 my $seconds     = 0;
@@ -34,13 +36,29 @@ GetOptions(
   "count=i"   => \$count,
   "s=i"       => \$seconds,
   "m=i"       => \$minutes,
+  "dice=i"    => \$dice,
+  "dead=i"    => \$dead_dice,
 ) or die("Error in args; Did you pass a string for a number?\n");
 
 my $direction   = 'up';
 my $elapsed     = 0;
-my $long_enough = 0;
 
-$seconds        = $seconds + ($minutes * 60);
+if ($pace == 0) {
+  $pace = int(rand(($max - $min) / 3)) + $min;
+}
+$seconds = $seconds + ($minutes * 60);
+
+if ($dice > 0) {
+  my @rolls = ();
+  for my $roll (1 .. $dice + $dead_dice) {
+    push(@rolls,int(rand(6)+1));
+  }
+  my @live_dice = (sort { $a <=> $b } @rolls)[$dead_dice .. $#rolls];
+  $seconds = 0;
+  foreach my $roll (@live_dice) {
+    $seconds += $roll * 60;
+  }
+}
 
 while ($count > 0 or $long_enough == 0) {
   if ($elapsed > ($seconds - 60)) {
