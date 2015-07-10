@@ -183,15 +183,19 @@ while ($count > 0 or $maxed > 0) {
     }
   }
 
-  $percent = ($new_pace - $hard_min) / ($hard_max - $hard_min);
+  my $avg = ($pace + $new_pace) / 2;
+  my $avg_pct = ($avg - $hard_min) / ($hard_max - $hard_min);
 
   if ($direction eq 'up') {
-    $build  = $build * $percent;
-    $steady = $steady * $percent;
+    # Longer steady than build for high pace
+    $steady = $period * $avg_pct;
+    $build = $period - $steady;
   } else {
-    $build  = $build * (1 - $percent);
-    $steady = $steady * (1 - $percent);
+    # Longer build than steady for low pace
+    $build = $period * $avg_pct;
+    $steady = $period - $build;
   }
+  # TODO: fix negative number issue for steady/build
 
   $build = int($build);
   $steady = int($steady);
