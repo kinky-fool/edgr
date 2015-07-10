@@ -131,11 +131,11 @@ while ($count > 0 or $long_enough == 0) {
     }
   }
 
-  if ($pace < $max and int(rand($percent * 10)) + 2 == 0) {
+  if ($pace < $max and int(rand(($percent * 10 + 1) * 3)) == 0) {
     $new_pace = $max;
   }
 
-  if ($pace > $min and int(rand((1-$percent) * 10)) + 3 == 0) {
+  if ($pace > $min and int(rand(((1-$percent) * 10 + 1) * 3)) == 0) {
     $new_pace = $min;
   }
 
