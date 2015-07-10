@@ -4,12 +4,13 @@ verbose=0
 minutes=5
 min_arg=0
 
-while getopts "m:v" OPTION; do
-  case "$OPTION" in
-    m) min_arg="$OPTARG" ;;
-    v) verbose=$((verbose + 1)) ;;
-    *) ;;
-  esac
+args=()
+for opt in $@; do
+  if [[ "$opt" =~ ^--?vv*$ ]]; then
+    verbose=$(grep -o "v" <<<"$opt" | wc -l)
+  else
+    args=( "${args[@]}" "$opt" )
+  fi
 done
 
 if [[ -n "$min_arg" && "$min_arg" =~ ^[0-9]+$ ]]; then
@@ -20,8 +21,9 @@ $HOME/toys/sexy-slideshow 20 50 100 250 4 &
 sexy_pid=$!
 
 program="/tmp/stroke-program.$$"
-"$HOME/toys/pacer" -m $minutes > "$program"
+"$HOME/toys/pacer" "${args[@]}" > "$program"
 echo "Tempo Ramps:  $(grep '# start:' "$program" | wc -l)"
+grep "Approximately" "$program"
 
 last_bpm=0
 aoss "$HOME/bin/ctronome" -c 1 -w1 "$HOME/toys/tick.wav" \
