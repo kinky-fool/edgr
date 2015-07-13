@@ -22,8 +22,7 @@ my $max_count   = 10;
 my $count       = $max_count;
 my $pace        = 0;
 
-my $dice        = 0;
-my $dead_dice   = 0;
+my @dice        = ();
 
 my $minutes     = 15;
 my $seconds     = 0;
@@ -39,9 +38,9 @@ GetOptions(
   "maxed=i"   => \$maxed,
   "s=i"       => \$seconds,
   "m=i"       => \$minutes,
-  "dice=i"    => \$dice,
-  "dead=i"    => \$dead_dice,
-) or die("Error in args; Did you pass a string for a number?\n");
+  "dice=s"    => \@dice,
+) or die("Error in args.\n");
+
 
 my $direction   = 'up';
 my $elapsed     = 0;
@@ -51,15 +50,31 @@ if ($pace == 0) {
 }
 $seconds = $seconds + ($minutes * 60);
 
-if ($dice > 0) {
-  my @rolls = ();
-  for my $roll (1 .. $dice + $dead_dice) {
-    push(@rolls,int(rand(6)+1));
-  }
-  my @live_dice = (sort { $a <=> $b } @rolls)[$dead_dice .. $#rolls];
+if (@dice) {
   $seconds = 0;
-  foreach my $roll (@live_dice) {
-    $seconds += $roll * 60;
+  foreach my $dice (@dice) {
+    my ($count,$sides,$low,$high) = split(/:/,$dice);
+    if (!$sides) {
+      $sides = 6;
+    }
+    if (!$low) {
+      $low = 0;
+    }
+    if (!$high) {
+      $high = 0;
+    }
+    my @rolls = ();
+    for (1 .. $count + $low + $high) {
+      push(@rolls,int(rand($sides)+1));
+    }
+    my @used = ();
+    # Discard $low lowest dice
+    @used = (sort { $a <=> $b } @rolls)[$low .. $#rolls];
+    # Discard $high highest dice
+    @used = (sort { $b <=> $a } @used)[$high .. $#used];
+    foreach my $spots (@used) {
+      $seconds += $spots * 60;
+    }
   }
 }
 
