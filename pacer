@@ -82,7 +82,8 @@ while ($count > 0 or $maxed > 0) {
   if ($elapsed > ($seconds - 180)) {
     if ($evil > 0) {
       if (int(rand(5)) == 0) {
-        $hard_max += int(($hard_max - $hard_min) / 10);
+        $hard_max += int(random_normal(1,10,2));
+        $hard_min += int(random_normal(1,10,2));
         $evil--;
       }
     }
