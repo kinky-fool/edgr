@@ -20,13 +20,17 @@ my $max         = $base_max;
 my $evil        = 2;
 my $maxes       = 0;
 my $mins        = 0;
-my $count       = 10;
 my $pace        = 0;
+my $extra_time  = 10;
+my $finished    = 0;
+# 1 in X chance that the program will end; used after min_time is met
+my $chance      = 8;
 
 my @dice        = ();
 
 my $minutes     = 15;
-my $seconds     = 0;
+my $min_time    = 0;
+my $max_time    = 0;
 
 GetOptions(
   "hardmax=i" => \$hard_max,
@@ -35,15 +39,13 @@ GetOptions(
   "min=i"     => \$min,
   "pace=i"    => \$pace,
   "evil=i"    => \$evil,
-  "count=i"   => \$count,
   "maxes=i"   => \$maxes,
   "mins=i"    => \$mins,
   "m=f"       => \$minutes,
+  "extra=f"   => \$extra_time,
+  "chance=i"  => \$chance,
   "dice=s"    => \@dice,
 ) or die("Error in args.\n");
-
-my $max_count       = int(random_normal(1,$count,1));
-$count = $max_count;
 
 my $direction   = 1;
 my $streak      = int(random_normal(1,5,1));
@@ -52,10 +54,10 @@ my $elapsed     = 0;
 if ($pace == 0) {
   $pace = int(rand(($max - $min) / 3)) + $min;
 }
-$seconds = $minutes * 60;
+$min_time = $minutes * 60;
 
 if (@dice) {
-  $seconds = 0;
+  my $seconds = 0;
   foreach my $dice (@dice) {
     my ($count,$sides,$low,$high) = split(/:/,$dice);
     if (!$sides) {
@@ -82,14 +84,20 @@ if (@dice) {
     }
     print STDERR "Dice Chosen: @used\n";
   }
+  $min_time = $seconds;
 }
 
-while ($count > 0 or $maxes > 0) {
+$max_time = $min_time + ($extra_time * 60);
+
+while ($finished == 0) {
+  # Set max/min for the current state, otherwise percent calculations get bad
   my $temp_max = $max;
   my $temp_min = $min;
+
   if ($pace > $temp_max) {
     $temp_max = $pace;
   }
+
   if ($pace < $temp_min) {
     $temp_min = $pace;
   }
@@ -227,7 +235,7 @@ while ($count > 0 or $maxes > 0) {
 
   $pace = $new_pace;
 
-  if ($elapsed > ($seconds - 180)) {
+  if ($elapsed > $min_time) {
     if ($evil > 0) {
       if (int(rand(5)) == 0) {
         $hard_max += int(random_normal(1,10,2));
@@ -236,24 +244,13 @@ while ($count > 0 or $maxes > 0) {
       }
     }
     $max = $hard_max;
-    if ($count > 0 and int(rand($count)) == 0) {
-      $direction = 1;
-    }
-    $count--;
-    if ($elapsed > $seconds) {
-      $count -= int(rand(2));
-      $count += int(rand(2));
-    } else {
-      $count -= int(rand(2) + rand(2) + rand(2));
-      $count += int(rand(2) + rand(2) + rand(2));
+
+    if ($elapsed > $max_time) {
+      $finished = 1;
     }
 
-    if ($count < -2) {
-      $count = 1;
-    }
-
-    if ($count > $max_count) {
-      $count = $max_count;
+    if (!int(rand($chance))) {
+      $finished = 1;
     }
   }
 }
