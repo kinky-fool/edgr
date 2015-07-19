@@ -18,9 +18,9 @@ my $min         = $base_min;
 my $max         = $base_max;
 
 my $evil        = 2;
-my $maxed       = 0;
-my $max_count   = 10;
-my $count       = $max_count;
+my $maxes       = 0;
+my $mins        = 0;
+my $count       = 10;
 my $pace        = 0;
 
 my @dice        = ();
@@ -36,13 +36,17 @@ GetOptions(
   "pace=i"    => \$pace,
   "evil=i"    => \$evil,
   "count=i"   => \$count,
-  "maxed=i"   => \$maxed,
+  "maxes=i"   => \$maxes,
+  "mins=i"    => \$mins,
   "m=f"       => \$minutes,
   "dice=s"    => \@dice,
 ) or die("Error in args.\n");
 
+my $max_count       = int(random_normal(1,$count,1));
+$count = $max_count;
 
-my $direction   = 'up';
+my $direction   = 1;
+my $streak      = int(random_normal(1,5,1));
 my $elapsed     = 0;
 
 if ($pace == 0) {
@@ -67,6 +71,7 @@ if (@dice) {
     for (1 .. $count + $low + $high) {
       push(@rolls,int(rand($sides)+1));
     }
+    print STDERR "Dice Rolled: @rolls\n";
     my @used = ();
     # Discard $low lowest dice
     @used = (sort { $a <=> $b } @rolls)[$low .. $#rolls];
@@ -75,10 +80,153 @@ if (@dice) {
     foreach my $spots (@used) {
       $seconds += $spots * 60;
     }
+    print STDERR "Dice Chosen: @used\n";
   }
 }
 
-while ($count > 0 or $maxed > 0) {
+while ($count > 0 or $maxes > 0) {
+  my $temp_max = $max;
+  my $temp_min = $min;
+  if ($pace > $temp_max) {
+    $temp_max = $pace;
+  }
+  if ($pace < $temp_min) {
+    $temp_min = $pace;
+  }
+
+  my $percent = ($pace - $temp_min) / ($temp_max - $temp_min);
+
+  if ($streak <= 0 and !int(rand(4))) {
+    # Reverse direction
+    $streak = 0;
+    $direction *= -1;
+    $streak = int(random_normal(1,5,1));
+  }
+
+  $streak--;
+
+  if ($pace >= $max) {
+    $direction = -1;
+    $streak = 0;
+  }
+
+  if ($pace <= $min) {
+    $direction = 1;
+    $streak = 0;
+  }
+
+  my $delta_base = 15;
+  my $weight = $delta_base * $percent;
+  if ($direction < 0) {
+    $weight = $delta_base - $weight;
+  }
+  $weight = $weight + 5;
+  my $delta = int(random_normal(1,$weight,$weight / 5));
+  my $new_pace = $pace + ($delta * $direction);
+
+  my $period    = int(random_normal(1,20,2));
+
+  if ($direction > 0) {
+    if ($pace < $max and !int(rand(($percent * 10 + 1) * 3))) {
+      $new_pace = $max;
+    }
+  } else {
+    if ($pace > $min and !int(rand(((1-$percent) * 10 + 1) * 3))) {
+      $new_pace = $min;
+    }
+  }
+
+  # Calculations for next iteration below here:
+  if ($new_pace >= $max) {
+    # Chance that pace doesn't max out, this time.
+    if ($pace < ($max - 1)) {
+      if (int(rand(3)) or $streak > 0) {
+        # Prevent maxing out; randomly or if on a streak
+        $new_pace = $pace + int(rand($max - $pace)) + 1;
+        if (!int(rand(4))) {
+          # 25% chance of changing direction
+          $direction = -1;
+        }
+      }
+    }
+
+    # Re-check new_pace
+    if ($new_pace >= $max) {
+      $new_pace = $max;
+      $maxes--;
+      $period *= 1.5;
+    }
+
+    # Increase maximum pace
+    $max += int(random_normal(1,15,2));
+    if ($max > $hard_max) {
+      $max = $hard_max;
+    }
+  }
+
+  if ($new_pace <= $min) {
+    # Chance that pace doesn't hit bottom, this time.
+    if ($pace > ($min + 1)) {
+      if (int(rand(3)) or $streak > 0) {
+        # Prevent minning out; randomly or if on a streak
+        my $temp = int(rand(abs($pace - $min)))+1;
+        $new_pace = $pace - (int(rand($pace - $min)) + 1);
+        if (!int(rand(4))) {
+          # 25% chance of changing direction
+          $direction = 1;
+        }
+      }
+    }
+
+    # Re-check new_pace
+    if ($new_pace <= $min) {
+      $new_pace = $min;
+      $mins--;
+      $period *= 1.5;
+    }
+
+    # Decrease the minimum
+    $min -= int(random_normal(1,15,2));
+    if ($min < $hard_min) {
+      $min = $hard_min;
+    }
+
+    if ($new_pace < $min) {
+      $new_pace = $min;
+    }
+  }
+
+  my $build;
+  my $steady;
+
+  my $avg = ($pace + $new_pace) / 2;
+  my $avg_pct = ($avg - $temp_min) / ($temp_max - $temp_min);
+
+  if ($direction > 0) {
+    # Longer steady than build for high pace
+    $steady = int($period * $avg_pct);
+    $build = int($period - $steady);
+  } else {
+    # Longer build than steady for low pace
+    $build = int($period * $avg_pct);
+    $steady = int($period - $build);
+  }
+
+  my $command = "$beat_maker -s $pace -e $new_pace -p $build -S $steady";
+  if (open my $pipe,'-|',"$command") {
+    foreach my $line (<$pipe>) {
+      if ($line =~ /# ([0-9\.]+) seconds/i) {
+        $elapsed += $1;
+      }
+      print $line;
+    }
+  } else {
+    print STDERR "Could not run $command: $!\n";
+    exit 1;
+  }
+
+  $pace = $new_pace;
+
   if ($elapsed > ($seconds - 180)) {
     if ($evil > 0) {
       if (int(rand(5)) == 0) {
@@ -89,7 +237,7 @@ while ($count > 0 or $maxed > 0) {
     }
     $max = $hard_max;
     if ($count > 0 and int(rand($count)) == 0) {
-      $direction = 'up';
+      $direction = 1;
     }
     $count--;
     if ($elapsed > $seconds) {
@@ -108,131 +256,9 @@ while ($count > 0 or $maxed > 0) {
       $count = $max_count;
     }
   }
-
-  #my $percent = ($pace - $min) / ($max - $min) * 100;
-  my $percent = ($pace - $hard_min) / ($hard_max - $hard_min);
-
-  if (int(rand(100)) + 1 > ($percent * 100)) {
-    if (int(rand(3)) == 0) {
-      $direction = 'up';
-    }
-  }
-
-  if (int(rand(100)) + 1 > ((1 - $percent) * 100)) {
-    if (int(rand(4)) == 0) {
-      $direction = 'down';
-    }
-  }
-
-  if ($pace >= $max) {
-    $direction = 'down';
-    $max += int(random_normal(1,15,2));
-    if ($max >= $hard_max) {
-      $max = $hard_max;
-    }
-    $maxed--;
-  }
-
-  if ($pace <= $min) {
-    $direction = 'up';
-    $min -= int(random_normal(1,15,2));
-    if ($min <= $hard_min) {
-      $min = $hard_min;
-    }
-  }
-
-  # Initialize $new_pace
-  my $new_pace  = $pace;
-  my $period    = int(random_normal(1,20,2));
-
-  my $delta;
-  my $build;
-  my $steady;
-
-  if ($direction eq 'up') {
-    # Smaller steps as pace increases
-    my $weight = int(20 * (1 - $percent)) + 1;
-    $delta = int(random_normal(1,$weight,$weight / 5));
-    $new_pace = $pace + $delta;
-    if ($new_pace > $max) {
-      $new_pace = $max;
-    }
-  } else {
-    # Smaller steps as pace decreases
-    my $weight = int(20 * $percent) + 1;
-    $delta = int(random_normal(1,$weight,$weight / 5));
-    $new_pace = $pace - $delta;
-    if ($new_pace < $min) {
-      $new_pace = $min;
-    }
-  }
-
-  if ($pace < $max and int(rand(($percent * 10 + 1) * 3)) == 0) {
-    $new_pace = $max;
-  }
-
-  if ($pace > $min and int(rand(((1-$percent) * 10 + 1) * 3)) == 0) {
-    $new_pace = $min;
-  }
-
-  if ($new_pace == $max) {
-    if ($pace < ($max - 1) and int(rand(4)) == 0) {
-      # Randomly prevent pace from hitting max, this time
-      $new_pace = $pace + int(rand($max - $pace));
-      if (int(rand(3)) == 0) {
-        $direction = 'down';
-      }
-    } else {
-      $period *= 1.5;
-    }
-  }
-
-  if ($new_pace == $min) {
-    if ($pace > ($min + 1) and int(rand(4)) == 0) {
-      # Randomly prevent pace from hitting min, this time
-      $new_pace = $pace - int(rand($pace - $min));
-      if (int(rand(3)) == 0) {
-        $direction = 'up';
-      }
-    } else {
-      $period *= 1.5;
-    }
-  }
-
-  my $avg = ($pace + $new_pace) / 2;
-  my $avg_pct = ($avg - $hard_min) / ($hard_max - $hard_min);
-
-  if ($direction eq 'up') {
-    # Longer steady than build for high pace
-    $steady = $period * $avg_pct;
-    $build = $period - $steady;
-  } else {
-    # Longer build than steady for low pace
-    $build = $period * $avg_pct;
-    $steady = $period - $build;
-  }
-  # TODO: fix negative number issue for steady/build
-
-  $build = int($build);
-  $steady = int($steady);
-  $new_pace = int($new_pace);
-
-  my $command = "$beat_maker -s $pace -e $new_pace -p $build -S $steady";
-  if (open my $pipe,'-|',"$command") {
-    foreach my $line (<$pipe>) {
-      if ($line =~ /# ([0-9\.]+) seconds/i) {
-        $elapsed += $1;
-      }
-      print $line;
-    }
-  } else {
-    print STDERR "Could not run $command: $!\n";
-    exit 1;
-  }
-  $pace = $new_pace;
 }
 
-print "# Approximately ",sec2human($elapsed),"\n";
+print STDERR "Approximately ",sec2human($elapsed),"\n";
 
 sub sec2human {
   my $secs = shift;
