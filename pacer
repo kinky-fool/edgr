@@ -8,29 +8,40 @@ use Getopt::Long;
 
 srand("$$" . time);
 
+my $beat_maker  = "$ENV{HOME}/toys/change-pace";
+
+my $pace        = 0;
 my $hard_max    = 180;
 my $hard_min    = 80;
 my $base_max    = $hard_min + ($hard_max - $hard_min) * 7 / 10;
 my $base_min    = $hard_min + ($hard_max - $hard_min) * 3 / 10;
-
-my $beat_maker  = "$ENV{HOME}/toys/change-pace";
 my $min         = $base_min;
 my $max         = $base_max;
 
-my $evil        = 2;
-my $maxes       = 0;
-my $mins        = 0;
-my $pace        = 0;
-my $extra_time  = 10;
-my $finished    = 0;
-# 1 in X chance that the program will end; used after min_time is met
-my $chance      = 8;
-
 my @dice        = ();
 
-my $minutes     = 15;
+my $time        = 15;
+my $extra_time  = 5;
 my $min_time    = 0;
 my $max_time    = 0;
+my $elapsed     = 0;
+
+my $finished    = 0;
+
+# 1 in X chance that the program will end; used after min_time is met
+my $chance      = 8;
+# Times that hard_max can be increased
+my $evil        = 3;
+# Number of times pace needs to hit the max or min pace
+my $maxes       = 0;
+my $mins        = 0;
+
+my $direction   = 1;
+my $streak      = int(random_normal(1,5,1));
+# Reduce chances of starting with a streak going
+if (int(rand($streak))) {
+  $streak = 0;
+}
 
 GetOptions(
   "hardmax=i" => \$hard_max,
@@ -41,20 +52,18 @@ GetOptions(
   "evil=i"    => \$evil,
   "maxes=i"   => \$maxes,
   "mins=i"    => \$mins,
-  "m=f"       => \$minutes,
+  "time=f"    => \$time,
   "extra=f"   => \$extra_time,
   "chance=i"  => \$chance,
   "dice=s"    => \@dice,
 ) or die("Error in args.\n");
 
-my $direction   = 1;
-my $streak      = int(random_normal(1,5,1));
-my $elapsed     = 0;
 
 if ($pace == 0) {
-  $pace = int(rand(($max - $min) / 3)) + $min;
+  $pace = int(rand($max - $min) / 3) + $min;
 }
-$min_time = $minutes * 60;
+
+$min_time = $time * 60;
 
 if (@dice) {
   my $seconds = 0;
