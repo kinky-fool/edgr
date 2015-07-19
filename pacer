@@ -36,8 +36,7 @@ GetOptions(
   "evil=i"    => \$evil,
   "count=i"   => \$count,
   "maxed=i"   => \$maxed,
-  "s=i"       => \$seconds,
-  "m=i"       => \$minutes,
+  "m=f"       => \$minutes,
   "dice=s"    => \@dice,
 ) or die("Error in args.\n");
 
@@ -48,7 +47,7 @@ my $elapsed     = 0;
 if ($pace == 0) {
   $pace = int(rand(($max - $min) / 3)) + $min;
 }
-$seconds = $seconds + ($minutes * 60);
+$seconds = $minutes * 60;
 
 if (@dice) {
   $seconds = 0;
