@@ -17,13 +17,25 @@ if [[ -n "$min_arg" && "$min_arg" =~ ^[0-9]+$ ]]; then
   minutes=$min_arg
 fi
 
-$HOME/toys/sexy-slideshow 20 50 100 250 4 &
-sexy_pid=$!
 
 program="/tmp/stroke-program.$$"
 "$HOME/toys/pacer" "${args[@]}" > "$program"
 echo "Tempo Ramps:  $(grep '# start:' "$program" | wc -l)"
-grep "Approximately" "$program"
+
+do_cleanup() {
+  local pid
+  pid=$1
+  if ps $pid &>/dev/null; then
+    kill $pid
+  fi
+  rm -f "$program"
+  exit
+}
+
+$HOME/toys/sexy-slideshow 20 50 100 250 4 &
+sexy_pid=$!
+trap "do_cleanup $sexy_pid" SIGINT SIGTERM
+
 
 last_bpm=0
 aoss "$HOME/bin/ctronome" -c 1 -w1 "$HOME/toys/tick.wav" \
