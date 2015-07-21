@@ -178,10 +178,6 @@ while ($finished == 0) {
       if (int(rand(3)) or $streak > 0) {
         # Prevent maxing out; randomly or if on a streak
         $new_pace = $pace + int(rand($max - $pace)) + 1;
-        if (!int(rand(4))) {
-          # 25% chance of changing direction
-          $direction = -1;
-        }
       }
     }
 
@@ -206,10 +202,6 @@ while ($finished == 0) {
         # Prevent minning out; randomly or if on a streak
         my $temp = int(rand(abs($pace - $min)))+1;
         $new_pace = $pace - (int(rand($pace - $min)) + 1);
-        if (!int(rand(4))) {
-          # 25% chance of changing direction
-          $direction = 1;
-        }
       }
     }
 
@@ -241,10 +233,18 @@ while ($finished == 0) {
     # Longer steady than build for high pace
     $steady = int($period * $avg_pct);
     $build = int($period - $steady);
+    # 25% chance, if new pace is within 10 of max, start heading down
+    if ($new_pace >= ($max - 10) and !int(rand(4))) {
+      $direction = -1;
+    }
   } else {
     # Longer build than steady for low pace
     $build = int($period * $avg_pct);
     $steady = int($period - $build);
+    # 25% chance, if new pace is within 10 of min, start heading up
+    if (($min + 10) >= $new_pace and !int(rand(4))) {
+      $direction = 1;
+    }
   }
 
   my $command = "$beat_maker -s $pace -e $new_pace -p $build -S $steady";
