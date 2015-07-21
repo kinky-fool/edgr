@@ -28,8 +28,8 @@ my $elapsed     = 0;
 
 my $finished    = 0;
 
-# 1 in X chance that the program will end; used after min_time is met
-my $chance      = 8;
+# % chance that the program will end; used after min_time is met
+my $chance      = 15;
 # Times that hard_max can be increased
 my $evil        = 3;
 # Number of times pace needs to hit the max or min pace
@@ -272,10 +272,8 @@ while ($finished == 0) {
       $finished = 1;
     }
 
-    if (!int(rand($chance))) {
-      if (!$maxes and !$mins) {
-        $finished = 1;
-      }
+    if (rand(100) > $chance and !$maxes and !$mins) {
+      $finished = 1;
     }
   }
 }
