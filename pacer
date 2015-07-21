@@ -259,7 +259,9 @@ while ($finished == 0) {
     }
 
     if (!int(rand($chance))) {
-      $finished = 1;
+      if (!$maxes and !$mins) {
+        $finished = 1;
+      }
     }
   }
 }
