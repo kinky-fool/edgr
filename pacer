@@ -24,12 +24,16 @@ my $time        = 15;
 my $extra_time  = 5;
 my $min_time    = 0;
 my $max_time    = 0;
+my $run_time    = 0;
 my $elapsed     = 0;
 
 my $finished    = 0;
 
-# % chance that the program will end; used after min_time is met
-my $chance      = 15;
+# % chance time will be added
+my $add_pct     = 30;
+# % chance time will be removed
+my $sub_pct     = 20;
+
 # Times that hard_max can be increased
 my $evil        = 3;
 # Number of times pace needs to hit the max or min pace
@@ -56,7 +60,8 @@ GetOptions(
   "mins=i"    => \$mins,
   "time=f"    => \$time,
   "extra=f"   => \$extra_time,
-  "chance=i"  => \$chance,
+  "add=f"     => \$add_pct,
+  "sub=f"     => \$sub_pct,
   "dice=s"    => \@dice,
 ) or die("Error in args.\n");
 
@@ -99,8 +104,17 @@ if (@dice) {
 }
 
 $max_time = $min_time + ($extra_time * 60);
+$run_time = $min_time;
 
 while ($finished == 0) {
+  # Adjust $run_time
+  if ($add_pct > rand(100)) {
+    $run_time += fuzzy(30,4);
+  }
+  if ($sub_pct > rand(100)) {
+    $run_time -= fuzzy(30,2);
+  }
+
   # Set max/min for the current state, otherwise percent calculations get bad
   my $temp_max = $max;
   my $temp_min = $min;
@@ -272,7 +286,7 @@ while ($finished == 0) {
       $finished = 1;
     }
 
-    if (rand(100) > $chance and !$maxes and !$mins) {
+    if ($elapsed > $run_time and $maxes <= 0 and $mins <= 0) {
       $finished = 1;
     }
   }
