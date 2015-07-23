@@ -136,6 +136,11 @@ while ($finished == 0) {
     $streak = fuzzy(5,-3);
   }
 
+  if ($streak <= 0 and ($percent * 100) < 30 and int(rand(3))) {
+    $direction = 1;
+    $streak = fuzzy(5,2);
+  }
+
   $streak--;
 
   if ($pace >= $max) {
