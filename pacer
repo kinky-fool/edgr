@@ -32,7 +32,7 @@ my $finished    = 0;
 # % chance time will be added
 my $add_pct     = 30;
 # % chance time will be removed if it isn't added
-my $sub_pct     = 75;
+my $sub_pct     = 55;
 
 # Times that hard_max can be increased
 my $evil        = 3;
@@ -41,7 +41,7 @@ my $maxes       = 0;
 my $mins        = 0;
 
 my $direction   = 1;
-my $streak      = fuzzy(5,-3);
+my $streak      = fuzzy(5);
 my $relief      = 0;
 
 # Reduce chances of starting with a streak going
@@ -109,10 +109,10 @@ $run_time = $min_time;
 while ($finished == 0) {
   # Adjust $run_time
   if ($add_pct > rand(100)) {
-    $run_time += fuzzy(30,4);
+    $run_time += fuzzy(30);
   } else {
     if ($sub_pct > rand(100)) {
-      $run_time -= fuzzy(30,2);
+      $run_time -= fuzzy(30);
     }
   }
 
@@ -134,12 +134,12 @@ while ($finished == 0) {
     # Reverse direction
     $streak = 0;
     $direction *= -1;
-    $streak = fuzzy(5,-3);
+    $streak = fuzzy(5);
   }
 
   if ($streak <= 0 and ($percent * 100) < 30 and int(rand(3))) {
     $direction = 1;
-    $streak = fuzzy(5,2);
+    $streak = fuzzy(5);
   }
 
   $streak--;
@@ -161,10 +161,10 @@ while ($finished == 0) {
     $weight = $delta_base - $weight;
   }
   $weight = $weight + 5;
-  my $delta = fuzzy(int($weight),2);
+  my $delta = fuzzy(int($weight));
   my $new_pace = $pace + ($delta * $direction);
 
-  my $period = fuzzy(20,3);
+  my $period = fuzzy(20);
 
   if ($direction > 0) {
     if ($pace < $max and !int(rand(($percent * 10 + 1) * 3))) {
@@ -178,8 +178,8 @@ while ($finished == 0) {
 
   if ($elapsed > $min_time and $evil and !$relief) {
     if (!int(rand(4))) {
-      $hard_max += fuzzy(10,2);
-      $hard_min += fuzzy(10,4);
+      $hard_max += fuzzy(10);
+      $hard_min += fuzzy(10);
       $evil--;
     }
 
@@ -209,7 +209,7 @@ while ($finished == 0) {
     }
 
     # Increase maximum pace
-    $max += fuzzy(15,3);
+    $max += fuzzy(15);
     if ($max > $hard_max) {
       $max = $hard_max;
     }
@@ -233,7 +233,7 @@ while ($finished == 0) {
     }
 
     # Decrease the minimum
-    $min -= fuzzy(15,-3);
+    $min -= fuzzy(15);
     if ($min < $hard_min) {
       $min = $hard_min;
     }
@@ -317,16 +317,22 @@ sub sec2human {
 
 sub fuzzy {
   my $num   = shift;
-  my $skew  = shift;
 
-  my $result = $num;
+  # Control how far to deviate from $num
+  my $skew = int(rand(3))+2;
+  # Lean toward 0 or 2 * $num
+  my $lean = int(rand(3))+2;
   my $point = 1;
-  if ($skew < 0) {
+  # "Flip a coin" to determine the direction of the lean
+  if (int(rand(2))) {
     $point = -1;
   }
+
+  my $result = $num;
+
   for (1 .. int($num)) {
-    if (!int(rand(3))) {
-      if (int(rand(abs($skew)))) {
+    if (!int(rand($skew))) {
+      if (int(rand($lean))) {
         $result += $point;
       } else {
         $result += ($point * -1);
