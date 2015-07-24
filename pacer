@@ -31,8 +31,8 @@ my $finished    = 0;
 
 # % chance time will be added
 my $add_pct     = 30;
-# % chance time will be removed
-my $sub_pct     = 20;
+# % chance time will be removed if it isn't added
+my $sub_pct     = 75;
 
 # Times that hard_max can be increased
 my $evil        = 3;
@@ -110,9 +110,10 @@ while ($finished == 0) {
   # Adjust $run_time
   if ($add_pct > rand(100)) {
     $run_time += fuzzy(30,4);
-  }
-  if ($sub_pct > rand(100)) {
-    $run_time -= fuzzy(30,2);
+  } else {
+    if ($sub_pct > rand(100)) {
+      $run_time -= fuzzy(30,2);
+    }
   }
 
   # Set max/min for the current state, otherwise percent calculations get bad
