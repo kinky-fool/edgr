@@ -10,13 +10,16 @@ srand("$$" . time);
 
 my $beat_maker  = "$ENV{HOME}/toys/change-pace";
 
+my $min_pace    = 95;
+my $max_pace    = 185;
+
+# The 'end zones' (in percent)
+my $low_end     = 30;
+my $high_end    = 80;
+
+# Real pace and range are set further below, so max/min/end can be args
 my $pace        = 0;
-my $hard_max    = 180;
-my $hard_min    = 80;
-my $base_max    = $hard_min + ($hard_max - $hard_min) * 7 / 10;
-my $base_min    = $hard_min + ($hard_max - $hard_min) * 3 / 10;
-my $min         = $base_min;
-my $max         = $base_max;
+my $field       = 0;
 
 my @dice        = ();
 
@@ -27,22 +30,27 @@ my $max_time    = 0;
 my $run_time    = 0;
 my $elapsed     = 0;
 
+my $base_step   = 15;
+my $avg_steady  = 5;
+my $avg_build   = 3;
 my $finished    = 0;
 
 # % chance time will be added
-my $add_pct     = 30;
+my $add_pct     = 40;
 # % chance time will be removed if it isn't added
-my $sub_pct     = 55;
+my $sub_pct     = 30;
 
-# Times that hard_max can be increased
-my $evil        = 3;
+# Number of times that $pace might jump to $max_pace
+my $evil        = 5;
 # Number of times pace needs to hit the max or min pace
 my $maxes       = 0;
 my $mins        = 0;
 
+my $fuzzify     = 1;
+my $relief      = 0;
 my $direction   = 1;
 my $streak      = fuzzy(5);
-my $relief      = 0;
+my $hit_limit   = 5;
 
 # Reduce chances of starting with a streak going
 if (int(rand($streak))) {
@@ -50,10 +58,8 @@ if (int(rand($streak))) {
 }
 
 GetOptions(
-  "hardmax=i" => \$hard_max,
-  "hardmin=i" => \$hard_min,
-  "max=i"     => \$max,
-  "min=i"     => \$min,
+  "max=i"     => \$max_pace,
+  "min=i"     => \$min_pace,
   "pace=i"    => \$pace,
   "evil=i"    => \$evil,
   "maxes=i"   => \$maxes,
@@ -66,11 +72,10 @@ GetOptions(
 ) or die("Error in args.\n");
 
 
-if ($pace == 0) {
-  $pace = int(rand($max - $min) / 3) + $min;
-}
-
 $min_time = $time * 60;
+$field = $max_pace - $min_pace;
+# Set the pace to just outside of the low end zone
+$pace = $min_pace + int($field * ($low_end / 100)) + 5;
 
 if (@dice) {
   my $seconds = 0;
@@ -104,168 +109,116 @@ if (@dice) {
 }
 
 $max_time = $min_time + ($extra_time * 60);
-$run_time = $min_time;
+$run_time = int($min_time + (($extra_time * 60)/ 2));
 
 while ($finished == 0) {
+  if ($streak > 0) {
+    $streak--;
+  } else {
+    if (!int(rand(4))) {
+      $direction *= -1;
+    }
+    if (!int(rand(4))) {
+      $streak = fuzzy(3);
+    }
+  }
+
   # Adjust $run_time
   if ($add_pct > rand(100)) {
     $run_time += fuzzy(30);
-  } else {
-    if ($sub_pct > rand(100)) {
-      $run_time -= fuzzy(30);
-    }
   }
 
-  # Set max/min for the current state, otherwise percent calculations get bad
-  my $temp_max = $max;
-  my $temp_min = $min;
-
-  if ($pace > $temp_max) {
-    $temp_max = $pace;
+  if ($sub_pct > rand(100)) {
+    $run_time -= fuzzy(30);
   }
 
-  if ($pace < $temp_min) {
-    $temp_min = $pace;
-  }
+  my $percent = ($pace - $min_pace) / $field;
+  my $step = int($base_step * $percent);
 
-  my $percent = ($pace - $temp_min) / ($temp_max - $temp_min);
-
-  if ($streak <= 0 and !int(rand(4))) {
-    # Reverse direction
-    $streak = 0;
-    $direction *= -1;
-    $streak = fuzzy(5);
-  }
-
-  if ($streak <= 0 and ($percent * 100) < 30 and int(rand(3))) {
-    $direction = 1;
-    $streak = fuzzy(5);
-  }
-
-  $streak--;
-
-  if ($pace >= $max) {
-    $direction = -1;
-    $streak = 0;
-    $relief = int(rand(2))+1;
-  }
-
-  if ($pace <= $min) {
-    $direction = 1;
-    $streak = 0;
-  }
-
-  my $delta_base = 15;
-  my $weight = $delta_base * $percent;
   if ($direction < 0) {
-    $weight = $delta_base - $weight;
-  }
-  $weight = $weight + 5;
-  my $delta = fuzzy(int($weight));
-  my $new_pace = $pace + ($delta * $direction);
-
-  my $period = fuzzy(20);
-
-  if ($direction > 0) {
-    if ($pace < $max and !int(rand(($percent * 10 + 1) * 3))) {
-      $new_pace = $max;
-    }
-  } else {
-    if ($pace > $min and !int(rand(((1-$percent) * 10 + 1) * 3))) {
-      $new_pace = $min;
-    }
+    $step = $base_step - $step;
   }
 
-  if ($elapsed > $min_time and $evil and !$relief) {
-    if (!int(rand(4))) {
-      $hard_max += fuzzy(10);
-      $hard_min += fuzzy(10);
-      $evil--;
-    }
+  $step = $step + fuzzy(5);
 
-    $max = $hard_max;
+  if ($fuzzify) {
+    $step = fuzzy($step);
+  }
+
+  # Set the new pace
+  my $new_pace = $pace + ($step * $direction);
+
+  if ($percent >= $high_end) {
+    my $close = $max_pace - $pace;
     $direction = 1;
-
-    if (!int(rand(3))) {
-      $new_pace = $max;
-    }
-  }
-
-  # Calculations for next iteration below here:
-  if ($new_pace >= $max) {
-    # Chance that pace doesn't max out, this time.
-    if ($pace < ($max - 1)) {
-      if (int(rand(3)) or $streak > 0) {
-        # Prevent maxing out; randomly or if on a streak
-        $new_pace = $pace + int(rand($max - $pace)) + 1;
+    $new_pace = $pace + int($step / 2);
+    if ($new_pace > $max_pace) {
+      if (!int(rand($close)) or $close <= 0) {
+        $new_pace = $pace + int(rand($max_pace - $pace)) + 1;
+      } else {
+        $new_pace = $max_pace;
       }
     }
-
-    # Re-check new_pace
-    if ($new_pace >= $max) {
-      $new_pace = $max;
-      $maxes--;
-      $period *= 1.5;
+    if (!int(rand($close)) or $close <= 0) {
+      $new_pace = $min_pace + int($field * (fuzzy(50) / 100));
     }
-
-    # Increase maximum pace
-    $max += fuzzy(15);
-    if ($max > $hard_max) {
-      $max = $hard_max;
+  } elsif ($low_end >= $percent) {
+    my $close = $pace - $min_pace;
+    $direction = -1;
+    $new_pace = $pace - ($step * 1.5);
+    if ($min_pace > $new_pace) {
+      $new_pace = $min_pace;
     }
-  }
-
-  if ($new_pace <= $min) {
-    # Chance that pace doesn't hit bottom, this time.
-    if ($pace > ($min + 1)) {
-      if (int(rand(3)) or $streak > 0) {
-        # Prevent minning out; randomly or if on a streak
-        my $temp = int(rand(abs($pace - $min)))+1;
-        $new_pace = $pace - (int(rand($pace - $min)) + 1);
+    if (!int(rand($close)) or $close <= 0) {
+      $new_pace = $min_pace + int($field * (fuzzy(50) / 100));
+    }
+    if ($evil) {
+      if (!int(rand(fuzzy($evil)))) {
+        $evil--;
+        $new_pace = $max_pace - ($step / 2);
       }
     }
-
-    # Re-check new_pace
-    if ($new_pace <= $min) {
-      $new_pace = $min;
-      $mins--;
-      $period *= 1.5;
-    }
-
-    # Decrease the minimum
-    $min -= fuzzy(15);
-    if ($min < $hard_min) {
-      $min = $hard_min;
-    }
-
-    if ($new_pace < $min) {
-      $new_pace = $min;
-    }
   }
 
-  my $build;
-  my $steady;
+  if ($elapsed > $min_time and !$relief and !int(rand(fuzzy(3)))) {
+    $new_pace = $max_pace;
+    $relief = fuzzy(4);
+  }
 
-  my $avg = ($pace + $new_pace) / 2;
-  my $avg_pct = ($avg - $temp_min) / ($temp_max - $temp_min);
+  if ($new_pace >= $max_pace) {
+    $maxes--;
+    $new_pace = $max_pace;
+  }
 
-  if ($direction > 0) {
-    # Longer steady than build for high pace
-    $steady = int($period * $avg_pct);
-    $build = int($period - $steady);
-    # 25% chance, if new pace is within 10 of max, start heading down
-    if ($new_pace >= ($max - 10) and !int(rand(4))) {
-      $direction = -1;
-    }
+  if ($new_pace <= $min_pace) {
+    $mins--;
+    $new_pace = $min_pace;
+  }
+
+  if ($pace == $new_pace) {
+    print STDERR "pace = new pace; bad math somewhere\n";
+  }
+
+  my $steady = $avg_steady;
+
+  if ($percent > 50) {
+    $steady = $steady + int(2 * $steady * ($percent - 50) / 50);
   } else {
-    # Longer build than steady for low pace
-    $build = int($period * $avg_pct);
-    $steady = int($period - $build);
-    # 25% chance, if new pace is within 10 of min, start heading up
-    if (($min + 10) >= $new_pace and !int(rand(4))) {
-      $direction = 1;
-    }
+    $steady = $steady + int(2 * $steady * (50 - $percent) / 50);
   }
+
+  if ($fuzzify) {
+    $steady = fuzzy($steady);
+  }
+
+  my $delta_pct = ($new_pace + $pace) / $field;
+  my $build = $avg_build + int(2 * $avg_build * $delta_pct);
+
+  if ($fuzzify) {
+    $build = fuzzy($build);
+  }
+
+  $new_pace = int($new_pace);
 
   my $command = "$beat_maker -s $pace -e $new_pace -p $build -S $steady";
   if (open my $pipe,'-|',"$command") {
@@ -280,12 +233,21 @@ while ($finished == 0) {
     exit 1;
   }
 
+  # Prep for the next period
   $pace = $new_pace;
+
+  if ($pace >= $max_pace) {
+    $direction = -1;
+  }
+
+  if ($min_pace >= $pace) {
+    $direction = 1;
+  }
 
   if ($elapsed > $min_time) {
     if ($relief > 0) {
-      $direction = -1;
       $relief--;
+      $direction = -1;
     }
 
     if ($elapsed > $max_time) {
