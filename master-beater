@@ -32,7 +32,7 @@ do_cleanup() {
   exit
 }
 
-$HOME/toys/sexy-slideshow 20 80 100 400 4 &
+$HOME/toys/sexy-slideshow 50 100 50 100 3 &
 sexy_pid=$!
 trap "do_cleanup $sexy_pid" SIGINT SIGTERM
 
