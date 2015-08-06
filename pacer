@@ -36,9 +36,9 @@ my $avg_build   = 3;
 my $finished    = 0;
 
 # % chance time will be added
-my $add_pct     = 40;
-# % chance time will be removed if it isn't added
-my $sub_pct     = 30;
+my $add_pct     = 30;
+# % chance time will be removed
+my $sub_pct     = 15;
 
 # Number of times that $pace might jump to $max_pace
 my $evil        = 5;
