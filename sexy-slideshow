@@ -44,7 +44,6 @@ do_cleanup() {
     kill $pid
   fi
   rm -rf "$img_dst"
-  sed -rie "s/(slideshow.repeat\s*=).*/\1 \"false\"/" "$viewer_conf"
   exit
 }
 
@@ -64,10 +63,6 @@ link_files() {
   echo "$count $name photos"
 }
 
-# Set up viewer config
-sed -rie "s/(slideshow.delay\s*=).*$/\1 \"$delay\"/" "$viewer_conf"
-sed -rie "s/(slideshow.repeat\s*=).*/\1 \"true\"/" "$viewer_conf"
-
 mkdir -p "$img_dst"
 
 link_files "$safe" "$safe_pics" "safe"
@@ -75,7 +70,7 @@ link_files "$edge" "$edge_pics" "edge"
 link_files "$seed" "$seed_pics" "seed"
 link_files "$rand" "$rand_pics" "rand"
 
-/usr/bin/geeqie -f -s "$img_dst" &>/dev/null &
+/usr/bin/feh -Y -z -F -D $delay "$img_dst" &>/dev/null &
 viewer_pid=$!
 
 # Catch C-c or kill TERM (from other scripts ;)
