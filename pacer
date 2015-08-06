@@ -109,7 +109,7 @@ if (@dice) {
 }
 
 $max_time = $min_time + ($extra_time * 60);
-$run_time = int($min_time + (($extra_time * 60)/ 2));
+$run_time = $min_time;
 
 while ($finished == 0) {
   if ($streak > 0) {
