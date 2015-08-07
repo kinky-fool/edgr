@@ -41,7 +41,7 @@ my $finished    = 0;
 my $end_to_end  = 20;
 
 # % chance time will be added
-my $add_pct     = 30;
+my $add_pct     = 23;
 # % chance time will be removed
 my $sub_pct     = 15;
 
@@ -50,7 +50,6 @@ my $maxes       = 0;
 my $mins        = 0;
 
 my $fuzzify     = 1;
-my $relief      = 0;
 my $direction   = 1;
 my $streak      = fuzzy(5);
 
@@ -197,9 +196,6 @@ while ($finished == 0) {
         # Take larger steps
         $new_pace = $pace - int($step * 1.25);
       }
-      if ($min_pace > $new_pace) {
-        $new_pace = $min_pace;
-      }
     }
     # Chance that pace increases to ~half closer to $min_pace
     if (!int(rand($close)) or $close <= 0) {
@@ -207,24 +203,29 @@ while ($finished == 0) {
       $new_pace = $min_pace + int($field * (fuzzy(50) / 100));
     }
     if (!int(rand(12)) or $finish_it > 0) {
-      $new_pace = $max_pace - ($step / 2);
+      $new_pace = $max_pace - int($step / 2);
     }
   }
 
-  $new_pace = int($new_pace);
-
   if ($pace < $max_pace and $elapsed > $min_time
-        and !$relief and !int(rand(fuzzy(3)))) {
+        and $streak <= 0 and $direction < 0 and !int(rand(6))) {
     $new_pace = $max_pace;
-    $relief = fuzzy(4);
+    if (!int(rand(2))) {
+      $direction = -1;
+      $streak = fuzzy(3)+1;
+    }
   }
 
-  if ($new_pace > $max_pace) {
+  if ($new_pace >= $max_pace) {
     $new_pace = $max_pace;
+    $direction = -1;
+    $maxes--;
   }
 
-  if ($min_pace > $new_pace) {
+  if ($min_pace >= $new_pace) {
     $new_pace = $min_pace;
+    $direction = 1;
+    $mins--;
   }
 
   if ($pace == $new_pace) {
@@ -277,22 +278,7 @@ while ($finished == 0) {
   # Prep for the next period
   $pace = $new_pace;
 
-  if ($pace >= $max_pace) {
-    $direction = -1;
-    $maxes--;
-  }
-
-  if ($min_pace >= $pace) {
-    $direction = 1;
-    $mins--;
-  }
-
   if ($elapsed > $min_time) {
-    if ($relief > 0) {
-      $relief--;
-      $direction = -1;
-    }
-
     if ($elapsed > $max_time) {
       $finished = 1;
     }
