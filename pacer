@@ -32,8 +32,10 @@ my $elapsed     = 0;
 
 my $base_step   = 15;
 my $avg_steady  = 5;
-my $avg_build   = 3;
 my $finished    = 0;
+
+# Amount of time (in seconds) to go from min to max / max to min
+my $end_to_end  = 20;
 
 # % chance time will be added
 my $add_pct     = 30;
@@ -50,7 +52,6 @@ my $fuzzify     = 1;
 my $relief      = 0;
 my $direction   = 1;
 my $streak      = fuzzy(5);
-my $hit_limit   = 5;
 
 # Reduce chances of starting with a streak going
 if (int(rand($streak))) {
@@ -220,8 +221,8 @@ while ($finished == 0) {
     $steady = fuzzy($steady);
   }
 
-  my $delta_pct = ($new_pace + $pace) / $field;
-  my $build = $avg_build + int(2 * $avg_build * $delta_pct);
+  my $delta_pct = abs($new_pace - $pace) / $field;
+  my $build = fuzzy(int($end_to_end * $delta_pct)+1);
 
   if ($fuzzify) {
     $build = fuzzy($build);
