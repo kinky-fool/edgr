@@ -113,6 +113,23 @@ $max_time = $min_time + ($extra_time * 60);
 $run_time = $min_time;
 
 while ($finished == 0) {
+  my $percent = ($pace - $min_pace) / $field;
+
+  # Adjust $run_time
+  if ($add_pct > rand(100)) {
+    $run_time += fuzzy(int($extra_time * 3));
+    if ($run_time > $max_time) {
+      $run_time = $max_time;
+    }
+  }
+
+  if ($sub_pct > rand(100)) {
+    $run_time -= fuzzy(int($extra_time * 3));
+    if ($min_time > $run_time) {
+      $run_time = $min_time;
+    }
+  }
+
   if ($streak > 0) {
     $streak--;
   } else {
@@ -124,16 +141,6 @@ while ($finished == 0) {
     }
   }
 
-  # Adjust $run_time
-  if ($add_pct > rand(100)) {
-    $run_time += fuzzy(30);
-  }
-
-  if ($sub_pct > rand(100)) {
-    $run_time -= fuzzy(30);
-  }
-
-  my $percent = ($pace - $min_pace) / $field;
   my $step = int($base_step * $percent);
 
   if ($direction < 0) {
