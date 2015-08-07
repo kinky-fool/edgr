@@ -45,8 +45,6 @@ my $add_pct     = 30;
 # % chance time will be removed
 my $sub_pct     = 15;
 
-# Number of times that $pace might jump to $max_pace
-my $evil        = 5;
 # Number of times pace needs to hit the max or min pace
 my $maxes       = 0;
 my $mins        = 0;
@@ -65,7 +63,6 @@ GetOptions(
   "max=i"     => \$max_pace,
   "min=i"     => \$min_pace,
   "pace=i"    => \$pace,
-  "evil=i"    => \$evil,
   "maxes=i"   => \$maxes,
   "mins=i"    => \$mins,
   "time=f"    => \$time,
