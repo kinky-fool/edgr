@@ -209,7 +209,8 @@ while ($finished == 0) {
     }
   }
 
-  if ($elapsed > $min_time and !$relief and !int(rand(fuzzy(3)))) {
+  if ($pace < $max_pace and $elapsed > $min_time
+        and !$relief and !int(rand(fuzzy(3)))) {
     $new_pace = $max_pace;
     $relief = fuzzy(4);
   }
@@ -230,7 +231,7 @@ while ($finished == 0) {
 
   my $steady = $avg_steady;
 
-  if ($percent > 50) {
+  if ($percent > 50 and $direction > 0) {
     $steady = $steady + int(2 * $steady * ($percent - 50) / 50);
   } else {
     $steady = $steady + int(2 * $steady * (50 - $percent) / 50);
