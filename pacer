@@ -32,6 +32,9 @@ my $elapsed     = 0;
 
 my $base_step   = 15;
 my $avg_steady  = 5;
+
+my $end_at_max  = 1;
+my $finish_it   = 0;
 my $finished    = 0;
 
 # Amount of time (in seconds) to go from min to max / max to min
@@ -206,13 +209,12 @@ while ($finished == 0) {
       $streak = 0;
       $new_pace = $min_pace + int($field * (fuzzy(50) / 100));
     }
-    if ($evil) {
-      if (!int(rand(fuzzy($evil)))) {
-        $evil--;
-        $new_pace = $max_pace - ($step / 2);
-      }
+    if (!int(rand(12)) or $finish_it > 0) {
+      $new_pace = $max_pace - ($step / 2);
     }
   }
+
+  $new_pace = int($new_pace);
 
   if ($pace < $max_pace and $elapsed > $min_time
         and !$relief and !int(rand(fuzzy(3)))) {
@@ -220,13 +222,11 @@ while ($finished == 0) {
     $relief = fuzzy(4);
   }
 
-  if ($new_pace >= $max_pace) {
-    $maxes--;
+  if ($new_pace > $max_pace) {
     $new_pace = $max_pace;
   }
 
-  if ($new_pace <= $min_pace) {
-    $mins--;
+  if ($min_pace > $new_pace) {
     $new_pace = $min_pace;
   }
 
@@ -247,13 +247,22 @@ while ($finished == 0) {
   }
 
   my $delta_pct = abs($new_pace - $pace) / $field;
-  my $build = fuzzy(int($end_to_end * $delta_pct)+1);
+  my $build = int($end_to_end * $delta_pct);
 
   if ($fuzzify) {
-    $build = fuzzy($build);
+    $build = fuzzy($build)+1;
   }
 
-  $new_pace = int($new_pace);
+  if ($finish_it > 0) {
+    if ($low_end >= $percent*100) {
+      $build = int($build * 1.5);
+    }
+
+    if ($new_pace == $max_pace) {
+      $steady = int($steady * 2);
+      $finished = 1;
+    }
+  }
 
   my $command = "$beat_maker -s $pace -e $new_pace -p $build -S $steady";
   if (open my $pipe,'-|',"$command") {
@@ -273,10 +282,12 @@ while ($finished == 0) {
 
   if ($pace >= $max_pace) {
     $direction = -1;
+    $maxes--;
   }
 
   if ($min_pace >= $pace) {
     $direction = 1;
+    $mins--;
   }
 
   if ($elapsed > $min_time) {
@@ -290,7 +301,11 @@ while ($finished == 0) {
     }
 
     if ($elapsed > $run_time and $maxes <= 0 and $mins <= 0) {
-      $finished = 1;
+      if ($end_at_max > 0) {
+        $finish_it  = 1;
+      } else {
+        $finished = 1;
+      }
     }
   }
 }
