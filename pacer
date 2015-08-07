@@ -133,11 +133,17 @@ while ($finished == 0) {
   if ($streak > 0) {
     $streak--;
   } else {
-    if (!int(rand(4))) {
+    if (!int(rand(2))) {
       $direction *= -1;
     }
     if (!int(rand(4))) {
+      # Start a streak
       $streak = fuzzy(3);
+      if ($percent >= $high_end) {
+        $direction = -1;
+      } elsif ($low_end >= $percent) {
+        $direction = 1;
+      }
     }
   }
 
