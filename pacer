@@ -162,37 +162,43 @@ while ($finished == 0) {
   # Set the new pace
   my $new_pace = $pace + ($step * $direction);
 
-    my $close = $max_pace - $pace;
-    if ($close > 0) {
   if ($percent*100 >= $high_end) {
+    if ($streak <= 0) {
       # Not done yet!
       $direction = 1;
       # Take smaller steps
       $new_pace = $pace + int($step / 2);
-      if ($new_pace > $max_pace) {
+    }
+    my $close = $max_pace - $pace;
+    if ($close > 0) {
+      if ($new_pace >= $max_pace) {
         if (!int(rand($close))) {
-          $new_pace = $pace + int(rand($max_pace - ($pace + 1)) + 1);
+          $new_pace = $pace + int(rand($close-1)) + 1;
         } else {
           $new_pace = $max_pace;
         }
       }
     }
-    # Chance that pace decreases to ~half higher closer to $max_pace
+    # Chance that pace decreases to ~half closer to $max_pace
     if (!int(rand($close)) or $close <= 0) {
+      $streak = 0;
       $new_pace = $min_pace + int($field * (fuzzy(50) / 100));
     }
   } elsif ($low_end >= $percent*100) {
     my $close = $pace - $min_pace;
     if ($close > 0) {
-      $direction = -1;
-      # Take larger steps
-      $new_pace = $pace - int($step * 1.25);
+      if ($streak <= 0) {
+        $direction = -1;
+        # Take larger steps
+        $new_pace = $pace - int($step * 1.25);
+      }
       if ($min_pace > $new_pace) {
         $new_pace = $min_pace;
       }
     }
-    # Chance that pace increases to ~half higher closer to $min_pace
+    # Chance that pace increases to ~half closer to $min_pace
     if (!int(rand($close)) or $close <= 0) {
+      $streak = 0;
       $new_pace = $min_pace + int($field * (fuzzy(50) / 100));
     }
     if ($evil) {
