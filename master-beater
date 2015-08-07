@@ -40,6 +40,7 @@ trap "do_cleanup $sexy_pid" SIGINT SIGTERM
 last_bpm=0
 aoss "$HOME/bin/ctronome" -c 1 -w1 "$HOME/toys/tick.wav" \
   -w2 "$HOME/toys/tock.wav" -p "$program" | while read info; do
+    message=$(echo "$info" | grep -e '^#' | cut -f2- -d' ')
     bpm=$(echo "$info" | grep -e '^BPM:' | cut -c6-)
     if [[ -n "$bpm" ]]; then
       if [[ $verbose -eq 2 ]]; then
