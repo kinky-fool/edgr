@@ -75,6 +75,11 @@ GetOptions(
 
 $min_time = $time * 60;
 $field = $max_pace - $min_pace;
+if ($field < 0) {
+  printf STDERR "\$max_pace ($max_pace) is lower than \$min_pace ($min_pace); ";
+  printf STDERR "Something appears to be wrong.\n";
+  exit 1;
+}
 # Set the pace to just outside of the low end zone
 $pace = $min_pace + int($field * ($low_end / 100)) + 5;
 
