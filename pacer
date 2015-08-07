@@ -148,9 +148,9 @@ while ($finished == 0) {
   # Set the new pace
   my $new_pace = $pace + ($step * $direction);
 
-  if ($percent >= $high_end) {
     my $close = $max_pace - $pace;
     if ($close > 0) {
+  if ($percent*100 >= $high_end) {
       # Not done yet!
       $direction = 1;
       # Take smaller steps
@@ -167,7 +167,7 @@ while ($finished == 0) {
     if (!int(rand($close)) or $close <= 0) {
       $new_pace = $min_pace + int($field * (fuzzy(50) / 100));
     }
-  } elsif ($low_end >= $percent) {
+  } elsif ($low_end >= $percent*100) {
     my $close = $pace - $min_pace;
     if ($close > 0) {
       $direction = -1;
