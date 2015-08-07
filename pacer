@@ -43,7 +43,7 @@ my $end_to_end  = 20;
 # % chance time will be added
 my $add_pct     = 23;
 # % chance time will be removed
-my $sub_pct     = 15;
+my $sub_pct     = 20;
 
 # Number of times pace needs to hit the max or min pace
 my $maxes       = 0;
@@ -157,21 +157,23 @@ while ($finished == 0) {
     $step = $base_step - $step;
   }
 
-  $step = $step + fuzzy(5);
+  $step = $step + fuzzy(3) + 1;
 
   if ($fuzzify) {
-    $step = fuzzy($step);
+    $step = fuzzy($step) + 1;
   }
 
   # Set the new pace
   my $new_pace = $pace + ($step * $direction);
 
-  if ($percent*100 >= $high_end) {
+  if ($percent*100 >= $high_end and $direction > 0) {
     if ($streak <= 0) {
       # Not done yet!
       $direction = 1;
-      # Take smaller steps
-      $new_pace = $pace + int($step / 2);
+      if ($step > 1) {
+        # Take smaller steps
+        $new_pace = $pace + int($step / 2);
+      }
     }
     my $close = $max_pace - $pace;
     if ($close > 0) {
@@ -188,7 +190,7 @@ while ($finished == 0) {
       $streak = 0;
       $new_pace = $min_pace + int($field * (fuzzy(50) / 100));
     }
-  } elsif ($low_end >= $percent*100) {
+  } elsif ($low_end >= $percent*100 and $direction < 0) {
     my $close = $pace - $min_pace;
     if ($close > 0) {
       if ($streak <= 0) {
