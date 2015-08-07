@@ -293,7 +293,8 @@ sub fuzzy {
   # Control how far to deviate from $num
   my $skew = int(rand(3))+2;
   # Lean toward 0 or 2 * $num
-  my $lean = int(rand(3))+2;
+  my $lean = int(rand(4))+2;
+  # This is not superflous; the rand($lean) below will favor this direction
   my $point = 1;
   # "Flip a coin" to determine the direction of the lean
   if (int(rand(2))) {
