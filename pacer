@@ -31,7 +31,7 @@ my $run_time    = 0;
 my $elapsed     = 0;
 
 my $base_step   = 15;
-my $avg_steady  = 5;
+my $base_steady = 3;
 
 my $end_at_max  = 1;
 my $finish_it   = 0;
@@ -234,16 +234,14 @@ while ($finished == 0) {
     print STDERR "pace = new pace; bad math somewhere\n";
   }
 
-  my $steady = $avg_steady;
-  $steady = $steady + int(2 * $steady * abs(($percent*100) - 50) / 50);
-
+  my $new_pct = ($new_pace - $min_pace) / $field;
+  my $steady = $base_steady + int((abs(0.5 - $new_pct) * 10) * $base_steady);
   if ($fuzzify) {
-    $steady = fuzzy($steady);
+    $steady = fuzzy($steady)+1;
   }
 
   my $delta_pct = abs($new_pace - $pace) / $field;
   my $build = int($end_to_end * $delta_pct);
-
   if ($fuzzify) {
     $build = fuzzy($build)+1;
   }
