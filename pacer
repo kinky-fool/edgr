@@ -34,6 +34,10 @@ my $base_step   = 15;
 my $base_steady = 3;
 
 my $end_at_max  = 1;
+if (!int(rand(3)) or !int(rand(3))) {
+  $end_at_max = 0;
+}
+
 my $finish_it   = 0;
 my $finished    = 0;
 
@@ -69,6 +73,7 @@ GetOptions(
   "add=f"     => \$add_pct,
   "sub=f"     => \$sub_pct,
   "dice=s"    => \@dice,
+  "fastend=i" => \$end_at_max,
 ) or die("Error in args.\n");
 
 
@@ -273,17 +278,12 @@ while ($finished == 0) {
   # Prep for the next period
   $pace = $new_pace;
 
-  if ($elapsed > $min_time) {
-    if ($elapsed > $max_time) {
+  if ($elapsed > $max_time or
+     ($elapsed > $run_time and $maxes <= 0 and $mins <= 0)) {
+    if ($end_at_max > 0) {
+      $finish_it  = 1;
+    } else {
       $finished = 1;
-    }
-
-    if ($elapsed > $run_time and $maxes <= 0 and $mins <= 0) {
-      if ($end_at_max > 0) {
-        $finish_it  = 1;
-      } else {
-        $finished = 1;
-      }
     }
   }
 }
