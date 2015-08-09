@@ -235,12 +235,7 @@ while ($finished == 0) {
   }
 
   my $steady = $avg_steady;
-
-  if ($percent*100 > 50 and $direction > 0) {
-    $steady = $steady + int(2 * $steady * (($percent*100) - 50) / 50);
-  } else {
-    $steady = $steady + int(2 * $steady * (50 - ($percent*100)) / 50);
-  }
+  $steady = $steady + int(2 * $steady * abs(($percent*100) - 50) / 50);
 
   if ($fuzzify) {
     $steady = fuzzy($steady);
