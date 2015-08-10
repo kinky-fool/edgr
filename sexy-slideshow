@@ -1,8 +1,6 @@
 #!/bin/bash
 
-img_dst=/tmp/sexy_slideshow
-
-viewer_conf="$HOME/.config/geeqie/geeqierc.xml"
+playlist=$(mktemp /tmp/sexy-slideshow.XXXX)
 
 safe_pics="$HOME/files/images/sexy/safe/"
 edge_pics="$HOME/files/images/sexy/edges/"
@@ -43,42 +41,34 @@ do_cleanup() {
   if ps $pid &>/dev/null; then
     kill $pid
   fi
-  rm -rf "$img_dst"
+  rm -f "$playlist"
   exit
 }
 
-link_files() {
+make_playlist() {
   count=$1
   src=$2
   name=$3
 
-  while read file; do
-    base=${file##*/}
-    link=$(printf "%s-%s" "$name" "$base")
-    ln -s "$file" "$img_dst/$link"
-  done < <(find $src -regextype posix-egrep -iregex '.*\.(jpe?g|nef)' \
+  find $src -regextype posix-egrep -iregex '.*\.(jpe?g|nef|png)' \
     | shuf \
-    | head -n $count)
-
-  echo "$count $name photos"
+    | head -n${count} >> "$playlist"
 }
 
-mkdir -p "$img_dst"
+make_playlist "$safe" "$safe_pics" "safe"
+make_playlist "$edge" "$edge_pics" "edge"
+make_playlist "$seed" "$seed_pics" "seed"
+make_playlist "$rand" "$rand_pics" "rand"
 
-link_files "$safe" "$safe_pics" "safe"
-link_files "$edge" "$edge_pics" "edge"
-link_files "$seed" "$seed_pics" "seed"
-link_files "$rand" "$rand_pics" "rand"
-
-/usr/bin/feh -Y -z -F -D $delay "$img_dst" &>/dev/null &
+/usr/bin/feh -Y -z -F -D $delay -f "$playlist" & #&>/dev/null &
 viewer_pid=$!
 
 # Catch C-c or kill TERM (from other scripts ;)
-trap "do_cleanup $viewer_pid" SIGINT SIGTERM
+trap "do_cleanup $viewer_pid $playlist" SIGINT SIGTERM
 
 # Loop while waiting for something else to kill us
 while ps $viewer_pid &>/dev/null; do
   sleep 1
 done
 
-do_cleanup $viewer_pid
+do_cleanup $viewer_pid $playlist
