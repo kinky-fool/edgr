@@ -104,16 +104,14 @@ if (@dice) {
     for (1 .. $count + $low + $high) {
       push(@rolls,int(rand($sides)+1));
     }
-    print STDERR "Dice Rolled: @rolls\n";
-    my @used = ();
-    # Discard $low lowest dice
-    @used = (sort { $a <=> $b } @rolls)[$low .. $#rolls];
-    # Discard $high highest dice
-    @used = (sort { $b <=> $a } @used)[$high .. $#used];
+    @rolls = sort { $a <=> $b } @rolls;
+    my @lows  = @rolls[0 .. $low - 1];
+    my @highs = @rolls[$#rolls - $high + 1 .. $#rolls];
+    my @used  = @rolls[$low .. $#rolls - $high];
+    print "#dice Dice Rolls: @lows [ @used ] @highs\n";
     foreach my $spots (@used) {
       $seconds += $spots * 60;
     }
-    print STDERR "Dice Chosen: @used\n";
   }
   $min_time = $seconds;
 }
