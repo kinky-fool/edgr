@@ -18,7 +18,7 @@ if [[ -n "$min_arg" && "$min_arg" =~ ^[0-9]+$ ]]; then
 fi
 
 
-program="/tmp/stroke-program.$$"
+program=$(mktemp /tmp/stroke-program.XXXX)
 "$HOME/toys/pacer" "${args[@]}" > "$program"
 
 grep -e '#[^ ]' "$program" | cut -d' ' -f2- | while read message; do
@@ -27,8 +27,9 @@ done
 (sleep 5; echo "Tempo Ramps:  $(grep '# start:' "$program" | wc -l)") &
 
 do_cleanup() {
-  local pid
+  local pid program
   pid=$1
+  program=$2
   if ps $pid &>/dev/null; then
     kill $pid
   fi
@@ -38,7 +39,7 @@ do_cleanup() {
 
 $HOME/toys/sexy-slideshow 50 100 50 100 3 &
 sexy_pid=$!
-trap "do_cleanup $sexy_pid" SIGINT SIGTERM
+trap "do_cleanup "$sexy_pid" "$program"" SIGINT SIGTERM
 
 
 last_bpm=0
@@ -65,3 +66,5 @@ aoss "$HOME/bin/ctronome" -c 1 -w1 "$HOME/toys/tick.wav" \
 if ps $sexy_pid &>/dev/null; then
   kill $sexy_pid
 fi
+
+do_cleanup "$sexy_pid" "$program"
