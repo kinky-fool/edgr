@@ -286,7 +286,10 @@ while ($finished == 0) {
   }
 }
 
-print STDERR "Approximately ",sec2human($elapsed),"\n";
+printf "#length Session Length: %s [ %s ] %s\n",
+        sec2human($min_time),
+        sec2human($elapsed),
+        sec2human($max_time);
 
 sub sec2human {
   my $secs = shift;
