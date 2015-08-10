@@ -36,8 +36,9 @@ if [[ -n "$5" && "$5" =~ ^[0-9\.]+$ ]]; then
 fi
 
 do_cleanup() {
-  local pid
+  local pid playlist
   pid=$1
+  playlist=$2
   if ps $pid &>/dev/null; then
     kill $pid
   fi
@@ -50,7 +51,7 @@ make_playlist() {
   src=$2
   name=$3
 
-  find $src -regextype posix-egrep -iregex '.*\.(jpe?g|nef|png)' \
+  find $src -regextype awk -iregex '.*\.(jpe?g|nef|png)' \
     | shuf \
     | head -n${count} >> "$playlist"
 }
