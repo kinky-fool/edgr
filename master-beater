@@ -17,14 +17,16 @@ if [[ -n "$min_arg" && "$min_arg" =~ ^[0-9]+$ ]]; then
   minutes=$min_arg
 fi
 
+$HOME/toys/sexy-slideshow 50 100 50 100 3 &
+sexy_pid=$!
 
 program=$(mktemp /tmp/stroke-program.XXXX)
 "$HOME/toys/pacer" "${args[@]}" > "$program"
 
 grep -e '#[^ ]' "$program" | cut -d' ' -f2- | while read message; do
-  (sleep 5; echo "$message") &
+  echo "$message"
 done
-(sleep 5; echo "Tempo Ramps:  $(grep '# start:' "$program" | wc -l)") &
+echo "Tempo Ramps:  $(grep '# start:' "$program" | wc -l)"
 
 do_cleanup() {
   local pid program
@@ -37,8 +39,6 @@ do_cleanup() {
   exit
 }
 
-$HOME/toys/sexy-slideshow 50 100 50 100 3 &
-sexy_pid=$!
 trap "do_cleanup "$sexy_pid" "$program"" SIGINT SIGTERM
 
 
