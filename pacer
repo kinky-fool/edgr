@@ -3,7 +3,6 @@
 use strict;
 use warnings;
 
-use Math::Random;
 use Getopt::Long;
 
 srand("$$" . time);
