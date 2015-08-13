@@ -61,7 +61,7 @@ make_playlist "$edge" "$edge_pics" "edge"
 make_playlist "$seed" "$seed_pics" "seed"
 make_playlist "$rand" "$rand_pics" "rand"
 
-/usr/bin/feh -Y -z -F -D $delay -f "$playlist" & #&>/dev/null &
+/usr/bin/feh -Y -z -F -D $delay -f "$playlist" &>/dev/null &
 viewer_pid=$!
 
 # Catch C-c or kill TERM (from other scripts ;)
