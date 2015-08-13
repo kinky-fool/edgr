@@ -263,12 +263,13 @@ while ($finished == 0) {
 
   my $command = "$beat_maker -s $pace -e $new_pace -p $build -S $steady";
   if (open my $pipe,'-|',"$command") {
-    foreach my $line (<$pipe>) {
-      if ($line =~ /# ([0-9\.]+) seconds/i) {
+    while (<$pipe>) {
+      if ($_ =~ /^# ([0-9\.]+) seconds/) {
         $elapsed += $1;
       }
-      print $line;
+      print;
     }
+    close $pipe;
   } else {
     print STDERR "Could not run $command: $!\n";
     exit 1;
