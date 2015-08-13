@@ -50,7 +50,7 @@ my $end_to_end  = 20;
 # % chance time will be added
 my $add_pct     = 23;
 # % chance time will be removed
-my $sub_pct     = 20;
+my $sub_pct     = 23;
 
 # Number of times pace needs to hit the max or min pace
 my $maxes       = 0;
@@ -121,7 +121,7 @@ if (@dice) {
 }
 
 $max_time = $min_time + ($extra_time * 60);
-$run_time = $min_time;
+$run_time = int(($min_time + $max_time) / 2);
 
 while ($finished == 0) {
   my $percent = ($pace - $min_pace) / $field;
