@@ -63,7 +63,12 @@ build_pool "$edge" "$edge_pics"
 build_pool "$seed" "$seed_pics"
 build_pool "$rand" "$rand_pics"
 
-/usr/bin/feh -Y -z -F -D $delay -f "$playlist" &>/dev/null &
+/usr/bin/feh --info "$HOME/toys/check-edge '%f'" \
+  --fontpath "$HOME/.fonts/" \
+  --font "FiraSans-Regular/48" \
+  --scale-down \
+  -Y -z -F -D $delay \
+  -f <(shuf "$playlist" | head -n 200) &>/dev/null &
 viewer_pid=$!
 
 # Catch C-c or kill TERM (from other scripts ;)
