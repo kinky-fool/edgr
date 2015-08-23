@@ -1,0 +1,61 @@
+#!/bin/bash
+
+image=$1
+
+timeout=23
+count_file=/tmp/edge_count
+message=
+source ~/.config/sexy-slideshow
+
+if [[ ! -e "$count_file" ]]; then
+  printf '0\n' > "$count_file"
+fi
+
+now=$(date +"%s")
+last=$(stat -c "%Y" "$count_file")
+count=$(cat "$count_file")
+if [[ $((now - last)) -ge $timeout ]]; then
+  count=0
+fi
+
+special_dirs="$edge_pics"
+if [[ $((RANDOM%4)) -eq 0 ]]; then
+  special_dirs="$special_dirs $safe_pics"
+fi
+
+for dir in $safe_pics; do
+  # Safe pics cause timeout to get reset...
+  if [[ "${image%/*}" == "${dir%/*}" ]]; then
+    printf '%i\n' $count > "$count_file"
+  fi
+done
+
+for dir in $special_dirs; do
+  if [[ "${image%/*}" == "${dir%/*}" ]]; then
+    count=$((count + 1))
+    if [[ $((RANDOM % 2)) -eq 0 ]]; then
+      if [[ $count -ge 5 && $((RANDOM % (30 - (count * 2 % 30)))) -eq 0 ]]; then
+        roll=$((RANDOM%8))
+        if [[ "$roll" -eq 0 ]]; then
+          message='apply Icy Hot'
+        else
+          message='apply lots of Icy Hot'
+        fi
+        if [[ $roll -eq $((RANDOM%8)) ]]; then
+          message="${message}...\n    ...and don't forget your balls"
+        fi
+        count=0
+      elif [[ $((RANDOM % (16 - (count * 2 % 16)))) -eq 0 ]]; then
+        message='lube it up'
+        count=0
+      fi
+    fi
+    printf '%i\n' $count > "$count_file"
+  fi
+done
+
+if [[ -n "$message" ]]; then
+  echo -e "  Mistress says $message"
+elif [[ "$count" -gt 0 ]]; then
+  printf '  %i\n' $count
+fi
