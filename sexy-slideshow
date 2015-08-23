@@ -46,20 +46,22 @@ do_cleanup() {
   exit
 }
 
-make_playlist() {
+build_pool() {
   count=$1
   src=$2
-  name=$3
 
-  find $src -regextype awk -iregex '.*\.(jpe?g|nef|png)' \
-    | shuf \
-    | head -n${count} >> "$playlist"
+  # $src is unquoted because it may be a space separated list of directories
+  images=$(find $src -regextype awk -iregex '.*\.(jpe?g|nef|png)')
+
+  for i in {1..5}; do
+    echo "$images" | shuf | head -n $count >> "$playlist"
+  done
 }
 
-make_playlist "$safe" "$safe_pics" "safe"
-make_playlist "$edge" "$edge_pics" "edge"
-make_playlist "$seed" "$seed_pics" "seed"
-make_playlist "$rand" "$rand_pics" "rand"
+build_pool "$safe" "$safe_pics"
+build_pool "$edge" "$edge_pics"
+build_pool "$seed" "$seed_pics"
+build_pool "$rand" "$rand_pics"
 
 /usr/bin/feh -Y -z -F -D $delay -f "$playlist" &>/dev/null &
 viewer_pid=$!
