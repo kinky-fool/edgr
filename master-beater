@@ -17,7 +17,7 @@ if [[ -n "$min_arg" && "$min_arg" =~ ^[0-9]+$ ]]; then
   minutes=$min_arg
 fi
 
-$HOME/toys/sexy-slideshow 50 100 50 100 3 &
+$HOME/toys/sexy-slideshow 15 15 30 150 3.2 &
 sexy_pid=$!
 
 program=$(mktemp /tmp/stroke-program.XXXX)
