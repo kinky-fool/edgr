@@ -1,0 +1,79 @@
+#!/bin/bash
+
+image=$1
+delay=$2
+
+delay_int=$(printf "%.0f" "$delay")
+if [[ $(echo "$delay_int == $delay" | bc) -eq 0 ]]; then
+  delay_int=$((delay_int + 1))
+fi
+
+count_file=/tmp/hot-potato-counter
+message=
+source ~/.config/sexy-slideshow
+
+if [[ ! -e "$count_file" ]]; then
+  printf '0\n' > "$count_file"
+fi
+
+now=$(date +"%s")
+last=$(stat -c "%Y" "$count_file")
+count=$(cat "$count_file")
+#timeout=$((delay_int * (3 + ( (10 - count) / 2 ) ) ))
+timeout=$((delay_int * (2 + (10 - count))))
+
+passed=$((now - last))
+while [[ $passed -gt $timeout && $count -gt 0 ]]; do
+  count=$((count - 1))
+  passed=$((passed - timeout))
+  timeout=$((timeout * 3 / 4))
+done
+
+extend=0
+for dir in $edge_pics $safe_pics; do
+  if [[ "${image%/*}" == "${dir%/*}" ]]; then
+    extend=1
+  fi
+done
+
+edge=0
+for dir in $edge_pics; do
+  if [[ "${image%/*}" == "${dir%/*}" ]]; then
+    edge=1
+  fi
+done
+
+message=
+# Not in loop above; could increment count for more than iteration
+if [[ $edge -eq 1 ]]; then
+  count=$((count + 1))
+
+  if [[ $count -le 10 ]]; then
+    chances=(120 100 80 60 40 20 40 60 80 100 120)
+    echo "${chances[$count]}"
+    if [[ $((RANDOM % ${chances[$count]})) -eq 1 ]]; then
+      message='lube up your cock'
+    fi
+  else
+    roll=$((RANDOM%8))
+    if [[ $roll -eq 1 ]]; then
+      message='apply lots of Icy Hot'
+    else
+      message='apply Icy Hot'
+    fi
+    if [[ $roll -eq $((RANDOM%8)) ]]; then
+      message="${message}...\n    ...and don't forget your balls"
+    fi
+  fi
+fi
+
+if [[ -n "$message" ]]; then
+  echo -e "  Mistress says $message"
+  count=0
+elif [[ $count -gt 0 ]]; then
+  printf '  %i\n' $count
+fi
+
+if [[ $extend -eq 1 ]]; then
+  printf '%i\n' $count > "$count_file"
+fi
