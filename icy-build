@@ -8,7 +8,7 @@ if [[ $(echo "$delay_int == $delay" | bc) -eq 0 ]]; then
   delay_int=$((delay_int + 1))
 fi
 
-count_file=/tmp/hot-potato-counter
+count_file=/tmp/icy-count
 message=
 source ~/.config/sexy-slideshow
 
