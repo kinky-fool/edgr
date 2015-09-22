@@ -33,6 +33,7 @@ extend=0
 for dir in $edge_pics $safe_pics; do
   if [[ "${image%/*}" == "${dir%/*}" ]]; then
     extend=1
+    lube=1
   fi
 done
 
@@ -47,12 +48,18 @@ message=
 # Not in loop above; could increment count for more than iteration
 if [[ $edge -eq 1 ]]; then
   count=$((count + 1))
+fi
 
+if [[ $lube -eq 1 ]]; then
   if [[ $count -le 10 ]]; then
-    chances=(120 100 80 60 40 20 40 60 80 100 120)
-    echo "${chances[$count]}"
-    if [[ $((RANDOM % ${chances[$count]})) -eq 1 ]]; then
+    chances=(95 70 50 35 25 20 25 35 50 70 95)
+    chance=${chances[$count]}
+    if [[ $edge -eq 0 ]]; then
+      chance=$((chance * 2))
+    fi
+    if [[ $((RANDOM % chance)) -eq 1 ]]; then
       message='lube up your cock'
+      count=$((RANDOM % (count+1)))
     fi
   else
     roll=$((RANDOM%8))
@@ -64,12 +71,16 @@ if [[ $edge -eq 1 ]]; then
     if [[ $roll -eq $((RANDOM%8)) ]]; then
       message="${message}...\n    ...and don't forget your balls"
     fi
+    if [[ $((RANDOM % 8)) -eq 1 ]]; then
+      count=$((RANDOM % (count + 1)))
+    else
+      count=0
+    fi
   fi
 fi
 
 if [[ -n "$message" ]]; then
   echo -e "  Mistress says $message"
-  count=0
 elif [[ $count -gt 0 ]]; then
   printf '  %i\n' $count
 fi
