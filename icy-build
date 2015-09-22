@@ -26,7 +26,7 @@ passed=$((now - last))
 while [[ $passed -gt $timeout && $count -gt 0 ]]; do
   count=$((count - 1))
   passed=$((passed - timeout))
-  timeout=$((timeout * 3 / 4))
+  timeout=$(((delay_int * (2 + (10 - count))) / 4))
 done
 
 extend=0
