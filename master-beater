@@ -17,7 +17,15 @@ if [[ -n "$min_arg" && "$min_arg" =~ ^[0-9]+$ ]]; then
   minutes=$min_arg
 fi
 
-$HOME/toys/sexy-slideshow 15 15 30 150 3.2 &
+chance_pic_pct=30
+total_pics=500
+chance_pics=$((total_pics * chance_pic_pct / 100))
+safe_pics=$((chance_pics * 35 / 100))
+edge_pics=$((chance_pics * 45 / 100))
+rand_pics=$((chance_pics - (safe_pics + edge_pics)))
+porn_pics=$((total_pics - (safe_pics + edge_pics + rand_pics)))
+
+$HOME/toys/sexy-slideshow $safe_pics $edge_pics $rand_pics $porn_pics 3.2 &
 sexy_pid=$!
 
 program='/tmp/stroke-session'
