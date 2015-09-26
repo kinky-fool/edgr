@@ -52,14 +52,18 @@ fi
 
 if [[ $lube -eq 1 ]]; then
   if [[ $count -le 10 ]]; then
-    chances=(95 70 50 35 25 20 25 35 50 70 95)
+    chances=(85 60 40 25 15 10 15 25 40 60 85 115 150)
     chance=${chances[$count]}
     if [[ $edge -eq 0 ]]; then
-      chance=$((chance * 2))
+      chance=$((chance * 5 / 4))
     fi
     if [[ $((RANDOM % chance)) -eq 1 ]]; then
       message='lube up your cock'
-      count=$((RANDOM % (count+1)))
+      newcount=0
+      for i in $(seq 1 $(((RANDOM%2)+1))); do
+        newcount=$((newcount + (RANDOM % (count-newcount+1))))
+      done
+      count=$newcount
     fi
   else
     roll=$((RANDOM%8))
