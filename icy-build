@@ -1,5 +1,35 @@
 #!/bin/bash
 
+add_time() {
+  max_pace=185
+  min_pace=95
+  pacesetter="$HOME/toys/change-pace"
+  prog='/tmp/stroke-session'
+  final_pace=$(grep -v ^# "$prog" | tail -n1 | awk -F'[ /]' '{print $2}')
+  down_pace=$((max_pace - (RANDOM % 30 + 1)))
+  if [[ $down_pace -lt $min_pace ]]; then
+    down_pace=$min_pace
+  fi
+  bonus_time=$((RANDOM % 30 + RANDOM % 30))
+  a=$((RANDOM%6))
+  b=$((RANDOM%6))
+  c=$((RANDOM%6))
+  bonus_time=10
+  if [[ $a -eq 1 ]]; then
+    bonus_time=$((bonus_time + (RANDOM % 20)))
+  fi
+  if [[ $a -eq $b ]]; then
+    bonus_time=$((bonus_time + (RANDOM % 30)))
+  fi
+  if [[ $a -eq $b && $a -eq $c ]]; then
+    bonus_time=$((bonus_time + (RANDOM % 30)))
+  fi
+  # Go Down
+  $pacesetter -s "$final_pace" -e "$down_pace" -p 5 -S 1 >> "$prog"
+  # Go Up
+  $pacesetter -s "$down_pace" -e "$max_pace" -p 5 -S "$bonus_time" >> "$prog"
+}
+
 image=$1
 delay=$2
 
@@ -66,20 +96,17 @@ if [[ $lube -eq 1 ]]; then
       count=$newcount
     fi
   else
-    roll=$((RANDOM%8))
-    if [[ $roll -eq 1 ]]; then
-      message='apply lots of Icy Hot'
+    if [[ $((RANDOM % 4)) -eq 1 ]]; then
+      message='lube up your cock'
+      if [[ $((RANDOM % 6)) -eq $((RANDOM % 6)) ]]; then
+        message="${message}...\n  ...and enjoy some more time"
+        add_time
+      fi
     else
-      message='apply Icy Hot'
+      message='have some more time'
+      add_time
     fi
-    if [[ $roll -eq $((RANDOM%8)) ]]; then
-      message="${message}...\n    ...and don't forget your balls"
-    fi
-    if [[ $((RANDOM % 8)) -eq 1 ]]; then
-      count=$((RANDOM % (count + 1)))
-    else
-      count=0
-    fi
+    count=0
   fi
 fi
 
