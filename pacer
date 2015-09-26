@@ -22,27 +22,19 @@ my $field       = 0;
 
 my @dice        = ();
 
-my $time        = 15;
-my $extra_time  = 5;
+my $time        = 5;
+my $extra_time  = 0;
 my $min_time    = 0;
 my $max_time    = 0;
 my $run_time    = 0;
 my $elapsed     = 0;
 
-my $end_at_max  = 1;
-my $dice_roll   = int(rand(6)) + int(rand(6)) + 2;
-if ($dice_roll == 7) {
-  $end_at_max = 0;
-}
-if ($dice_roll == 2) {
-  $end_at_max = 3;
-}
-
+my $end_at_max  = 0;
 my $finish_it   = 0;
 my $finished    = 0;
 
 # Amount of time (in seconds) to go from min to max / max to min
-my $end_to_end  = 20;
+my $end_to_end  = 30;
 
 # % chance time will be added
 my $add_pct     = 23;
@@ -55,11 +47,11 @@ my $mins        = 0;
 
 my $fuzzify     = 1;
 my $direction   = 1;
-my $streak      = 3 + plus_or_minus(2);
+my $go_down     = 3 + plus_or_minus(2);
 
-# Reduce chances of starting with a streak going
-if (int(rand($streak))) {
-  $streak = 0;
+# Reduce chances of starting going down
+if (int(rand($go_down))) {
+  $go_down = 0;
 }
 
 GetOptions(
@@ -78,7 +70,6 @@ GetOptions(
 
 printf "#fastend End at max: %s\n", $end_at_max;
 
-$min_time = $time * 60;
 $field = $max_pace - $min_pace;
 if ($field < 0) {
   printf STDERR "\$max_pace ($max_pace) is lower than \$min_pace ($min_pace); ";
@@ -87,6 +78,8 @@ if ($field < 0) {
 }
 # Set the pace to just outside of the low end zone
 $pace = $min_pace + int($field * ($low_end / 100)) + 5;
+
+$min_time = $time * 60;
 
 if (@dice) {
   my $seconds = 0;
@@ -118,7 +111,21 @@ if (@dice) {
 }
 
 $max_time = $min_time + ($extra_time * 60);
-$run_time = int(($min_time + $max_time) / 2);
+$run_time = $min_time + int($max_time / 3);
+
+if ($fuzzify) {
+  $min_time = fuzzy($min_time);
+  $max_time = $min_time + fuzzy(abs($max_time - $min_time));
+
+  if ($min_time > $max_time) {
+    my $temp = $min_time;
+    $min_time = $max_time;
+    $max_time = $temp;
+  }
+
+  $run_time = $min_time + fuzzy(int(($max_time - $min_time) / 3));
+}
+
 
 while ($finished == 0) {
   my $percent = ($pace - $min_pace) / $field;
@@ -138,8 +145,8 @@ while ($finished == 0) {
     }
   }
 
-  if ($streak > 0) {
-    $streak--;
+  if ($go_down > 0) {
+    $go_down--;
   } else {
     if ($percent*100 >= $high_end) {
       $direction = 1;
@@ -150,34 +157,35 @@ while ($finished == 0) {
     } else {
       $direction = -1;
       if (int(rand(2))) {
-        $streak = 3 + plus_or_minus(2);
+        $go_down = 3 + plus_or_minus(2);
       }
     }
   }
 
   if ($pace >= $max_pace or
       (!int(rand($max_pace - $pace)) and $finish_it <= 0)) {
-    $streak = 0;
+    $go_down = 0;
     $direction = -1;
     if (int(rand(2))) {
-      $streak = 3 + plus_or_minus(2);
+      $go_down = 3 + plus_or_minus(2);
     }
   }
 
   if ($pace <= $min_pace or !int(rand($pace - $min_pace))) {
-    $streak = 0;
+    $go_down = 0;
     $direction = 1;
   }
 
   # Lower step as pace approaches either extreme, highest at 50%
   my $step = 13;
-  if ((($percent - 0.5) < 0 and $direction < 0) or
-      (($percent - 0.5) > 0 and $direction > 0)) {
-    my @steps = (13, 8, 5, 3, 2, 1);
-    # Use sprintf() for rounding 'properly'
-    my $step_tier = sprintf("%.0f",abs(0.5 - $percent) / 0.5 * 5);
-    $step = $steps[$step_tier];
+  my @steps = (34, 21, 13, 8, 5, 3, 2, 1);
+  my $step_tier = 0;
+  if ($direction > 0) {
+    $step_tier = sprintf "%.0f", $percent * $#steps;
+  } else {
+    $step_tier = sprintf "%.0f", (1 - $percent) * $#steps;
   }
+  $step = $steps[$step_tier];
 
   if ($fuzzify) {
     $step = fuzzy($step);
@@ -191,7 +199,7 @@ while ($finished == 0) {
     $new_pace = $min_pace + int($field * (fuzzy(50) / 100));
     if (!int(rand(4))) {
       $new_pace = $min_pace + int($field * fuzzy($low_end) / 100);
-      $streak = 3 + plus_or_minus(2);
+      $go_down = 3 + plus_or_minus(2);
     }
   }
 
@@ -203,7 +211,7 @@ while ($finished == 0) {
   }
 
   if ($pace < $max_pace and $elapsed > $min_time and
-      $streak <= 0 and $direction < 0 and !int(rand(6))) {
+      $go_down <= 0 and $direction < 0 and !int(rand(6))) {
     $new_pace = $max_pace;
   }
 
@@ -222,7 +230,12 @@ while ($finished == 0) {
   }
 
   my $new_pct = ($new_pace - $min_pace) / $field;
-  my $steady = 1 + sprintf("%.0f",abs(0.5 - $new_pct) * 20);
+  my $steady;
+  if ($direction > 0) {
+    $steady = sprintf("%.0f",$new_pct * 20);
+  } else {
+    $steady = sprintf("%.0f",(1 - $new_pct) * 20);
+  }
   if ($fuzzify) {
     $steady = fuzzy($steady);
   }
