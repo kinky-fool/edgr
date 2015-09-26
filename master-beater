@@ -20,7 +20,8 @@ fi
 $HOME/toys/sexy-slideshow 15 15 30 150 3.2 &
 sexy_pid=$!
 
-program=$(mktemp /tmp/stroke-program.XXXX)
+program='/tmp/stroke-session'
+
 "$HOME/toys/pacer" "${args[@]}" > "$program"
 
 grep -e '#[^ ]' "$program" | cut -d' ' -f2- | while read message; do
