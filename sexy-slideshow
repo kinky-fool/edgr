@@ -53,8 +53,8 @@ build_pool() {
   # $src is unquoted because it may be a space separated list of directories
   images=$(find $src -regextype awk -iregex '.*\.(jpe?g|nef|png)')
 
-  for i in {1..5}; do
-    echo "$images" | shuf | head -n $count >> "$playlist"
+  for i in {1..6}; do
+    echo "$images" | shuf -n $count >> "$playlist"
   done
 }
 
@@ -63,12 +63,15 @@ build_pool "$edge" "$edge_pics"
 build_pool "$seed" "$seed_pics"
 build_pool "$rand" "$rand_pics"
 
-/usr/bin/feh --info "$HOME/toys/check-edge '%f'" \
+#image_checker="$HOME/toys/check-edge"
+image_checker="$HOME/toys/icy-build"
+
+/usr/bin/feh --info "$image_checker '%f' "$delay"" \
   --fontpath "$HOME/.fonts/" \
   --font "FiraSans-Regular/48" \
   --scale-down \
-  -Y -z -F -D $delay \
-  -f <(shuf "$playlist" | head -n 200) &>/dev/null &
+  -Y -F -D $delay \
+  -f <(shuf -n 1000 "$playlist") &>/dev/null &
 viewer_pid=$!
 
 # Catch C-c or kill TERM (from other scripts ;)
