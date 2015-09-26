@@ -1,8 +1,9 @@
 #!/bin/bash
 
 image=$1
+delay=$2
 
-timeout=23
+timeout=$((23 + delay))
 count_file=/tmp/edge_count
 message=
 source ~/.config/sexy-slideshow
@@ -18,44 +19,82 @@ if [[ $((now - last)) -ge $timeout ]]; then
   count=0
 fi
 
-special_dirs="$edge_pics"
-if [[ $((RANDOM%4)) -eq 0 ]]; then
-  special_dirs="$special_dirs $safe_pics"
+lube=0
+extend=0
+for dir in $edge_pics $safe_pics; do
+  if [[ "${image%/*}" == "${dir%/*}" ]]; then
+    extend=1
+    lube=1
+  fi
+done
+
+edge=0
+for dir in $edge_pics; do
+  if [[ "${image%/*}" == "${dir%/*}" ]]; then
+    edge=1
+  fi
+done
+
+# Not in loop above; could increment count for more than iteration
+if [[ $edge -eq 1 || ($lube -eq 1 && $((RANDOM%4)) -eq 0) ]]; then
+  count=$((count + 1))
 fi
 
-for dir in $safe_pics; do
-  # Safe pics cause timeout to get reset...
-  if [[ "${image%/*}" == "${dir%/*}" ]]; then
-    printf '%i\n' $count > "$count_file"
-  fi
-done
+icy=0
+if [[ $edge -eq 1 && $count -ge 5 ]]; then
+  icy=1
+fi
 
-for dir in $special_dirs; do
-  if [[ "${image%/*}" == "${dir%/*}" ]]; then
-    count=$((count + 1))
-    if [[ $((RANDOM % 2)) -eq 0 ]]; then
-      if [[ $count -ge 5 && $((RANDOM % (30 - (count * 2 % 30)))) -eq 0 ]]; then
-        roll=$((RANDOM%8))
-        if [[ "$roll" -eq 0 ]]; then
-          message='apply Icy Hot'
-        else
-          message='apply lots of Icy Hot'
-        fi
-        if [[ $roll -eq $((RANDOM%8)) ]]; then
-          message="${message}...\n    ...and don't forget your balls"
-        fi
-        count=0
-      elif [[ $((RANDOM % (16 - (count * 2 % 16)))) -eq 0 ]]; then
-        message='lube it up'
-        count=0
-      fi
-    fi
-    printf '%i\n' $count > "$count_file"
+message=
+
+
+if [[ $lube -eq 1 ]]; then
+
+  if [[ $((RANDOM%3)) -eq 0 ]]; then
+    icy=0
   fi
-done
+
+  chances=(256 128 64 32 64 128 256 512 256 128 64)
+
+  if [[ $icy -eq 1 ]]; then
+    chances=(1 1 1 1 1 1 256 128 64 32 16)
+  fi
+
+  if [[ $count -gt ${#chances[@]} ]]; then
+    # Survived barrage of potential Icy Hots, you "win"!
+    icy=0
+    chance=2
+  else
+    chance=${chances[$count]}
+    if [[ $edge -eq 1 && $icy -eq 0 ]]; then
+      chance=$((chance / 2))
+    fi
+  fi
+
+  if [[ $chance -gt 1 && $((RANDOM % chance)) -eq 1 ]]; then
+    if [[ $icy -eq 1 ]]; then
+      roll=$((RANDOM%8))
+      if [[ "$roll" -eq 0 ]]; then
+        message='apply Icy Hot'
+      else
+        message='apply lots of Icy Hot'
+      fi
+      if [[ $roll -eq $((RANDOM%8)) ]]; then
+        message="${message}...\n    ...and don't forget your balls"
+      fi
+    else
+      message='lube up your cock'
+    fi
+  fi
+fi
 
 if [[ -n "$message" ]]; then
   echo -e "  Mistress says $message"
-elif [[ "$count" -gt 0 ]]; then
+  count=0
+elif [[ $count -gt 0 ]]; then
   printf '  %i\n' $count
+fi
+
+if [[ $extend -eq 1 ]]; then
+  printf '%i\n' $count > "$count_file"
 fi
