@@ -20,13 +20,13 @@ now=$(date +"%s")
 last=$(stat -c "%Y" "$count_file")
 count=$(cat "$count_file")
 #timeout=$((delay_int * (3 + ( (10 - count) / 2 ) ) ))
-timeout=$((delay_int * (2 + (10 - count))))
+timeout=$((delay_int * (3 + (10 - count))))
 
 passed=$((now - last))
 while [[ $passed -gt $timeout && $count -gt 0 ]]; do
   count=$((count - 1))
   passed=$((passed - timeout))
-  timeout=$(((delay_int * (2 + (10 - count))) / 4))
+  timeout=$(((delay_int * (3 + (10 - count))) / 4))
 done
 
 extend=0
