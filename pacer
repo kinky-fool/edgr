@@ -37,7 +37,7 @@ my $finished    = 0;
 my $end_to_end  = 30;
 
 # % chance time will be added
-my $add_pct     = 23;
+my $add_pct     = 42;
 # % chance time will be removed
 my $sub_pct     = 23;
 
