@@ -79,7 +79,7 @@ if ($field < 0) {
 # Set the pace to just outside of the low end zone
 $pace = $min_pace + int($field * ($low_end / 100)) + 5;
 
-$min_time = $time * 60;
+$extra_time = $extra_time * 60;
 
 if (@dice) {
   my $seconds = 0;
@@ -107,39 +107,32 @@ if (@dice) {
       $seconds += $spots * 60;
     }
   }
-  $min_time = $seconds;
+  $extra_time = $seconds;
 }
 
-$max_time = $min_time + ($extra_time * 60);
-$run_time = $min_time + int($max_time / 3);
+$min_time = $time * 60;
 
 if ($fuzzify) {
   $min_time = fuzzy($min_time);
-  $max_time = $min_time + fuzzy(abs($max_time - $min_time));
-
-  if ($min_time > $max_time) {
-    my $temp = $min_time;
-    $min_time = $max_time;
-    $max_time = $temp;
-  }
-
-  $run_time = $min_time + fuzzy(int(($max_time - $min_time) / 3));
+  $extra_time = fuzzy($extra_time);
 }
 
+$max_time = $min_time + $extra_time;
+$run_time = $min_time + int($extra_time / 4);
 
 while ($finished == 0) {
   my $percent = ($pace - $min_pace) / $field;
 
   # Adjust $run_time
   if ($add_pct > rand(100)) {
-    $run_time += fuzzy(int($extra_time * 3));
+    $run_time += fuzzy(int($extra_time / 60 * 3));
     if ($run_time > $max_time) {
       $run_time = $max_time;
     }
   }
 
   if ($sub_pct > rand(100)) {
-    $run_time -= fuzzy(int($extra_time * 3));
+    $run_time -= fuzzy(int($extra_time / 60 * 3));
     if ($min_time > $run_time) {
       $run_time = $min_time;
     }
