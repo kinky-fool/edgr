@@ -90,23 +90,44 @@ if [[ $lube -eq 1 ]]; then
     if [[ $((RANDOM % chance)) -eq 1 ]]; then
       message='lube up your cock'
       newcount=0
-      for i in $(seq 1 $(((RANDOM%2)+1))); do
-        newcount=$((newcount + (RANDOM % (count-newcount+1))))
-      done
+      newcount=$((newcount + (RANDOM % (count-newcount+1))))
+      newcount=$((newcount + (RANDOM % (count-newcount+1))))
+      newcount=$((newcount + (RANDOM % (count-newcount+1))))
       count=$newcount
     fi
   else
     if [[ $((RANDOM % 4)) -eq 1 ]]; then
       message='lube up your cock'
+      newcount=0
+      newcount=$((newcount + (RANDOM % (count-newcount+1))))
+      newcount=$((newcount + (RANDOM % (count-newcount+1))))
+      count=$newcount
       if [[ $((RANDOM % 6)) -eq $((RANDOM % 6)) ]]; then
+        count=$((RANDOM % count))
         message="${message}...\n  ...and enjoy some more time"
         add_time
       fi
     else
       message='have some more time'
       add_time
+      roll1=$((RANDOM%6 + 1))
+      roll2=$((RANDOM%6 + 1))
+      if [[ $roll1 -eq 1 && $roll2 -eq 1 ]]; then
+        add_time
+        newcount=0
+        newcount=$((newcount + (RANDOM % (count-newcount+1))))
+        newcount=$((newcount + (RANDOM % (count-newcount+1))))
+        count=$newcount
+      elif [[ $roll1 -eq $roll2 ]]; then
+        count=$((RANDOM % (count+1)))
+      elif [[ $((roll1 + roll2)) -eq 7 ]]; then
+        count=$((RANDOM % 6))
+      elif [[ $(((roll1 + roll2) % 2)) -eq 1 ]]; then
+        count=$((count - (RANDOM % count)))
+      else
+        count=0
+      fi
     fi
-    count=0
   fi
 fi
 
