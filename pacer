@@ -121,7 +121,7 @@ if ($fuzzify) {
 }
 
 $max_time = $min_time + $extra_time;
-$run_time = $min_time + int($extra_time / 4);
+$run_time = $min_time + int($extra_time / 3);
 
 while ($finished == 0) {
   if ($icy_chance >= int(rand(100))) {
