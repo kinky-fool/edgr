@@ -1,6 +1,8 @@
 #!/bin/bash
 
 add_time() {
+  icy_active=$1
+
   max_pace=185
   min_pace=95
   pacesetter="$HOME/toys/change-pace"
@@ -24,6 +26,10 @@ add_time() {
   if [[ $a -eq $b && $a -eq $c ]]; then
     bonus_time=$((bonus_time + (RANDOM % 30)))
   fi
+  if [[ "$icy_active" -gt 0 ]]; then
+    count=$($HOME/bin/fuzzify 8)
+    echo "#icy $count" >> "$prog"
+  fi
   # Go Down
   $pacesetter -s "$final_pace" -e "$down_pace" -p 5 -S 1 >> "$prog"
   # Go Up
@@ -39,6 +45,16 @@ if [[ $(echo "$delay_int == $delay" | bc) -eq 0 ]]; then
 fi
 
 count_file=/tmp/icy-count
+
+icy_active=0
+if [[ -e '/tmp/icy-pics' ]]; then
+  icy_pics=$(</tmp/icy-pics)
+  if [[ $icy_pics -gt 0 ]]; then
+    icy_active=1
+    echo $((icy_pics - 1)) > /tmp/icy-pics
+  fi
+fi
+
 message=
 source ~/.config/sexy-slideshow
 
@@ -84,11 +100,16 @@ if [[ $lube -eq 1 ]]; then
   if [[ $count -le 10 ]]; then
     chances=(85 60 40 25 15 10 15 25 40 60 85 115 150)
     chance=${chances[$count]}
-    if [[ $edge -eq 0 ]]; then
+    if [[ $icy_active -ne 0 ]]; then
+      chance=$((chance * 2 / 3))
+    elif [[ $edge -eq 0 ]]; then
       chance=$((chance * 5 / 4))
     fi
     if [[ $((RANDOM % chance)) -eq 1 ]]; then
       message='lube up your cock'
+      if [[ $icy_active -ne 0 ]]; then
+        message="${message} ...\n    ... with Icy Hot"
+      fi
       newcount=0
       newcount=$((newcount + (RANDOM % (count-newcount+1))))
       newcount=$((newcount + (RANDOM % (count-newcount+1))))
@@ -98,22 +119,25 @@ if [[ $lube -eq 1 ]]; then
   else
     if [[ $((RANDOM % 4)) -eq 1 ]]; then
       message='lube up your cock'
+      if [[ $icy_active -ne 0 ]]; then
+        message="${message}...\n    ...with Icy Hot"
+      fi
       newcount=0
       newcount=$((newcount + (RANDOM % (count-newcount+1))))
       newcount=$((newcount + (RANDOM % (count-newcount+1))))
       count=$newcount
       if [[ $((RANDOM % 6)) -eq $((RANDOM % 6)) ]]; then
         count=$((RANDOM % count))
-        message="${message}...\n  ...and enjoy some more time"
-        add_time
+        message="${message}...\n    ...and enjoy some more time"
+        add_time $icy_active
       fi
     else
       message='have some more time'
-      add_time
+      add_time $icy_active
       roll1=$((RANDOM%6 + 1))
       roll2=$((RANDOM%6 + 1))
       if [[ $roll1 -eq 1 && $roll2 -eq 1 ]]; then
-        add_time
+        add_time $icy_active
         newcount=0
         newcount=$((newcount + (RANDOM % (count-newcount+1))))
         newcount=$((newcount + (RANDOM % (count-newcount+1))))

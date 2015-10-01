@@ -29,11 +29,16 @@ $HOME/toys/sexy-slideshow $safe_pics $edge_pics $rand_pics $porn_pics 3.2 &
 sexy_pid=$!
 
 program='/tmp/stroke-session'
+icy_pics='/tmp/icy-pics'
+
+rm -f "$icy_pics"
 
 "$HOME/toys/pacer" "${args[@]}" > "$program"
 
-grep -e '#[^ ]' "$program" | cut -d' ' -f2- | while read message; do
-  echo "$message"
+grep -e '#[^ ]' "$program" | while read message; do
+  if ! echo "$message" | grep -q 'icy'; then
+    echo "$message" | cut -d' ' -f2-
+  fi
 done
 echo "Tempo Ramps:  $(grep '# start:' "$program" | wc -l)"
 
@@ -54,7 +59,14 @@ trap "do_cleanup "$sexy_pid" "$program"" SIGINT SIGTERM
 last_bpm=0
 aoss "$HOME/bin/ctronome" -c 1 -w1 "$HOME/toys/tick.wav" \
   -w2 "$HOME/toys/tock.wav" -p "$program" | while read info; do
-    message=$(echo "$info" | grep -qe '^#' | cut -f2- -d' ')
+    icy=$(echo "$info" | grep -e '^#icy' | cut -c6-)
+    if [[ -n "$icy" ]]; then
+      if [[ -f "$icy_pics" && $(<"$icy_pics") -gt 0 ]]; then
+        icy=$((icy + $(<"$icy_pics")))
+      fi
+      echo "$icy" > "$icy_pics"
+      $HOME/toys/show-bpm "Icy!"
+    fi
     bpm=$(echo "$info" | grep -e '^BPM:' | cut -c6-)
     if [[ -n "$bpm" ]]; then
       if [[ $verbose -eq 2 ]]; then

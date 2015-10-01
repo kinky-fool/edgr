@@ -32,6 +32,8 @@ my $elapsed     = 0;
 my $end_at_max  = 0;
 my $finish_it   = 0;
 my $finished    = 0;
+my $icy_chance  = 0;
+my $icy_count   = 8;
 
 # Amount of time (in seconds) to go from min to max / max to min
 my $end_to_end  = 30;
@@ -66,6 +68,7 @@ GetOptions(
   "sub=f"     => \$sub_pct,
   "dice=s"    => \@dice,
   "fastend=i" => \$end_at_max,
+  "icy=i"     => \$icy_chance,
 ) or die("Error in args.\n");
 
 printf "#fastend End at max: %s\n", $end_at_max;
@@ -121,6 +124,9 @@ $max_time = $min_time + $extra_time;
 $run_time = $min_time + int($extra_time / 4);
 
 while ($finished == 0) {
+  if ($icy_chance >= int(rand(100))) {
+    printf "#icy %s\n", fuzzy($icy_count);
+  }
   my $percent = ($pace - $min_pace) / $field;
 
   # Adjust $run_time
