@@ -68,6 +68,30 @@ count=$(cat "$count_file")
 #timeout=$((delay_int * (3 + ( (10 - count) / 2 ) ) ))
 timeout=$((delay_int * (3 + (10 - count))))
 
+lube_break=180
+lube_ok=0
+if [[ -e '/tmp/last_lube' ]]; then
+  if [[ $((now - $(stat -c "%Y" '/tmp/last_lube'))) -gt $lube_break ]]; then
+    lube_ok=1
+  fi
+else
+  lube_ok=1
+fi
+
+icy_break=300
+icy_ok=0
+if [[ -e '/tmp/last_icy' ]]; then
+  if [[ $((now - $(stat -c "%Y" '/tmp/last_icy'))) -gt $icy_break ]]; then
+    icy_ok=1
+  fi
+else
+  icy_ok=1
+fi
+
+if [[ $icy_active -eq 0 ]]; then
+  icy_ok=0
+fi
+
 passed=$((now - last))
 while [[ $passed -gt $timeout && $count -gt 0 ]]; do
   count=$((count - 1))
@@ -100,56 +124,44 @@ if [[ $lube -eq 1 ]]; then
   if [[ $count -le 10 ]]; then
     chances=(85 60 40 25 15 10 15 25 40 60 85 115 150)
     chance=${chances[$count]}
-    if [[ $icy_active -ne 0 ]]; then
+    if [[ $icy_ok -ne 0 ]]; then
       chance=$((chance * 2 / 3))
     elif [[ $edge -eq 0 ]]; then
       chance=$((chance * 5 / 4))
     fi
     if [[ $((RANDOM % chance)) -eq 1 ]]; then
-      message='lube up your cock'
-      if [[ $icy_active -ne 0 ]]; then
-        message="${message} ...\n    ... with Icy Hot"
+      if [[ $icy_ok -ne 0 ]]; then
+        message='lube up your cock...\n    ...with Icy Hot'
+        touch '/tmp/last_icy'
+      elif [[ $lube_ok -ne 0 ]]; then
+        message='lube up your cock'
+        touch '/tmp/last_lube'
       fi
-      newcount=0
-      newcount=$((newcount + (RANDOM % (count-newcount+1))))
-      newcount=$((newcount + (RANDOM % (count-newcount+1))))
-      newcount=$((newcount + (RANDOM % (count-newcount+1))))
-      count=$newcount
     fi
   else
-    if [[ $((RANDOM % 4)) -eq 1 ]]; then
-      message='lube up your cock'
-      if [[ $icy_active -ne 0 ]]; then
-        message="${message}...\n    ...with Icy Hot"
-      fi
-      newcount=0
-      newcount=$((newcount + (RANDOM % (count-newcount+1))))
-      newcount=$((newcount + (RANDOM % (count-newcount+1))))
-      count=$newcount
-      if [[ $((RANDOM % 6)) -eq $((RANDOM % 6)) ]]; then
-        count=$((RANDOM % count))
-        message="${message}...\n    ...and enjoy some more time"
-        add_time $icy_active
+    if [[ $((RANDOM % 5)) -eq 1 && ( $icy_ok -ne 0 || $lube_ok -ne 0 ) ]]; then
+      if [[ $icy_ok -ne 0 ]]; then
+        message='lube up your cock...\n    ...with Icy Hot'
+        touch '/tmp/last_icy'
+        if [[ $((RANDOM % 6)) -eq $((RANDOM % 6)) ]]; then
+          message="${message}...\n    ...and enjoy some more time"
+          add_time $icy_active
+        fi
+      elif [[ $lube_ok -ne 0 ]]; then
+        message='lube up your cock'
+        touch '/tmp/last_lube'
+        if [[ $((RANDOM % 6)) -eq $((RANDOM % 6)) ]]; then
+          message="${message}...\n    ...and enjoy some more time"
+          add_time $icy_active
+        fi
       fi
     else
       message='have some more time'
       add_time $icy_active
-      roll1=$((RANDOM%6 + 1))
-      roll2=$((RANDOM%6 + 1))
+      roll1=$((RANDOM%4 + 1))
+      roll2=$((RANDOM%4 + 1))
       if [[ $roll1 -eq 1 && $roll2 -eq 1 ]]; then
         add_time $icy_active
-        newcount=0
-        newcount=$((newcount + (RANDOM % (count-newcount+1))))
-        newcount=$((newcount + (RANDOM % (count-newcount+1))))
-        count=$newcount
-      elif [[ $roll1 -eq $roll2 ]]; then
-        count=$((RANDOM % (count+1)))
-      elif [[ $((roll1 + roll2)) -eq 7 ]]; then
-        count=$((RANDOM % 6))
-      elif [[ $(((roll1 + roll2) % 2)) -eq 1 ]]; then
-        count=$((count - (RANDOM % count)))
-      else
-        count=0
       fi
     fi
   fi
@@ -157,6 +169,25 @@ fi
 
 if [[ -n "$message" ]]; then
   echo -e "  Mistress says $message"
+  newcount=0
+  a=$((RANDOM % 4))
+  b=$((RANDOM % 4))
+  c=$((RANDOM % 4))
+  if [[ $a -eq 1 ]]; then
+    newcount=$((RANDOM % (count + 1) / 2))
+  fi
+  if [[ $a -eq $b ]]; then
+    newcount=$((newcount + (RANDOM % (count + 1) / 2)))
+  fi
+  if [[ $a -eq $c ]]; then
+    newcount=$((newcount + (RANDOM % (count + 1) / 2)))
+  fi
+  if [[ $b -eq $c ]]; then
+    newcount=$((newcount + (RANDOM % (count + 1) / 2)))
+  fi
+  if [[ $newcount -lt $count ]]; then
+    count=$newcount
+  fi
 elif [[ $count -gt 0 ]]; then
   printf '  %i\n' $count
 fi
