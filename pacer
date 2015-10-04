@@ -33,7 +33,7 @@ my $end_at_max  = 0;
 my $finish_it   = 0;
 my $finished    = 0;
 my $icy_chance  = 0;
-my $icy_count   = 8;
+my $icy_count   = 3;
 
 # Amount of time (in seconds) to go from min to max / max to min
 my $end_to_end  = 30;
@@ -123,9 +123,22 @@ if ($fuzzify) {
 $max_time = $min_time + $extra_time;
 $run_time = $min_time + int($extra_time / 3);
 
+my $icy_enabled = 0;
+my $icy_countdown = fuzzy(4);
+
 while ($finished == 0) {
-  if ($icy_chance >= int(rand(100))) {
-    printf "#icy %s\n", fuzzy($icy_count);
+  if ($icy_countdown > 0) {
+    $icy_countdown -= ($icy_enabled + 1);
+  } else {
+    $icy_countdown = fuzzy(6);
+    my $icy_roll = int(rand(100))+1;
+    printf "#msg chance: %s >= %s\n","$icy_chance","$icy_roll";
+    if ($icy_chance >= $icy_roll) {
+      $icy_enabled++;
+    }
+    if ($icy_enabled > 0) {
+      printf "#icy %s\n", fuzzy($icy_count*$icy_enabled);
+    }
   }
   my $percent = ($pace - $min_pace) / $field;
 
