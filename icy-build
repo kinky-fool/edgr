@@ -1,41 +1,5 @@
 #!/bin/bash
 
-add_time() {
-  icy_active=$1
-
-  max_pace=185
-  min_pace=95
-  pacesetter="$HOME/toys/change-pace"
-  prog='/tmp/stroke-session'
-  final_pace=$(grep -v ^# "$prog" | tail -n1 | awk -F'[ /]' '{print $2}')
-  down_pace=$((max_pace - (RANDOM % 30 + 1)))
-  if [[ $down_pace -lt $min_pace ]]; then
-    down_pace=$min_pace
-  fi
-  bonus_time=$((RANDOM % 30 + RANDOM % 30))
-  a=$((RANDOM%6))
-  b=$((RANDOM%6))
-  c=$((RANDOM%6))
-  bonus_time=10
-  if [[ $a -eq 1 ]]; then
-    bonus_time=$((bonus_time + (RANDOM % 20)))
-  fi
-  if [[ $a -eq $b ]]; then
-    bonus_time=$((bonus_time + (RANDOM % 30)))
-  fi
-  if [[ $a -eq $b && $a -eq $c ]]; then
-    bonus_time=$((bonus_time + (RANDOM % 30)))
-  fi
-  if [[ "$icy_active" -gt 0 ]]; then
-    count=$($HOME/bin/fuzzify 8)
-    echo "#icy $count" >> "$prog"
-  fi
-  # Go Down
-  $pacesetter -s "$final_pace" -e "$down_pace" -p 5 -S 1 >> "$prog"
-  # Go Up
-  $pacesetter -s "$down_pace" -e "$max_pace" -p 5 -S "$bonus_time" >> "$prog"
-}
-
 image=$1
 delay=$2
 
@@ -47,11 +11,13 @@ fi
 count_file=/tmp/icy-count
 
 icy_active=0
+icy_count=0
 if [[ -e '/tmp/icy-pics' ]]; then
-  icy_pics=$(</tmp/icy-pics)
-  if [[ $icy_pics -gt 0 ]]; then
+  icy_count=$(</tmp/icy-pics)
+  if [[ $icy_count -gt 0 ]]; then
     icy_active=1
-    echo $((icy_pics - 1)) > /tmp/icy-pics
+    echo $((icy_count - 1)) > /tmp/icy-pics
+    echo "  Icy!"
   fi
 fi
 
@@ -78,7 +44,7 @@ else
   lube_ok=1
 fi
 
-icy_break=300
+icy_break=120
 icy_ok=0
 if [[ -e '/tmp/last_icy' ]]; then
   if [[ $((now - $(stat -c "%Y" '/tmp/last_icy'))) -gt $icy_break ]]; then
@@ -99,11 +65,12 @@ while [[ $passed -gt $timeout && $count -gt 0 ]]; do
   timeout=$(((delay_int * (3 + (10 - count))) / 4))
 done
 
-extend=0
+bonus=0
+add_lube=0
+add_time=0
 for dir in $edge_pics $safe_pics; do
   if [[ "${image%/*}" == "${dir%/*}" ]]; then
-    extend=1
-    lube=1
+    bonus=1
   fi
 done
 
@@ -120,78 +87,124 @@ if [[ $edge -eq 1 ]]; then
   count=$((count + 1))
 fi
 
-if [[ $lube -eq 1 ]]; then
-  if [[ $count -le 10 ]]; then
-    chances=(85 60 40 25 15 10 15 25 40 60 85 115 150)
-    chance=${chances[$count]}
-    if [[ $icy_ok -ne 0 ]]; then
-      chance=$((chance * 2 / 3))
-    elif [[ $edge -eq 0 ]]; then
-      chance=$((chance * 5 / 4))
+if [[ $bonus -eq 1 ]]; then
+  if [[ $edge -ne 0 && $icy_ok -ne 0 && \
+        $icy_count -eq 1 && $((RANDOM % 3)) -ne 0 ]]; then
+    add_lube=$((add_lube + 1))
+  fi
+
+  chances=(24 30 36 30 24 18 24 30 36 30 24 18)
+  chance=${chances[$count]}
+  if [[ $icy_ok -ne 0 || $edge -ne 0 ]]; then
+    chance=$((chance / 2))
+  fi
+  if [[ $icy_ok -ne 0 && $edge -ne 0 ]]; then
+    chance=$((chance * 2 / 3))
+  fi
+
+
+  if [[ $((RANDOM % chance)) -eq 1 ]]; then
+    add_lube=$((add_lube + 1))
+  fi
+
+  if [[ $count -gt 10 ]]; then
+    count=0
+    if [[ $((RANDOM % 4)) -eq 1 && $lube_ok -ne 0 ]]; then
+      add_lube=$((add_lube + 1))
     fi
-    if [[ $((RANDOM % chance)) -eq 1 ]]; then
-      if [[ $icy_ok -ne 0 ]]; then
-        message='lube up your cock...\n    ...with Icy Hot'
-        touch '/tmp/last_icy'
-      elif [[ $lube_ok -ne 0 ]]; then
-        message='lube up your cock'
-        touch '/tmp/last_lube'
-      fi
+    if [[ $((RANDOM % 3)) -eq 1 && $icy_ok -ne 0 ]]; then
+      add_lube=$((add_lube + 1))
     fi
-  else
-    if [[ $((RANDOM % 5)) -eq 1 && ( $icy_ok -ne 0 || $lube_ok -ne 0 ) ]]; then
-      if [[ $icy_ok -ne 0 ]]; then
-        message='lube up your cock...\n    ...with Icy Hot'
-        touch '/tmp/last_icy'
-        if [[ $((RANDOM % 6)) -eq $((RANDOM % 6)) ]]; then
-          message="${message}...\n    ...and enjoy some more time"
-          add_time $icy_active
-        fi
-      elif [[ $lube_ok -ne 0 ]]; then
-        message='lube up your cock'
-        touch '/tmp/last_lube'
-        if [[ $((RANDOM % 6)) -eq $((RANDOM % 6)) ]]; then
-          message="${message}...\n    ...and enjoy some more time"
-          add_time $icy_active
-        fi
+    if [[ $add_lube -ne 0 && ( $icy_ok -ne 0 || $lube_ok -ne 0 ) ]]; then
+      if [[ $((RANDOM % 3)) -ne 1 ]]; then
+        add_time=$((add_time + 1))
       fi
     else
-      message='have some more time'
-      add_time $icy_active
-      roll1=$((RANDOM%4 + 1))
-      roll2=$((RANDOM%4 + 1))
-      if [[ $roll1 -eq 1 && $roll2 -eq 1 ]]; then
-        add_time $icy_active
-      fi
+      add_time=$((add_time + 1))
     fi
   fi
+fi
+
+message=''
+if [[ $add_lube -gt 0 ]]; then
+  if [[ $icy_ok -gt 0 ]]; then
+    count=0
+    if [[ $add_lube -gt 2 ]]; then
+      message='coat your cock with Icy Hot'
+    elif [[ $add_lube -eq 2 ]]; then
+      message='lube up your cock...\n    ...with lots of Icy Hot'
+    else
+      message='lube up your cock...\n    ...with Icy Hot'
+    fi
+    touch '/tmp/last_icy'
+  elif [[ $lube_ok -gt 0 ]]; then
+    message='lube up your cock'
+    touch '/tmp/last_lube'
+  fi
+fi
+
+if [[ $add_time -ne 0 ]]; then
+  count=0
+  if [[ -n "$message" ]]; then
+    message="${message}...\n    ...and stroke a bit longer"
+  else
+    message='enjoy some more stroking'
+  fi
+
+  for roll_the_dice in $(seq 1 $((RANDOM % 3 + 1))); do
+    if [[ $((RANDOM % 6)) -eq $((RANDOM % 6)) ]]; then
+      add_time=$((add_time + 1))
+    fi
+  done
+
+  max_pace=185
+  pacesetter="$HOME/toys/change-pace"
+  prog='/tmp/stroke-session'
+  for add_some_time in $(seq 1 $((RANDOM % add_time + 1))); do
+    start_pace=$(grep -v ^# "$prog" | tail -n1 | awk -F'[ /]' '{print $2}')
+    down_pace=$((max_pace - (RANDOM % 25 + 25)))
+    up_pace=$((max_pace - (RANDOM % 20)))
+    bonus_time=$((RANDOM % 30 + 10))
+    for loop_of_time in $(seq 1 $((RANDOM % 3 + 1))); do
+      if [[ $((RANDOM % 6 + RANDOM % 6)) -eq 2 ]]; then
+        bonus_time=$((RANDOM % 30 + bonus_time))
+      fi
+    done
+    if [[ "$icy_active" -gt 0 ]]; then
+      count=$($HOME/bin/fuzzify 8)
+      echo "#icy $count" >> "$prog"
+    fi
+
+    # Go Down
+    build=$(((final_pace - down_pace) / 4))
+    if [[ $build -lt 0 ]]; then
+      build=$((build * -1))
+    fi
+    if [[ $build -lt 5 ]]; then
+      build=5
+    fi
+    down_time=$((bonus_time / 4))
+    $pacesetter -s $start_pace -e $down_pace -p $build -S $down_time >> "$prog"
+
+    # Go Up
+    build=$(((max_pace - down_pace) / 4))
+    if [[ $build -lt 0 ]]; then
+      build=$((build * -1))
+    fi
+    if [[ $build -lt 5 ]]; then
+      build=5
+    fi
+    bonus_time=$((bonus_time * 3 / 4))
+    $pacesetter -s $down_pace -e $up_pace -p $build -S $bonus_time >> "$prog"
+  done
 fi
 
 if [[ -n "$message" ]]; then
   echo -e "  Mistress says $message"
-  newcount=0
-  a=$((RANDOM % 4))
-  b=$((RANDOM % 4))
-  c=$((RANDOM % 4))
-  if [[ $a -eq 1 ]]; then
-    newcount=$((RANDOM % (count + 1) / 2))
-  fi
-  if [[ $a -eq $b ]]; then
-    newcount=$((newcount + (RANDOM % (count + 1) / 2)))
-  fi
-  if [[ $a -eq $c ]]; then
-    newcount=$((newcount + (RANDOM % (count + 1) / 2)))
-  fi
-  if [[ $b -eq $c ]]; then
-    newcount=$((newcount + (RANDOM % (count + 1) / 2)))
-  fi
-  if [[ $newcount -lt $count ]]; then
-    count=$newcount
-  fi
 elif [[ $count -gt 0 ]]; then
   printf '  %i\n' $count
 fi
 
-if [[ $extend -eq 1 ]]; then
+if [[ $bonus -eq 1 ]]; then
   printf '%i\n' $count > "$count_file"
 fi
