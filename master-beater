@@ -33,7 +33,18 @@ icy_pics='/tmp/icy-pics'
 
 echo "0" > "$icy_pics"
 
-"$HOME/toys/pacer" "${args[@]}" > "$program"
+base=20
+ready=0
+icymax=100
+while [[ $ready -ne 1 ]]; do
+  icymax=$((100 - (RANDOM % base)))
+  if [[ $((icymax % 5)) -eq 0 ]]; then
+    ready=1
+  fi
+  base=$((base + 5))
+done
+
+"$HOME/toys/pacer" -icymax $icymax "${args[@]}" > "$program"
 
 grep -e '#[^ ]' "$program" | while read message; do
   if ! echo "$message" | grep -q 'icy'; then
