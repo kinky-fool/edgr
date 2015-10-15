@@ -31,7 +31,7 @@ sexy_pid=$!
 program='/tmp/stroke-session'
 icy_pics='/tmp/icy-pics'
 
-rm -f "$icy_pics"
+echo "0" > "$icy_pics"
 
 "$HOME/toys/pacer" "${args[@]}" > "$program"
 
