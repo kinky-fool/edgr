@@ -17,7 +17,7 @@ if [[ -n "$min_arg" && "$min_arg" =~ ^[0-9]+$ ]]; then
   minutes=$min_arg
 fi
 
-chance_pic_pct=32
+chance_pic_pct=35
 total_pics=500
 chance_pics=$((total_pics * chance_pic_pct / 100))
 safe_pics=$((chance_pics * 10 / 100))
