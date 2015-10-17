@@ -4,6 +4,9 @@ use strict;
 use warnings;
 
 use Getopt::Long;
+use Sessions;
+
+$Sessions::DEBUG = 1;
 
 srand("$$" . time);
 
@@ -302,65 +305,6 @@ while ($finished == 0) {
 }
 
 printf "#length Session Length: %s [ %s ] %s\n",
-        sec2human($min_time),
-        sec2human($elapsed),
-        sec2human($max_time);
-
-sub sec2human {
-  my $secs = shift;
-  if ($secs >= 365*24*60*60) {
-    return sprintf '%.1f years', $secs/(365+*24*60*60);
-  } elsif ($secs >= 24*60*60) {
-    return sprintf '%.1f days', $secs/(24*60*60);
-  } elsif ($secs >= 60*60) {
-    return sprintf '%.1f hours', $secs/(60*60);
-  } elsif ($secs >= 60) {
-    return sprintf '%.1f minutes', $secs/60;
-  } else {
-    return sprintf '%.1f seconds', $secs;
-  }
-}
-
-sub fuzzy {
-  my $num   = shift;
-
-  # Control how far to deviate from $num
-  my $skew = int(rand(3))+2;
-  # Lean toward 0 or 2 * $num
-  my $lean = int(rand(4))+2;
-  # This is not superflous; the rand($lean) below will favor this direction
-  my $point = 1;
-  # "Flip a coin" to determine the direction of the lean
-  if (int(rand(2))) {
-    $point = -1;
-  }
-
-  my $result = $num;
-
-  for (1 .. int($num)) {
-    if (!int(rand($skew))) {
-      if (int(rand($lean))) {
-        $result += $point;
-      } else {
-        $result += ($point * -1);
-      }
-    }
-  }
-  return $result;
-}
-
-sub plus_or_minus {
-  my $num     = shift;
-
-  my $result  = 0;
-
-  for (1 .. int($num)) {
-    if (int(rand(2))) {
-      $result += int(rand(2));
-    } else {
-      $result -= int(rand(2));
-    }
-  }
-
-  return $result;
-}
+        sec_to_human($min_time),
+        sec_to_human($elapsed),
+        sec_to_human($max_time);
