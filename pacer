@@ -129,18 +129,10 @@ my $icy_enabled = 0;
 my $icy_countdown = int(rand(4));
 
 while ($finished == 0) {
-  if ($icy_countdown > 0) {
-    $icy_countdown -= ($icy_enabled + 1);
-  } else {
-    $icy_countdown = fuzzy(4);
-    my $icy_roll = int(rand($icy_max))+1;
-    printf "#msg chance: %s >= %s\n","$icy_chance","$icy_roll";
-    if ($icy_chance >= $icy_roll) {
-      $icy_enabled++;
-    }
-    if ($icy_enabled > 0) {
-      printf "#icy %s\n", fuzzy($icy_count*$icy_enabled);
-    }
+  my $icy_roll = int(rand($icy_max))+1;
+  #printf "#msg chance: %s >= %s\n","$icy_chance","$icy_roll";
+  if ($icy_chance >= $icy_roll) {
+    printf "#icy foo\n";
   }
   my $percent = ($pace - $min_pace) / $field;
 
