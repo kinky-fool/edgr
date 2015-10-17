@@ -31,8 +31,7 @@ fi
 now=$(date +"%s")
 last=$(stat -c "%Y" "$count_file")
 count=$(cat "$count_file")
-#timeout=$((delay_int * (3 + ( (10 - count) / 2 ) ) ))
-timeout=$((delay_int * (3 + (10 - count))))
+timeout=$((delay_int * (3 + 10 - count)))
 
 lube_break=180
 lube_ok=0
@@ -62,7 +61,7 @@ passed=$((now - last))
 while [[ $passed -gt $timeout && $count -gt 0 ]]; do
   count=$((count - 1))
   passed=$((passed - timeout))
-  timeout=$(((delay_int * (3 + (10 - count))) / 4))
+  timeout=$((delay_int * (1 + 10 - count)))
 done
 
 bonus=0
