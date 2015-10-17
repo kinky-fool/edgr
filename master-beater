@@ -30,8 +30,10 @@ sexy_pid=$!
 
 program='/tmp/stroke-session'
 icy_pics='/tmp/icy-pics'
+icy_add_pics='/tmp/icy-add-pics'
 
 echo "0" > "$icy_pics"
+echo "0" > "$icy_add_pics"
 
 base=20
 ready=0
@@ -70,13 +72,10 @@ trap "do_cleanup "$sexy_pid" "$program"" SIGINT SIGTERM
 last_bpm=0
 aoss "$HOME/bin/ctronome" -c 1 -w1 "$HOME/toys/tick.wav" \
   -w2 "$HOME/toys/tock.wav" -p "$program" | while read info; do
-    icy=$(echo "$info" | grep -e '^#icy' | cut -c6-)
-    if [[ -n "$icy" ]]; then
-      if [[ -f "$icy_pics" && $(<"$icy_pics") -gt 0 ]]; then
-        icy=$((icy + $(<"$icy_pics")))
-      fi
-      echo "$icy" > "$icy_pics"
-      $HOME/toys/show-bpm "Icy!"
+    if echo "$info" | grep -qe '^#icy'; then
+      to_add=$(<"$icy_add_pics")
+      icy=$(<"$icy_pics")
+      echo $((icy + to_add)) > "$icy_pics"
     fi
     bpm=$(echo "$info" | grep -e '^BPM:' | cut -c6-)
     if [[ -n "$bpm" ]]; then
