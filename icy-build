@@ -169,12 +169,9 @@ if [[ $add_time -ne 0 ]]; then
         bonus_time=$((RANDOM % 30 + bonus_time))
       fi
     done
-    if [[ "$icy_active" -gt 0 ]]; then
-      count=$($HOME/bin/fuzzify 8)
-      echo "#icy $count" >> "$prog"
-    fi
 
     # Go Down
+    echo "#icy foo" >> "$prog"
     build=$(((final_pace - down_pace) / 4))
     if [[ $build -lt 0 ]]; then
       build=$((build * -1))
@@ -186,6 +183,7 @@ if [[ $add_time -ne 0 ]]; then
     $pacesetter -s $start_pace -e $down_pace -p $build -S $down_time >> "$prog"
 
     # Go Up
+    echo "#icy foo" >> "$prog"
     build=$(((max_pace - down_pace) / 4))
     if [[ $build -lt 0 ]]; then
       build=$((build * -1))
