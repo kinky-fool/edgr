@@ -37,9 +37,10 @@ echo "0" > "$icy_add_pics"
 
 base=20
 ready=0
-icymax=100
+icymaxmax=100
+icymax=$icymaxmax
 while [[ $ready -ne 1 ]]; do
-  icymax=$((100 - (RANDOM % base)))
+  icymax=$((icymaxmax - (RANDOM % base)))
   if [[ $((icymax % 5)) -eq 0 ]]; then
     ready=1
   fi
