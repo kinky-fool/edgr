@@ -31,9 +31,13 @@ sexy_pid=$!
 program='/tmp/stroke-session'
 icy_pics='/tmp/icy-pics'
 icy_add_pics='/tmp/icy-add-pics'
+icy_count='/tmp/icy-count'
 
 echo "0" > "$icy_pics"
 echo "0" > "$icy_add_pics"
+echo "0" > "$icy_count"
+touch '/tmp/last_lube'
+touch '/tmp/last_icy'
 
 base=20
 ready=0
