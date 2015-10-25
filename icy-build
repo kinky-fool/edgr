@@ -105,17 +105,23 @@ if [[ $bonus -eq 1 ]]; then
 
   chances=(24 30 36 30 24 18 24 30 36 30 24 18)
   chance=${chances[$count]}
+
   if [[ $icy_ok -ne 0 || $edge -ne 0 ]]; then
     chance=$((chance / 2))
   fi
-  if [[ $icy_ok -ne 0 && $edge -ne 0 ]]; then
-    chance=$((chance * 2 / 3))
-  fi
-
 
   if [[ $((RANDOM % chance)) -eq 1 ]]; then
     add_lube=$((add_lube + 1))
   fi
+
+  if [[ $icy_ok -ne 0 && $edge -ne 0 ]]; then
+    chance=$((chance * 2 / 3))
+
+    if [[ $((RANDOM % chance)) -eq 1 ]]; then
+      add_lube=$((add_lube + 1))
+    fi
+  fi
+
 
   if [[ $count -gt 10 ]]; then
     count=0
