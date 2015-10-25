@@ -125,12 +125,15 @@ if [[ $bonus -eq 1 ]]; then
 
   if [[ $count -gt 10 ]]; then
     count=0
+
     if [[ $((RANDOM % 4)) -eq 1 && $lube_ok -ne 0 ]]; then
       add_lube=$((add_lube + 1))
     fi
+
     if [[ $((RANDOM % 3)) -eq 1 && $icy_ok -ne 0 ]]; then
       add_lube=$((add_lube + 1))
     fi
+
     if [[ $add_lube -ne 0 && ( $icy_ok -ne 0 || $lube_ok -ne 0 ) ]]; then
       if [[ $((RANDOM % 3)) -ne 1 ]]; then
         add_time=$((add_time + 1))
@@ -162,6 +165,7 @@ if [[ $add_lube -gt 0 ]]; then
 
   if [[ $icy_ok -ne 0 ]]; then
     count=0
+
     if [[ $add_lube -gt 2 ]]; then
       message='coat your cock with Icy Hot'
     elif [[ $add_lube -eq 2 ]]; then
@@ -169,6 +173,7 @@ if [[ $add_lube -gt 0 ]]; then
     else
       message='lube up your cock...\n    ...with Icy Hot'
     fi
+
     touch '/tmp/last_icy'
   elif [[ $lube_ok -gt 0 ]]; then
     message='lube up your cock'
