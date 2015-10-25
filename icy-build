@@ -26,7 +26,7 @@ else
   lube_ok=1
 fi
 
-icy_break=120
+icy_break=300
 icy_ok=0
 if [[ -e '/tmp/last_icy' ]]; then
   if [[ $((now - $(stat -c "%Y" '/tmp/last_icy'))) -gt $icy_break ]]; then
