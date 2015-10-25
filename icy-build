@@ -143,7 +143,24 @@ fi
 
 message=''
 if [[ $add_lube -gt 0 ]]; then
-  if [[ $icy_ok -gt 0 ]]; then
+  if [[ $icy_ok -ne 0 ]]; then
+    d1=$((RANDOM % 6 + 1))
+    d2=$((RANDOM % 6 + 1))
+
+    if [[ $add_lube -gt 1 ]]; then
+      if [[ $((d1 + d2)) -eq 7 ]]; then
+        icy_ok=0
+      fi
+
+      if [[ $((d1 + d2)) -eq 2 ]]; then
+        add_lube=$((add_lube + 1))
+      elif [[ $(((d1 + d2) % 2)) -eq 0 ]]; then
+        icy_ok=0
+      fi
+    fi
+  fi
+
+  if [[ $icy_ok -ne 0 ]]; then
     count=0
     if [[ $add_lube -gt 2 ]]; then
       message='coat your cock with Icy Hot'
