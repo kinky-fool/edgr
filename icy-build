@@ -3,22 +3,10 @@
 image=$1
 delay=$2
 
+count_file=/tmp/icy-count
 delay_int=$(printf "%.0f" "$delay")
 if [[ $(echo "$delay_int == $delay" | bc) -eq 0 ]]; then
   delay_int=$((delay_int + 1))
-fi
-
-count_file=/tmp/icy-count
-
-icy_active=0
-icy_count=0
-if [[ -e '/tmp/icy-pics' ]]; then
-  icy_count=$(</tmp/icy-pics)
-  if [[ $icy_count -gt 0 ]]; then
-    icy_active=1
-    echo $((icy_count - 1)) > /tmp/icy-pics
-    echo "  Icy!"
-  fi
 fi
 
 message=
@@ -27,11 +15,6 @@ source ~/.config/sexy-slideshow
 if [[ ! -e "$count_file" ]]; then
   printf '0\n' > "$count_file"
 fi
-
-now=$(date +"%s")
-last=$(stat -c "%Y" "$count_file")
-count=$(cat "$count_file")
-timeout=$((delay_int * (3 + 10 - count)))
 
 lube_break=180
 lube_ok=0
@@ -53,16 +36,44 @@ else
   icy_ok=1
 fi
 
-if [[ $icy_active -eq 0 ]]; then
-  icy_ok=0
+now=$(date +"%s")
+last=$(stat -c "%Y" "$count_file")
+count=$(<"$count_file")
+last_count=$count
+passed=$((now - last))
+timeout=$((delay_int * (6 - (count / 2))))
+saves=3
+
+while [[ $passed -gt $timeout && $count -gt 0 && $saves -gt 0 ]]; do
+  timeout=$((timeout + (delay_int * (4 - saves))))
+
+  if [[ $count -gt 1 ]]; then
+    count=$((count - 1))
+  fi
+  saves=$((saves - 1))
+done
+
+if [[ $saves -le 0 ]]; then
+  count=0
 fi
 
-passed=$((now - last))
-while [[ $passed -gt $timeout && $count -gt 0 ]]; do
-  count=$((count - 1))
-  passed=$((passed - timeout))
-  timeout=$((delay_int * (1 + 10 - count)))
-done
+if [[ $count -le 0 && $last_count -ne $count ]]; then
+  add_pics=$(($(</tmp/icy-add-pics) + 3))
+  printf '%i\n' "$($HOME/tools/fuzzify $add_pics)" > /tmp/icy-add-pics
+fi
+
+icy_count=0
+if [[ -e '/tmp/icy-pics' ]]; then
+  icy_count=$(</tmp/icy-pics)
+  if [[ $icy_count -gt 0 ]]; then
+    echo $((icy_count - 1)) > /tmp/icy-pics
+    if [[ $icy_ok -gt 0 ]]; then
+      echo "  Icy: $icy_count"
+    fi
+  else
+    icy_ok=0
+  fi
+fi
 
 bonus=0
 add_lube=0
