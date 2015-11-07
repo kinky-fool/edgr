@@ -32,17 +32,15 @@ if [[ $match -eq 0 ]]; then
   gap=$((gap + 1))
 fi
 
-saves=5
+saves=3
 gap_max=$((11 - count))
 
 for luck in $(seq 1 $saves); do
-  if [[ $((RANDOM % 2)) -eq 1 ]]; then
-    gap_max=$((gap_max + 1))
+  if [[ $gap -gt $gap_max ]]; then
+    count=$((count - 1))
   fi
 
-  if [[ $gap -gt $gap_max ]]; then
-    count=$(count - 1)
-  fi
+  gap_max=$((gap_max + luck))
 done
 
 if [[ $gap -gt $gap_max ]]; then
