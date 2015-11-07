@@ -91,8 +91,8 @@ if [[ $match -eq 1 ]]; then
     for pics in $(seq 1 $((gap - gap_max))); do
       add_pics=$((add_pics + pics))
     done
-    add_pics=$((add_pics + $(</tmp/icy-add-pics)))
-    printf '%i\n' "$add_pics" > /tmp/icy-add-pics
+    add_pics=$((add_pics + $(</tmp/icy-pics)))
+    printf '%i\n' "$add_pics" > /tmp/icy-pics
   fi
   gap=0
 fi
