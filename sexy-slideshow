@@ -66,7 +66,7 @@ build_pool "$rand" "$rand_pics"
 #image_checker="$HOME/toys/check-edge"
 image_checker="$HOME/toys/icy-build"
 
-/usr/bin/feh --info "$image_checker '%f' "$delay"" \
+/usr/bin/feh --info "$image_checker '%f'" \
   --fontpath "$HOME/.fonts/" \
   --font "FiraSans-Regular/48" \
   --scale-down \

@@ -1,7 +1,6 @@
 #!/bin/bash
 
 image=$1
-delay=$2
 
 now=$(date +"%s")
 source ~/.config/sexy-slideshow
