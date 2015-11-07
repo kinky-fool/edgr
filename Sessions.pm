@@ -3,13 +3,14 @@ package Sessions;
 use strict;
 use Exporter;
 use IPC::SharedMem;
+use POSIX; # For floor() / ceil()
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $DEBUG);
 
 $VERSION      = 0.1;
 $DEBUG        = 0;
 @ISA          = qw(Exporter);
 @EXPORT       = qw(fuzzy plus_or_minus read_conf write_conf
-                  sec_to_human error_msg debug_msg);
+                  sec_to_human error_msg debug_msg extend_session);
 @EXPORT_OK    = @EXPORT;
 
 sub error_msg {
@@ -148,6 +149,63 @@ sub sec_to_human {
   } else {
     return sprintf '%.1f seconds', $secs;
   }
+}
+
+sub extend_session {
+  my $session_file  = shift;
+  my $start_bpm     = shift;
+  my $final_bpm     = shift;
+  my $build_time    = shift;
+  my $peak_time     = shift;
+
+  my $diff_bpm      = abs($start_bpm - $final_bpm);
+  my $avg_bpm       = int(($start_bpm + $final_bpm) / 2);
+
+  my $build_beats   = ceil(($avg_bpm / 60) * $build_time);
+  my $peak_beats    = ceil(($final_bpm / 60) * $peak_time);
+
+  my $actual_build_time = 0;
+  my $actual_peak_time  = 0;
+
+  # Beats per step and an extra beat every nth step
+  my $beat_per_step = 0;
+  my $beat_nth_step = 0;
+
+  if ($diff_bpm > 0) {
+    $beat_per_step = floor($build_beats/$diff_bpm);
+    if ($build_beats % $diff_bpm != 0) {
+      $beat_nth_step = floor($diff_bpm / ($build_beats % $diff_bpm));
+    }
+  }
+
+  if (open my $session_fh,'>>',"$session_file") {
+    printf $session_fh "# start: %s\n", $start_bpm;
+    foreach my $step (0 .. ($diff_bpm-1)) {
+      my $beats = $beat_per_step;
+      if ($beat_nth_step && !($step % $beat_nth_step)) {
+        # Add an extra beat, because this is the nth bpm step
+        $beats++;
+      }
+      if ($beats) {
+        my $bpm = $start_bpm + $step;
+        if ($start_bpm > $final_bpm) {
+          $bpm = $start_bpm - $step;
+        }
+        $actual_build_time += $beats / ($bpm / 60);
+        printf $session_fh "%g %g/4 2/8\n",$beats,$bpm;
+      }
+    }
+
+    printf $session_fh "# build_time: %0.2fs (%gs requested)\n",
+            $actual_build_time, $build_time;
+    printf $session_fh "%g %g/4 2/8\n",$peak_beats,$final_bpm;
+    $actual_peak_time = $peak_beats / ($final_bpm / 60);
+    printf $session_fh "# peak_time: %0.2fs (%gs requested)\n",
+            $actual_peak_time, $peak_time;
+  } else {
+    error_msg("Unable to open $session_file: $!",3);
+  }
+  return $actual_peak_time+$actual_build_time;
 }
 
 1;
