@@ -14,6 +14,45 @@ fi
 
 count=$(<"$count_file")
 
+lube_break=180
+lube_ok=0
+if [[ -e '/tmp/last_lube' ]]; then
+  if [[ $((now - $(stat -c "%Y" '/tmp/last_lube'))) -gt $lube_break ]]; then
+    lube_ok=1
+  fi
+else
+  lube_ok=1
+fi
+
+icy_break=300
+icy_ok=0
+if [[ -e '/tmp/last_icy' ]]; then
+  if [[ $((now - $(stat -c "%Y" '/tmp/last_icy'))) -gt $icy_break ]]; then
+    icy_ok=1
+  fi
+else
+  icy_ok=1
+fi
+
+icy_enabled=0
+if [[ -e "$icy_enabled_file" ]]; then
+  icy_enabled=$(stat -c "%Y" "$icy_enabled_file")
+fi
+
+if [[ $icy_enabled -lt $now ]]; then
+  icy_ok=0
+fi
+
+icy_count=0
+if [[ -e '/tmp/icy-pics' ]]; then
+  icy_count=$(</tmp/icy-pics)
+  if [[ $icy_count -gt 0 ]]; then
+    echo $((icy_count - 1)) > /tmp/icy-pics
+  else
+    icy_ok=0
+  fi
+fi
+
 match=0
 for dir in $edge_pics $safe_pics; do
   if [[ "${image%/*}" == "${dir%/*}" ]]; then
@@ -59,45 +98,6 @@ if [[ $match -eq 1 ]]; then
 fi
 
 printf '%i\n' "$gap" > "$gap_file"
-
-lube_break=180
-lube_ok=0
-if [[ -e '/tmp/last_lube' ]]; then
-  if [[ $((now - $(stat -c "%Y" '/tmp/last_lube'))) -gt $lube_break ]]; then
-    lube_ok=1
-  fi
-else
-  lube_ok=1
-fi
-
-icy_break=300
-icy_ok=0
-if [[ -e '/tmp/last_icy' ]]; then
-  if [[ $((now - $(stat -c "%Y" '/tmp/last_icy'))) -gt $icy_break ]]; then
-    icy_ok=1
-  fi
-else
-  icy_ok=1
-fi
-
-icy_enabled=0
-if [[ -e "$icy_enabled_file" ]]; then
-  icy_enabled=$(stat -c "%Y" "$icy_enabled_file")
-fi
-
-if [[ $icy_enabled -lt $now ]]; then
-  icy_ok=0
-fi
-
-icy_count=0
-if [[ -e '/tmp/icy-pics' ]]; then
-  icy_count=$(</tmp/icy-pics)
-  if [[ $icy_count -gt 0 ]]; then
-    echo $((icy_count - 1)) > /tmp/icy-pics
-  else
-    icy_ok=0
-  fi
-fi
 
 add_lube=0
 add_time=0
