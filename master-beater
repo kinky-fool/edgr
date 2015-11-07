@@ -51,7 +51,7 @@ while [[ $ready -ne 1 ]]; do
   base=$((base + 5))
 done
 
-"$HOME/toys/pacer" -icymax $icymax "${args[@]}" > "$program"
+"$HOME/toys/pacer" -icymax $icymax "${args[@]}"
 
 grep -e '#[^ ]' "$program" | while read message; do
   if ! echo "$message" | grep -q 'icy'; then
