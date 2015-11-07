@@ -8,7 +8,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $DEBUG);
 $VERSION      = 0.1;
 $DEBUG        = 0;
 @ISA          = qw(Exporter);
-@EXPORT       = qw(fuzzy plus_or_minus read_config
+@EXPORT       = qw(fuzzy plus_or_minus read_conf write_conf
                   sec_to_human error_msg debug_msg);
 @EXPORT_OK    = @EXPORT;
 
@@ -39,7 +39,7 @@ sub debug_msg {
   return undef;
 }
 
-sub read_config {
+sub read_conf {
   # Attempt to open and read in values from specified config file
   # Returns hash ref containing configuration
   my $conf_file = shift;
@@ -72,6 +72,23 @@ sub read_config {
   }
 
   return \%options;
+}
+
+sub write_conf {
+  my $conf_file   = shift;
+  my $options     = shift;
+
+  if (open my $conf_fh,'>',"$conf_file") {
+    foreach my $option (keys %$options) {
+      my $value = $$options{$option};
+      $value =~ s/:/ /g;
+      printf $conf_fh "%s %s\n", $option, $value;
+    }
+  } else {
+    error_msg("Unable to open $conf_file: $!",2);
+  }
+
+  return 1;
 }
 
 sub fuzzy {
