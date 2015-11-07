@@ -3,18 +3,65 @@
 image=$1
 delay=$2
 
-count_file=/tmp/icy-count
-delay_int=$(printf "%.0f" "$delay")
-if [[ $(echo "$delay_int == $delay" | bc) -eq 0 ]]; then
-  delay_int=$((delay_int + 1))
-fi
-
-message=
+now=$(date +"%s")
 source ~/.config/sexy-slideshow
+count_file=/tmp/icy-count
+icy_enabled_file=/tmp/icy_enabled
+message=''
 
 if [[ ! -e "$count_file" ]]; then
   printf '0\n' > "$count_file"
 fi
+
+count=$(<"$count_file")
+
+match=0
+for dir in $edge_pics $safe_pics; do
+  if [[ "${image%/*}" == "${dir%/*}" ]]; then
+    match=1
+  fi
+done
+
+gap_file=/tmp/icy_gap
+if [[ ! -e "$gap_file" ]]; then
+  printf '0\n' > "$gap_file"
+fi
+gap=$(< "$gap_file")
+
+if [[ $match -eq 0 ]]; then
+  gap=$((gap + 1))
+fi
+
+saves=5
+gap_max=$((11 - count))
+
+for luck in $(seq 1 $saves); do
+  if [[ $((RANDOM % 2)) -eq 1 ]]; then
+    gap_max=$((gap_max + 1))
+  fi
+
+  if [[ $gap -gt $gap_max ]]; then
+    count=$(count - 1)
+  fi
+done
+
+if [[ $gap -gt $gap_max ]]; then
+  count=0
+fi
+
+if [[ $match -eq 1 ]]; then
+  if [[ $gap -gt $gap_max ]]; then
+    add_pics=0
+    for pics in $(seq 1 $((gap - gap_max))); do
+      add_pics=$((add_pics + pics))
+    done
+    add_pics=$((add_pics + $(</tmp/icy-add-pics)))
+    printf '%i\n' "$add_pics" > /tmp/icy-add-pics
+  fi
+  gap=0
+fi
+
+printf '%i\n' "$gap" > "$gap_file"
 
 lube_break=180
 lube_ok=0
@@ -36,30 +83,13 @@ else
   icy_ok=1
 fi
 
-now=$(date +"%s")
-last=$(stat -c "%Y" "$count_file")
-count=$(<"$count_file")
-last_count=$count
-passed=$((now - last))
-timeout=$((delay_int * (6 - (count / 2))))
-saves=3
-
-while [[ $passed -gt $timeout && $count -gt 0 && $saves -gt 0 ]]; do
-  timeout=$((timeout + (delay_int * (4 - saves))))
-
-  if [[ $count -gt 1 ]]; then
-    count=$((count - 1))
-  fi
-  saves=$((saves - 1))
-done
-
-if [[ $saves -le 0 ]]; then
-  count=0
+icy_enabled=0
+if [[ -e "$icy_enabled_file" ]]; then
+  icy_enabled=$(stat -c "%Y" "$icy_enabled_file")
 fi
 
-if [[ $count -le 0 && $last_count -ne $count ]]; then
-  add_pics=$(($(</tmp/icy-add-pics) + 3))
-  printf '%i\n' "$($HOME/tools/fuzzify $add_pics)" > /tmp/icy-add-pics
+if [[ $icy_enabled -lt $now ]]; then
+  icy_ok=0
 fi
 
 icy_count=0
@@ -67,51 +97,41 @@ if [[ -e '/tmp/icy-pics' ]]; then
   icy_count=$(</tmp/icy-pics)
   if [[ $icy_count -gt 0 ]]; then
     echo $((icy_count - 1)) > /tmp/icy-pics
-    if [[ $icy_ok -gt 0 ]]; then
-      echo "  Icy: $icy_count"
-    fi
   else
     icy_ok=0
   fi
 fi
 
-bonus=0
 add_lube=0
 add_time=0
-for dir in $edge_pics $safe_pics; do
-  if [[ "${image%/*}" == "${dir%/*}" ]]; then
-    bonus=1
+
+if [[ $match -eq 1 ]]; then
+  edge=0
+  for dir in $edge_pics; do
+    if [[ "${image%/*}" == "${dir%/*}" ]]; then
+      edge=1
+    fi
+  done
+
+  if [[ $edge -eq 1 ]]; then
+    count=$((count + 1))
   fi
-done
 
-edge=0
-for dir in $edge_pics; do
-  if [[ "${image%/*}" == "${dir%/*}" ]]; then
-    edge=1
-  fi
-done
-
-message=
-# Not in loop above; could increment count for more than iteration
-if [[ $edge -eq 1 ]]; then
-  count=$((count + 1))
-fi
-
-if [[ $bonus -eq 1 ]]; then
-  if [[ $edge -ne 0 && $icy_ok -ne 0 && \
-        $icy_count -eq 1 && $((RANDOM % 3)) -ne 0 ]]; then
+  if [[ $edge -eq 1 && $icy_ok -eq 1 && \
+        $icy_count -eq 1 && $((RANDOM % 3)) -eq 1 ]]; then
     add_lube=$((add_lube + 1))
   fi
 
-  chances=(30 24 18 24 18 12 18 24 18 24 30 12)
+  chances=(24 24 18 18 12 12 12 18 18 24 24 18)
   chance=${chances[$count]}
-
   if [[ $icy_ok -ne 0 || $edge -ne 0 ]]; then
     chance=$((chance / 2))
   fi
 
-  if [[ $((RANDOM % chance)) -eq 1 ]]; then
-    add_lube=$((add_lube + 1))
+  if [[ $lube_ok -eq 1 ]]; then
+    if [[ $((RANDOM % chance)) -eq 1 ]]; then
+      add_lube=$((add_lube + 1))
+    fi
   fi
 
   if [[ $icy_ok -ne 0 && $edge -ne 0 ]]; then
@@ -121,7 +141,6 @@ if [[ $bonus -eq 1 ]]; then
       add_lube=$((add_lube + 1))
     fi
   fi
-
 
   if [[ $count -gt 10 ]]; then
     count=0
@@ -237,10 +256,15 @@ fi
 
 if [[ -n "$message" ]]; then
   echo -e "  Mistress says $message"
-elif [[ $count -gt 0 ]]; then
-  printf '  %i\n' $count
+else
+  if [[ $icy_ok -gt 0 ]]; then
+    printf '  Icy: %i\n' "$icy_count"
+  fi
+  if [[ $count -gt 0 ]]; then
+    printf '  %i\n' "$count"
+  fi
 fi
 
-if [[ $bonus -eq 1 ]]; then
+if [[ $match -eq 1 ]]; then
   printf '%i\n' $count > "$count_file"
 fi
