@@ -1,267 +1,234 @@
-#!/bin/bash
+#!/usr/bin/perl
 
-image=$1
+use strict;
+use warnings;
+use Sessions;
 
-now=$(date +"%s")
-source ~/.config/sexy-slideshow
-count_file=/tmp/icy-count
-icy_enabled_file=/tmp/icy_enabled
-message=''
+my $image   = $ARGV[0];
+my $now     = time();
+my $message = '';
 
-if [[ ! -e "$count_file" ]]; then
-  printf '0\n' > "$count_file"
-fi
+my $conf_file   = "$ENV{HOME}/.config/sessions";
+my $state_file  = "$ENV{HOME}/.config/sessions.state";
 
-count=$(<"$count_file")
+my $options = read_conf("$conf_file");
+my $state   = read_conf("$state_file");
 
-lube_break=180
-lube_ok=0
-if [[ -e '/tmp/last_lube' ]]; then
-  if [[ $((now - $(stat -c "%Y" '/tmp/last_lube'))) -gt $lube_break ]]; then
-    lube_ok=1
-  fi
-else
-  lube_ok=1
-fi
+my $count   = $$state{match_count};
 
-icy_break=300
-icy_ok=0
-if [[ -e '/tmp/last_icy' ]]; then
-  if [[ $((now - $(stat -c "%Y" '/tmp/last_icy'))) -gt $icy_break ]]; then
-    icy_ok=1
-  fi
-else
-  icy_ok=1
-fi
+# Initialize lube settings
+my $icy_enabled   = 0;
+my $lube_enabled  = 0;
 
-icy_enabled=0
-if [[ -e "$icy_enabled_file" ]]; then
-  icy_enabled=$(stat -c "%Y" "$icy_enabled_file")
-fi
+$$state{icy_until} = $now + 30;
+#$$state{no_icy_until} = $now - 30;
+if ($now >= $$state{no_lube_until}) {
+  $lube_enabled = 1;
+}
 
-if [[ $icy_enabled -lt $now ]]; then
-  icy_ok=0
-fi
+if ($$state{icy_active_count} > 0 and
+      $$state{icy_until} > $now and $now >= $$state{no_icy_until}) {
+  $icy_enabled = 1;
+}
 
-icy_count=0
-if [[ -e '/tmp/icy-pics' ]]; then
-  icy_count=$(</tmp/icy-pics)
-  if [[ $icy_count -gt 0 ]]; then
-    echo $((icy_count - 1)) > /tmp/icy-pics
-  else
-    icy_ok=0
-  fi
-fi
+# Check image filename for match
+my $match = 0;
 
-match=0
-for dir in $edge_pics $safe_pics; do
-  if [[ "${image%/*}" == "${dir%/*}" ]]; then
-    match=1
-  fi
-done
+foreach my $dir (split(/:/,"$$options{match_pics}:$$options{bonus_pics}")) {
+  my ($img_dir) = $image =~ m|^(.*/)[^/]+$|;
+  if ($img_dir =~ m|^$dir|) {
+    $match = 1;
+  }
+}
 
-gap_file=/tmp/icy_gap
-if [[ ! -e "$gap_file" ]]; then
-  printf '0\n' > "$gap_file"
-fi
-gap=$(< "$gap_file")
+my $add_lube  = 0;
+my $add_time  = 0;
 
-if [[ $match -eq 0 ]]; then
-  gap=$((gap + 1))
-fi
+# Penalize for gaps between matching images
+$$state{match_gap}++;
 
-saves=3
-gap_max=$((11 - count))
+my $max_gap = int(($$options{max_match_count} / 2) - ($count / 2)) + 1;
 
-for luck in $(seq 1 $saves); do
-  if [[ $gap -gt $gap_max ]]; then
-    count=$((count - 1))
-  fi
+for my $save (1 .. $$options{saves}) {
+  if ($$state{match_gap} > $max_gap) {
+    if ($count > 1) {
+      $count--;
+    }
+  }
+  #$max_gap += $save;
+  $max_gap++;
+}
 
-  gap_max=$((gap_max + luck))
-done
+if ($count > 0 and $$state{match_gap} > $max_gap) {
+  $$state{icy_active_count} += ($$state{match_gap} - $max_gap);
+  $count = 0;
+}
 
-if [[ $gap -gt $gap_max ]]; then
-  count=0
-fi
+if ($match) {
+  # The gap between matched pictures is now 0
+  $$state{match_gap} = 0;
 
-if [[ $match -eq 1 ]]; then
-  if [[ $gap -gt $gap_max ]]; then
-    add_pics=0
-    for pics in $(seq 1 $((gap - gap_max))); do
-      add_pics=$((add_pics + pics))
-    done
-    add_pics=$((add_pics + $(</tmp/icy-pics)))
-    printf '%i\n' "$add_pics" > /tmp/icy-pics
-  fi
-  gap=0
-fi
+  # Is this a bonus match?
+  my $bonus = 0;
+  foreach my $dir (split(/:/,$$options{bonus_pics})) {
+    my ($img_dir) = $image =~ m|^(.*/)[^/]+$|;
+    if ($img_dir =~ m|^$dir|) {
+      $bonus = 1;
+    }
+  }
 
-printf '%i\n' "$gap" > "$gap_file"
+  # Not in the loop above because this shouldn't be looped
+  if ($bonus) {
+    $count++;
+    if (!int(rand(4)) && $icy_enabled && $$state{icy_active_count} == 1) {
+      $add_lube++;
+    }
+  }
 
-add_lube=0
-add_time=0
+  my @chances = split(/ /,$$options{chances});
+  my $chance = $chances[$count];
 
-if [[ $match -eq 1 ]]; then
-  edge=0
-  for dir in $edge_pics; do
-    if [[ "${image%/*}" == "${dir%/*}" ]]; then
-      edge=1
-    fi
-  done
+  if ($icy_enabled > 0 || $bonus > 0) {
+    $chance = $chance / 2;
+  }
 
-  if [[ $edge -eq 1 ]]; then
-    count=$((count + 1))
-  fi
+  if ($lube_enabled) {
+    if (int(rand($chance)) == 1) {
+      $add_lube++;
+    }
+  }
 
-  if [[ $edge -eq 1 && $icy_ok -eq 1 && \
-        $icy_count -eq 1 && $((RANDOM % 3)) -eq 1 ]]; then
-    add_lube=$((add_lube + 1))
-  fi
+  if ($icy_enabled && $bonus) {
+    $chance = $chance * 2 / 3;
+    if (int(rand($chance)) == 1) {
+      $add_lube++;
+    }
+  }
 
-  chances=(24 24 18 18 12 12 12 18 18 24 24 18)
-  chance=${chances[$count]}
-  if [[ $icy_ok -ne 0 || $edge -ne 0 ]]; then
-    chance=$((chance / 2))
-  fi
+  if ($count > $$options{max_match_count}) {
+    $count = 0;
 
-  if [[ $lube_ok -eq 1 ]]; then
-    if [[ $((RANDOM % chance)) -eq 1 ]]; then
-      add_lube=$((add_lube + 1))
-    fi
-  fi
+    if (!int(rand(4)) && ($icy_enabled || $lube_enabled)) {
+      $add_lube++;
+    }
 
-  if [[ $icy_ok -ne 0 && $edge -ne 0 ]]; then
-    chance=$((chance * 2 / 3))
+    if ($add_lube && ($icy_enabled || $lube_enabled)) {
+      if (!int(rand(3))) {
+        $add_time++;
+      }
+    } else {
+      $add_time++;
+    }
+  }
 
-    if [[ $((RANDOM % chance)) -eq 1 ]]; then
-      add_lube=$((add_lube + 1))
-    fi
-  fi
+  # Update tracked count
+  $$state{match_count} = $count;
+}
 
-  if [[ $count -gt 10 ]]; then
-    count=0
+if ($add_lube) {
+  if ($icy_enabled and $add_lube > 1) {
+    my $dice_roll = int(rand(6)) + int(rand(6)) + 2;
 
-    if [[ $((RANDOM % 4)) -eq 1 && $lube_ok -ne 0 ]]; then
-      add_lube=$((add_lube + 1))
-    fi
+    if ($dice_roll == 2) {
+      $add_lube++;
+    }
 
-    if [[ $((RANDOM % 3)) -eq 1 && $icy_ok -ne 0 ]]; then
-      add_lube=$((add_lube + 1))
-    fi
+    if ($dice_roll == 7 || $dice_roll % 2 == 0) {
+      if (!int(rand(3))) {
+        $icy_enabled = 0;
+      } else {
+        $add_lube = 1;
+      }
+    }
+  }
 
-    if [[ $add_lube -ne 0 && ( $icy_ok -ne 0 || $lube_ok -ne 0 ) ]]; then
-      if [[ $((RANDOM % 3)) -ne 1 ]]; then
-        add_time=$((add_time + 1))
-      fi
-    else
-      add_time=$((add_time + 1))
-    fi
-  fi
-fi
+  if ($icy_enabled) {
+    $$state{match_count} = 0;
+    $$state{no_icy_until} = $now + $$options{icy_break};
+    $message = "lube up your cock...\n    ...with Icy Hot";
 
-message=''
-if [[ $add_lube -gt 0 ]]; then
-  if [[ $icy_ok -ne 0 ]]; then
-    d1=$((RANDOM % 6 + 1))
-    d2=$((RANDOM % 6 + 1))
+    if ($add_lube > 2) {
+      $message = "coat your cock with Icy Hot";
+    } elsif ($add_lube == 2) {
+      $message = "lube up your cock...\n    ...with Icy Hot";
+    }
+  } elsif ($lube_enabled) {
+    $$state{no_lube_until} = $now + $$options{lube_break};
+    $message = "lube up your cock";
+  }
+}
 
-    if [[ $add_lube -gt 1 ]]; then
-      if [[ $((d1 + d2)) -eq 7 ]]; then
-        icy_ok=0
-      fi
+if ($add_time) {
+  my $added_time = 0;
+  $$state{match_count} = 0;
 
-      if [[ $((d1 + d2)) -eq 2 ]]; then
-        add_lube=$((add_lube + 1))
-      elif [[ $(((d1 + d2) % 2)) -eq 0 ]]; then
-        icy_ok=0
-      fi
-    fi
-  fi
+  foreach (1 .. int(rand(3)) + 1) {
+    if (int(rand(6)) == int(rand(6))) {
+      $add_time++;
+    }
+  }
 
-  if [[ $icy_ok -ne 0 ]]; then
-    count=0
+  foreach (1 .. int(rand($add_time)) + 1) {
+    if ($$state{max_time} > $$state{run_time}) {
+      down_then_up($options,$state);
+      $added_time++;
+    }
+  }
 
-    if [[ $add_lube -gt 2 ]]; then
-      message='coat your cock with Icy Hot'
-    elif [[ $add_lube -eq 2 ]]; then
-      message='lube up your cock...\n    ...with lots of Icy Hot'
-    else
-      message='lube up your cock...\n    ...with Icy Hot'
-    fi
+  if ($added_time > 0) {
+    if ($message eq '') {
+      $message = "enjoy some more stroking";
+    } else {
+      $message = "$message...\n    and stroke a bit longer";
+    }
+  }
+}
 
-    touch '/tmp/last_icy'
-  elif [[ $lube_ok -gt 0 ]]; then
-    message='lube up your cock'
-    touch '/tmp/last_lube'
-  fi
-fi
+if ($message ne '') {
+  printf "  Mistress says %s\n", $message;
+} else {
+  if ($icy_enabled) {
+    printf "  Icy: %i\n", $$state{icy_active_count};
+    $$state{icy_active_count}--;
+  }
 
-if [[ $add_time -ne 0 ]]; then
-  count=0
-  if [[ -n "$message" ]]; then
-    message="${message}...\n    ...and stroke a bit longer"
-  else
-    message='enjoy some more stroking'
-  fi
+  if ($count) {
+    printf "  %i\n", $count;
+  }
+}
 
-  for roll_the_dice in $(seq 1 $((RANDOM % 3 + 1))); do
-    if [[ $((RANDOM % 6)) -eq $((RANDOM % 6)) ]]; then
-      add_time=$((add_time + 1))
-    fi
-  done
+write_conf($state_file,$state);
 
-  max_pace=185
-  pacesetter="$HOME/toys/change-pace"
-  prog='/tmp/stroke-session'
-  for add_some_time in $(seq 1 $((RANDOM % add_time + 1))); do
-    start_pace=$(grep -v ^# "$prog" | tail -n1 | awk -F'[ /]' '{print $2}')
-    down_pace=$((max_pace - (RANDOM % 25 + 25)))
-    up_pace=$((max_pace - (RANDOM % 20)))
-    bonus_time=$((RANDOM % 30 + 10))
-    for loop_of_time in $(seq 1 $((RANDOM % 3 + 1))); do
-      if [[ $((RANDOM % 6 + RANDOM % 6)) -eq 2 ]]; then
-        bonus_time=$((RANDOM % 30 + bonus_time))
-      fi
-    done
+sub down_then_up {
+  my $options     = shift;
+  my $state       = shift;
 
-    # Go Down
-    echo "#icy foo" >> "$prog"
-    build=$(((final_pace - down_pace) / 4))
-    if [[ $build -lt 0 ]]; then
-      build=$((build * -1))
-    fi
-    if [[ $build -lt 5 ]]; then
-      build=5
-    fi
-    down_time=$((bonus_time / 4))
-    $pacesetter -s $start_pace -e $down_pace -p $build -S $down_time >> "$prog"
+  my $run_time    = 0;
+  my $start_pace  = $$state{final_pace};
+  my $mid_pace    = $$options{max_pace} - fuzzy($$options{extend_mid});
+  my $fast_pace   = $$options{max_pace} - fuzzy($$options{extend_fast});
+  my $bonus_time  = fuzzy($$options{extend_bonus});
 
-    # Go Up
-    echo "#icy foo" >> "$prog"
-    build=$(((max_pace - down_pace) / 4))
-    if [[ $build -lt 0 ]]; then
-      build=$((build * -1))
-    fi
-    if [[ $build -lt 5 ]]; then
-      build=5
-    fi
-    bonus_time=$((bonus_time * 3 / 4))
-    $pacesetter -s $down_pace -e $up_pace -p $build -S $bonus_time >> "$prog"
-  done
-fi
+  for (0 .. int(rand($$options{extend_bonus_multiplier}))) {
+    $bonus_time += fuzzy($$options{extend_bonus});
+  }
 
-if [[ -n "$message" ]]; then
-  echo -e "  Mistress says $message"
-else
-  if [[ $icy_ok -gt 0 ]]; then
-    printf '  Icy: %i\n' "$icy_count"
-  fi
-  if [[ $count -gt 0 ]]; then
-    printf '  %i\n' "$count"
-  fi
-fi
+  my $build_time  = abs($start_pace - $mid_pace) / 4;
+  my $mid_time    = int(($bonus_time - $build_time) *
+                          ($$options{extend_mid_percent} / 100));
 
-if [[ $match -eq 1 ]]; then
-  printf '%i\n' $count > "$count_file"
-fi
+  $run_time += extend_session($$options{program_file},$start_pace,
+                          $mid_pace,$build_time,$mid_time);
+
+  $$state{final_pace} = $mid_pace;
+
+  my $fast_time = $bonus_time - int($run_time);
+  $build_time = abs($fast_pace - $mid_pace) / 4;
+  $fast_time -= $build_time;
+
+  $run_time += extend_session($$options{program_file},$mid_pace,
+                          $fast_pace,$build_time,$fast_time);
+
+  $$state{final_pace} = $fast_pace;
+  $$state{run_time} += $run_time;
+}
