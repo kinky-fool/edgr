@@ -16,6 +16,9 @@ my $state_file  = "$ENV{HOME}/.config/sessions.state";
 my $options = read_conf("$conf_file");
 my $state   = read_conf("$state_file");
 
+# Initialize some settings
+$$state{arming_countdown} = $$options{arming_countdown};
+
 my $min_pace    = 95;
 my $max_pace    = 185;
 
@@ -79,8 +82,6 @@ GetOptions(
   "icy=i"     => \$icy_chance,
   "icymax=i"  => \$icy_max,
 ) or die("Error in args.\n");
-
-printf "#fastend End at max: %s\n", $end_at_max;
 
 $field = $max_pace - $min_pace;
 if ($field < 0) {
@@ -275,6 +276,7 @@ while ($finished == 0) {
   $elapsed += extend_session($$options{program_file},
                   $pace,$new_pace,$build,$steady);
 
+  $$state{final_pace} = $new_pace;
   # Prep for the next period
   $pace = $new_pace;
 
@@ -301,3 +303,7 @@ printf "#length Session Length: %s [ %s ] %s\n",
         sec_to_human($min_time),
         sec_to_human($elapsed),
         sec_to_human($max_time);
+
+$$state{run_time} = $elapsed;
+$$state{max_time} = $elapsed + (60 * $$options{max_bonus_time});
+write_conf($state_file,$state);
