@@ -12,6 +12,8 @@ my $config_file = "$ENV{HOME}/.config/sessions";
 my $config      = read_config("$config_file");
 my $state       = read_config("$$config{state_file}");
 
+my $until_end   = $$state{elapsed} - (time() - $$state{time_start});
+
 my $matches     = $$state{matches};
 
 # Check image filename for match
@@ -132,6 +134,10 @@ if ($match) {
 }
 
 if ($add_lube) {
+  if ($until_end < $$state{time_for_lube}) {
+    $add_time++;
+  }
+
   if ($icy_enabled and $add_lube > 1) {
     my $dice_roll = int(rand(6)) + int(rand(6)) + 2;
 
