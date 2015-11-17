@@ -135,7 +135,7 @@ exit 0;
 sub begin_session {
   my $state = shift;
 
-  my $command  = "$$state{ctronome} -c 1 -w1 $$state{tick_file} ";
+  my $command  = "aoss $$state{ctronome} -c 1 -w1 $$state{tick_file} ";
      $command .= "-w2 $$state{tock_file} -p $$state{session_script}";
   if (open my $metronome_pipe,'-|',"$command 2>/dev/null") {
     local $SIG{HUP} = sub { print "foo\n"; close $metronome_pipe; exit 0 };
