@@ -4,13 +4,17 @@ use strict;
 use Exporter;
 use IPC::SharedMem;
 use POSIX; # For floor() / ceil()
+use Getopt::Long;
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $DEBUG);
 
 $VERSION      = 0.1;
 $DEBUG        = 0;
 @ISA          = qw(Exporter);
-@EXPORT       = qw(fuzzy plus_or_minus read_conf write_conf
-                  sec_to_human error_msg debug_msg extend_session);
+@EXPORT       = qw(fuzzy plus_or_minus
+                  sec_to_human error_msg debug_msg extend_session
+                  read_config write_config set_state
+                  fisher_yates_shuffle
+                );
 @EXPORT_OK    = @EXPORT;
 
 sub error_msg {
@@ -40,7 +44,7 @@ sub debug_msg {
   return undef;
 }
 
-sub read_conf {
+sub read_config {
   # Attempt to open and read in values from specified config file
   # Returns hash ref containing configuration
   my $conf_file = shift;
@@ -60,11 +64,13 @@ sub read_conf {
       # squish whitespace
       $line =~ s/\s+/\ /g;
 
-      my ($option,$value) = split(/\ /,$line,2);
-      if (defined $options{$option}) {
-        $options{$option} = join(':',$options{$option},split(/ /,$value));
-      } else {
-        $options{$option} = $value;
+      my ($option,$values) = split(/\ /,$line,2);
+      foreach my $value (split(/:/,$values)) {
+        if (defined $options{$option}) {
+          $options{$option} = join(':',$options{$option},$value);
+        } else {
+          $options{$option} = $value;
+        }
       }
     }
     close $conf_fh;
@@ -75,18 +81,18 @@ sub read_conf {
   return \%options;
 }
 
-sub write_conf {
-  my $conf_file   = shift;
-  my $options     = shift;
+sub write_config {
+  my $config_file = shift;
+  my $config      = shift;
 
-  if (open my $conf_fh,'>',"$conf_file") {
-    foreach my $option (keys %$options) {
-      my $value = $$options{$option};
-      $value =~ s/:/ /g;
-      printf $conf_fh "%s %s\n", $option, $value;
+  if (open my $config_fh,'>',"$config_file") {
+    foreach my $option (sort { $a cmp $b } keys %$config) {
+      foreach my $value (sort { $a cmp $b } split(/:/,$$config{$option})) {
+        printf $config_fh "%s %s\n", $option, $value;
+      }
     }
   } else {
-    error_msg("Unable to open $conf_file: $!",2);
+    error_msg("Unable to open $config_file: $!",2);
   }
 
   return 1;
@@ -152,6 +158,139 @@ sub sec_to_human {
 }
 
 sub extend_session {
+  my $state = shift;
+
+  my $pace    = $$state{pace_cur};
+  my $min     = $$state{pace_min};
+  my $max     = $$state{pace_max};
+  my $dir     = $$state{pace_dir};
+  my $down    = $$state{go_down};
+  my $low     = $$state{endzone_low};
+  my $high    = $$state{endzone_high};
+  my $field   = $max - $min;
+  my $percent = ($pace - $min) / $field;
+
+  # Determine the direction for this extension
+  if ($down > 0) {
+    $down--;
+  } else {
+    if ($percent*100 >= $high) {
+      $dir = 1;
+    } elsif ($percent*100 <= $low) {
+      $dir = -1;
+    } elsif (($$state{time_elapsed} / $$state{time_min}) > rand(1)) {
+      $dir = 1;
+    } else {
+      $dir = -1;
+      if (int(rand(2))) {
+        $down = 3 + plus_or_minus(2);
+      }
+    }
+  }
+
+  if ($pace == $max or !int(rand($max - $pace))) {
+    # Decrease pace at least once
+    $down = 0;
+    $dir = -1;
+    if (int(rand(2))) {
+      $down = 3 + plus_or_minus(2);
+    }
+  }
+
+  if ($pace == $min or !int(rand($pace - $min))) {
+    # Increase pace at least once
+    $down = 0;
+    $dir = 1;
+  }
+
+  # Lower size of step as pace approaches either end, largest at 50%
+  my @steps = (34, 21, 13, 8, 5, 3, 2, 1);
+  my $step_tier = 0;
+  if ($dir > 0) {
+    $step_tier = sprintf "%.0f", $percent * $#steps;
+  } else {
+    $step_tier = sprintf "%.0f", (1 - $percent) * $#steps;
+  }
+  my $step = $steps[$step_tier];
+  if ($$state{fuzzify}) {
+    $step = fuzzy($step);
+  }
+  $step = 2 if ($step < 2);
+
+  # Set initial new pace
+  my $new = $pace + ($step * $dir);
+
+  if ($percent*100 >= $high and $dir < 0) {
+    $new = $min + int($field * (fuzzy(50) / 100));
+    if (!int(rand(4))) {
+      $new = $min + int($field * (fuzzy($low) / 100));
+      $down = 3 + plus_or_minus(2);
+    }
+  }
+
+  if ($percent*100 <= $low and $dir > 0) {
+    $new = $min + int($field * (fuzzy(50) / 100));
+    if (!int(rand(4))) {
+      $new = $min + int($field * (fuzzy($high) / 100));
+    }
+  }
+
+  if ($pace < $max and $$state{time_elapsed} > $$state{time_min} and
+      $down <= 0 and $dir < 0 and !int(rand(6))) {
+    $new = $max;
+  }
+
+  if ($new >= $max) {
+    $new = $max;
+  }
+
+  if ($new <= $min) {
+    $new = $min;
+  }
+
+  if ($pace == $new) {
+    error_msg("pace = new pace; bad math somewhere",0);
+  }
+
+  my $new_pct = ($new - $min) / $field;
+  my $steady;
+  if ($dir > 0) {
+    $steady = sprintf "%.0f", $new_pct * 20;
+  } else {
+    $steady = sprintf "%.0f", (1 - $new_pct) * 20;
+  }
+  $steady = 2 if ($steady < 2);
+
+  my $delta_pct = abs($new - $pace) / $field;
+  my $build = int(30 * $delta_pct);
+
+  if ($$state{fuzzify}) {
+    $steady = fuzzy($steady);
+    $build  = fuzzy($build);
+  }
+
+  $build = 2 if ($build < 2);
+
+  if ($new >= ($max - 10)) {
+    $steady = int($steady * 1.5);
+  }
+
+  if ($new == $max) {
+    $steady = int($steady * 1.5);
+  }
+
+  my $time_added =
+      change_pace($$state{session_script},$pace,$new,$build,$steady);
+
+  $$state{time_elapsed} += $time_added;
+  $$state{pace_cur} = $new;
+  $$state{pace_dir} = $dir;
+
+  write_config($$state{state_file},$state);
+  return $time_added;
+}
+
+sub change_pace {
   my $session_file  = shift;
   my $start_bpm     = shift;
   my $final_bpm     = shift;
@@ -206,6 +345,51 @@ sub extend_session {
     error_msg("Unable to open $session_file: $!",3);
   }
   return $actual_peak_time+$actual_build_time;
+}
+
+sub set_state {
+  # Provide config file name to initialize state or
+  # the current state file name to modify state
+  my $config_file = shift;
+
+  my $config      = read_config("$config_file");
+  my $state       = $config;
+
+  GetOptions(
+    "max=i"       => \$$state{pace_max},
+    "min=i"       => \$$state{pace_min},
+    "pace=i"      => \$$state{pace_cur},
+    "short=f"     => \$$state{time_min},
+    "long=f"      => \$$state{time_max},
+    "add=f"       => \$$state{time_add_pct},
+    "sub=f"       => \$$state{time_sub_pct},
+    "sides=i"     => \$$state{dice_sides},
+    "dice=i"      => \$$state{dice_count},
+    "high=i"      => \$$state{dice_high},
+    "low=i"       => \$$state{dice_low},
+    "icy=i"       => \$$state{icy_chance},
+    "icymax=i"    => \$$state{icy_chance_max},
+    "low_end=i"   => \$$state{endzone_low},
+    "high_end=i"  => \$$state{endzone_high},
+    "fuzzify=i"   => \$$state{fuzzify},
+  ) or die("Error in args.\n");
+
+  return $state;
+}
+
+sub fisher_yates_shuffle {
+  my $array = shift;
+  my $i;
+
+  if (@$array < 2) {
+    return;
+  }
+
+  for ($i = @$array; --$i; ) {
+    my $j = int rand ($i+1);
+    next if $i == $j;
+    @$array[$i,$j] = @$array[$j,$i];
+  }
 }
 
 1;
