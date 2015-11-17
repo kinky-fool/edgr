@@ -1,115 +1,242 @@
-#!/bin/bash
+#!/usr/bin/perl
 
-verbose=0
-minutes=5
-min_arg=0
+use strict;
+use warnings;
 
-args=()
-for opt in $@; do
-  if [[ "$opt" =~ ^--?vv*$ ]]; then
-    verbose=$(grep -o "v" <<<"$opt" | wc -l)
-  else
-    args=( "${args[@]}" "$opt" )
-  fi
-done
+use Proc::Killall;
+use Sessions;
 
-if [[ -n "$min_arg" && "$min_arg" =~ ^[0-9]+$ ]]; then
-  minutes=$min_arg
-fi
+my $conf_file   = "$ENV{HOME}/.config/sessions";
+# Read config file and command line args and populate %$state
+my $state       = set_state($conf_file);
 
-chance_pic_pct=35
-total_pics=500
-chance_pics=$((total_pics * chance_pic_pct / 100))
-safe_pics=$((chance_pics * 10 / 100))
-edge_pics=$((chance_pics * 45 / 100))
-rand_pics=$((chance_pics - (safe_pics + edge_pics)))
-porn_pics=$((total_pics - (safe_pics + edge_pics + rand_pics)))
-
-$HOME/toys/sexy-slideshow $safe_pics $edge_pics $rand_pics $porn_pics 3.2 &
-sexy_pid=$!
-
-
-now=$(date +"%s")
-program='/tmp/stroke-session'
-
-state_file="$HOME/.config/sessions.state"
-
-cat << EOF > "$state_file"
-start_time          $now
-icy_active_count    0
-no_icy_until        40
-no_lube_until       20
-max_time            500
-run_time            0
-final_pace          0
-match_count         0
-match_gap           0
-disarm_count        0
-checkins            0
-EOF
-
-base=20
-ready=0
-icymaxmax=100
-icymax=$icymaxmax
-while [[ $ready -ne 1 ]]; do
-  icymax=$((icymaxmax - (RANDOM % base)))
-  if [[ $((icymax % 5)) -eq 0 ]]; then
-    ready=1
-  fi
-  base=$((base + 5))
-done
-
-"$HOME/toys/pacer" -icymax $icymax "${args[@]}"
-
-grep -e '#[^ ]' "$program" | while read message; do
-  if ! echo "$message" | grep -q 'icy'; then
-    echo "$message" | cut -d' ' -f2-
-  fi
-done
-echo "Tempo Ramps:  $(grep '# start:' "$program" | wc -l)"
-
-do_cleanup() {
-  local pid program
-  pid=$1
-  program=$2
-  if ps $pid &>/dev/null; then
-    kill $pid
-  fi
-  rm -f "$program"
-  exit
+$$state{time_start} = time();
+$$state{go_down} = 3 + plus_or_minus(2);
+$$state{pace_dir} = -1;
+# Reduce chances of starting going down
+if (int(rand($$state{go_down}))) {
+  $$state{go_down} = 0;
+  $$state{pace_dir} = 1;
 }
 
-trap "do_cleanup "$sexy_pid" "$program"" SIGINT SIGTERM
+my $field = $$state{pace_max} - $$state{pace_min};
 
+if ($field < 0) {
+  printf STDERR "max_pace lower than min_pace; configuration error.\n";
+  exit 1;
+}
 
-last_bpm=0
-aoss "$HOME/bin/ctronome" -c 1 -w1 "$HOME/toys/tick.wav" \
-  -w2 "$HOME/toys/tock.wav" -p "$program" | while read info; do
-    if echo "$info" | grep -qe '^#icy'; then
-      to_add=$(<"$icy_add_pics")
-      icy=$(<"$icy_pics")
-      echo $((icy + to_add)) > "$icy_pics"
-    fi
-    bpm=$(echo "$info" | grep -e '^BPM:' | cut -c6-)
-    if [[ -n "$bpm" ]]; then
-      if [[ $verbose -eq 2 ]]; then
-        $HOME/toys/show-bpm "$bpm"
-      elif [[ $verbose -eq 1 ]]; then
-        if [[ $bpm -gt $last_bpm ]]; then
-          "$HOME/toys/show-bpm" "+"
-        elif [[ $bpm -lt $last_bpm ]]; then
-          "$HOME/toys/show-bpm" "-"
-        else
-          "$HOME/toys/show-bpm" "$bpm"
-        fi
-        last_bpm=$bpm
-      fi
-    fi
-  done
+if ($$state{pace_cur} == 0) {
+  # Set the starting pace to just above the low endzone
+  $$state{pace_cur} = $$state{pace_min} +
+                      int($field * ($$state{endzone_low} / 100)) + 5;
+}
 
-if ps $sexy_pid &>/dev/null; then
-  kill $sexy_pid
-fi
+# Convert times into seconds
+$$state{time_min} = $$state{time_min} * 60;
+$$state{time_max} = $$state{time_max} * 60;
 
-do_cleanup "$sexy_pid" "$program"
+$$state{time_extra} = $$state{time_max} - $$state{time_min};
+
+if ($$state{dice_count} > 0) {
+  $$state{time_extra} = 0;
+  my @rolls = ();
+  for (1 .. $$state{dice_count} + $$state{dice_high} + $$state{dice_low}) {
+    push @rolls,int(rand($$state{dice_sides}) + 1);
+  }
+  @rolls = sort { $a <=> $b } @rolls;
+  my @lows  = @rolls[0 .. $$state{dice_low}-1];
+  my @highs = @rolls[$#rolls - $$state{dice_high} + 1 .. $#rolls];
+  my @used  = @rolls[$$state{dice_low} .. $#rolls - $$state{dice_high}];
+  printf "Dice Rolls: %s [ %s ] %s\n","@lows","@used","@highs";
+  foreach my $spots (@used) {
+    $$state{time_extra} += $spots * 60;
+  }
+}
+
+if ($$state{fuzzify}) {
+  $$state{time_min}   = fuzzy($$state{time_min});
+  $$state{time_extra} = fuzzy($$state{time_extra});
+}
+
+$$state{time_max} = $$state{time_min} + $$state{time_extra};
+$$state{time_run} = $$state{time_min} + int($$state{time_extra} / 3);
+
+# Initialize the session
+my $finalized   = 0;
+if (open my $session_fh,'>',"$$state{session_script}") {
+  truncate $session_fh,0;
+  close $session_fh;
+} else {
+  error_msg("Unable to open session program file: $!",1);
+}
+
+while ($finalized == 0) {
+  # Twiddle time_run
+  if ($$state{time_add_pct} > rand(100)) {
+    $$state{time_run} += fuzzy(int($$state{time_extra} / 60 * 3));
+    if ($$state{time_run} > $$state{time_max}) {
+      $$state{time_run} = $$state{time_max};
+    }
+  }
+
+  if ($$state{time_sub_pct} > rand(100)) {
+    $$state{time_run} -= fuzzy(int($$state{time_extra} / 60 * 3));
+    if ($$state{time_run} < $$state{time_min}) {
+      $$state{time_run} = $$state{time_min};
+    }
+  }
+
+  extend_session($state);
+
+  if ($$state{time_elapsed} > $$state{time_min}) {
+    if ($$state{time_elapsed} > $$state{time_max}) {
+      $finalized = 1;
+    }
+    if ($$state{time_elapsed} > $$state{time_run}) {
+      $finalized = 1;
+    }
+  }
+}
+
+$$state{time_orig} = $$state{time_elapsed};
+
+if (!int(rand(6))) {
+  $$state{icy_armed} = 1;
+}
+
+write_config($$state{state_file},$state);
+
+# Start the slideshow
+my $slideshow_pid = fork();
+if (!defined $slideshow_pid) {
+  error_msg("Cannot fork() - aborting: $!",1);
+}
+
+if ($slideshow_pid == 0) {
+  sexy_slideshow($state);
+  exit 0;
+}
+
+my $ctronome_pid = fork();
+if (!defined $ctronome_pid) {
+  error_msg("Cannot fork() - aborting: $!",2);
+}
+
+if ($ctronome_pid == 0) {
+  begin_session($state);
+  exit 0;
+}
+
+waitpid -1,0;
+do_cleanup();
+exit 0;
+
+sub begin_session {
+  my $state = shift;
+
+  my $command  = "$$state{ctronome} -c 1 -w1 $$state{tick_file} ";
+     $command .= "-w2 $$state{tock_file} -p $$state{session_script}";
+  if (open my $metronome_pipe,'-|',"$command 2>/dev/null") {
+    local $SIG{HUP} = sub { print "foo\n"; close $metronome_pipe; exit 0 };
+    while (<$metronome_pipe>) {
+      my $line = chomp;
+      if ($line =~ /^# start/) {
+        if ($$state{icy_chance} > rand($$state{icy_chance_max})) {
+          $$state{icy_active} += $$state{icy_bonus};
+        }
+      }
+    }
+    close $metronome_pipe;
+  } else {
+    error_msg("Unable to open pipe: $!",3);
+  }
+}
+
+sub pick_images {
+  my $dirs  = shift;
+  my $count = shift;
+
+  my $multiplier = 10;
+  my $errors = 0;
+
+  my @pool = ();
+  foreach my $dir (split(/:/,$dirs)) {
+    if (opendir my $dir_fh,"$dir") {
+      my @files = grep { /.(jpe?g|gif|bmp|nef|cr2|png)$/i } readdir $dir_fh;
+      @files = map { "$dir/" . $_ } @files;
+      for my $loop (1 .. $multiplier) {
+        fisher_yates_shuffle(\@files);
+        push @pool,@files[1 .. $count];
+      }
+      closedir $dir_fh;
+    } else {
+      $errors++;
+      error_msg("Unable to opendir $dir: $!",0);
+    }
+  }
+
+  if ($errors == 0) {
+    fisher_yates_shuffle(\@pool);
+    return @pool[1 .. $count];
+  } else {
+    return;
+  }
+}
+
+sub sexy_slideshow {
+  my $state = shift;
+
+  my @playlist  = pick_images(
+                      "$$state{image_match_dirs}:$$state{image_bonus_dirs}",
+                      $$state{pics_match}
+                    );
+  push @playlist, pick_images($$state{image_bonus_dirs},$$state{pics_bonus});
+  push @playlist, pick_images($$state{image_match_dirs},$$state{pics_match});
+  push @playlist, pick_images($$state{image_random_dirs},$$state{pics_random});
+
+  fisher_yates_shuffle(\@playlist);
+
+  if (open my $playlist_fh,'>',$$state{image_playlist}) {
+    foreach my $image (@playlist) {
+      print $playlist_fh "$image\n";
+    }
+    close $playlist_fh;
+  } else {
+    error_msg("Unable to open image playlist: $!",4);
+  }
+
+  my $command  = "$$state{image_viewer} --info '$$state{image_checker} '%f'' ";
+     $command .= "--scale-down -Y -F --fontpath '$ENV{HOME}/.fonts/' ";
+     $command .= "-D $$state{image_delay} --font 'FiraSans-Regular/32' ";
+     $command .= "-Z -f $$state{image_playlist}";
+
+  exec "$command >/dev/null 2>&1";
+}
+
+sub do_cleanup {
+  killall 'HUP', 'feh';
+  killall 'HUP', 'ctronome';
+
+  $state = set_state($$state{state_file});
+
+  printf "Session Length: %s [ %s ] %s\n",
+    sec_to_human($$state{time_min}),
+    sec_to_human($$state{time_elapsed}),
+    sec_to_human($$state{time_max});
+  printf "Elapsed Time:   %s\n",sec_to_human(time() - $$state{time_start});
+  printf "Added Time:     %s\n",
+    sec_to_human($$state{time_elapsed} - $$state{time_orig});
+
+  if (-f $$state{state_file}) {
+    unlink $$state{state_file};
+  }
+
+  if (-f $$state{session_script}) {
+    unlink $$state{session_script};
+  }
+
+  if (-f $$state{image_playlist}) {
+    unlink $$state{image_playlist};
+  }
+}
