@@ -8,33 +8,17 @@ my $image   = $ARGV[0];
 my $now     = time();
 my $message = '';
 
-my $conf_file   = "$ENV{HOME}/.config/sessions";
-my $state_file  = "$ENV{HOME}/.config/sessions.state";
+my $config_file = "$ENV{HOME}/.config/sessions";
+my $config      = read_config("$config_file");
+my $state       = read_config("$$config{state_file}");
 
-my $options = read_conf("$conf_file");
-my $state   = read_conf("$state_file");
-
-my $count   = $$state{match_count};
-
-# Initialize lube settings
-my $icy_enabled   = 0;
-my $lube_enabled  = 0;
-
-$$state{icy_until} = $now + 30;
-#$$state{no_icy_until} = $now - 30;
-if ($now >= $$state{no_lube_until}) {
-  $lube_enabled = 1;
-}
-
-if ($$state{icy_active_count} > 0 and
-      $$state{icy_until} > $now and $now >= $$state{no_icy_until}) {
-  $icy_enabled = 1;
-}
+my $matches     = $$state{matches};
 
 # Check image filename for match
 my $match = 0;
 
-foreach my $dir (split(/:/,"$$options{match_pics}:$$options{bonus_pics}")) {
+my $match_dirs = "$$state{image_match_dirs}:$$state{image_bonus_dirs}";
+foreach my $dir (split(/:/,"$match_dirs")) {
   my ($img_dir) = $image =~ m|^(.*/)[^/]+$|;
   if ($img_dir =~ m|^$dir|) {
     $match = 1;
@@ -45,32 +29,54 @@ my $add_lube  = 0;
 my $add_time  = 0;
 
 # Penalize for gaps between matching images
-$$state{match_gap}++;
+$$state{matches_gap}++;
 
-my $max_gap = int(($$options{max_match_count} / 2) - ($count / 2)) + 1;
+my $max_gap = $$state{matches_max} - $matches + 1;
 
-for my $save (1 .. $$options{saves}) {
-  if ($$state{match_gap} > $max_gap) {
-    if ($count > 1) {
-      $count--;
+for my $save (1 .. $$state{saves}) {
+  if ($$state{matches_gap} > $max_gap) {
+    if ($matches > 1) {
+      $matches--;
     }
   }
   #$max_gap += $save;
   $max_gap++;
 }
 
-if ($count > 0 and $$state{match_gap} > $max_gap) {
-  $$state{icy_active_count} += ($$state{match_gap} - $max_gap);
-  $count = 0;
+if ($matches > 0 and $$state{matches_gap} > $max_gap) {
+  $$state{icy_bonus}++;
+  if ($$state{icy_active} < 0) {
+    $$state{icy_active} = 0;
+  }
+  $$state{icy_active} += $$state{icy_bonus};
+  $matches = 0;
+}
+
+# Initialize lube settings
+my $icy_enabled   = 1;
+my $lube_enabled  = 1;
+
+if ($$state{lube_break} > 0) {
+  $lube_enabled = 0;
+}
+
+if ($$state{icy_active} < 0) {
+  $$state{icy_active} = 0;
+}
+
+if ($$state{icy_break} > 0 or
+    $$state{icy_armed} == 0 or
+    $$state{icy_active} == 0)  {
+  $icy_enabled = 0;
 }
 
 if ($match) {
   # The gap between matched pictures is now 0
-  $$state{match_gap} = 0;
+  $$state{matches_gap} = 0;
 
   # Is this a bonus match?
   my $bonus = 0;
-  foreach my $dir (split(/:/,$$options{bonus_pics})) {
+  foreach my $dir (split(/:/,$$state{image_bonus_dirs})) {
     my ($img_dir) = $image =~ m|^(.*/)[^/]+$|;
     if ($img_dir =~ m|^$dir|) {
       $bonus = 1;
@@ -79,14 +85,14 @@ if ($match) {
 
   # Not in the loop above because this shouldn't be looped
   if ($bonus) {
-    $count++;
-    if (!int(rand(4)) && $icy_enabled && $$state{icy_active_count} == 1) {
+    $matches++;
+    if (!int(rand(4)) && $icy_enabled && $$state{icy_active} == 1) {
       $add_lube++;
     }
   }
 
-  my @chances = split(/ /,$$options{chances});
-  my $chance = $chances[$count];
+  my @chances = split(/ /,$$state{chances});
+  my $chance = $chances[$matches];
 
   if ($icy_enabled > 0 || $bonus > 0) {
     $chance = $chance / 2;
@@ -105,8 +111,8 @@ if ($match) {
     }
   }
 
-  if ($count > $$options{max_match_count}) {
-    $count = 0;
+  if ($matches > $$state{matches_max}) {
+    $matches = 0;
 
     if (!int(rand(4)) && ($icy_enabled || $lube_enabled)) {
       $add_lube++;
@@ -122,7 +128,7 @@ if ($match) {
   }
 
   # Update tracked count
-  $$state{match_count} = $count;
+  $$state{matches} = $matches;
 }
 
 if ($add_lube) {
@@ -143,8 +149,8 @@ if ($add_lube) {
   }
 
   if ($icy_enabled) {
-    $$state{match_count} = 0;
-    $$state{no_icy_until} = $now + $$options{icy_break};
+    $$state{matches} = 0;
+    $$state{icy_break} = $$state{icy_per_break};
     $message = "lube up your cock...\n    ...with Icy Hot";
 
     if ($add_lube > 2) {
@@ -153,34 +159,24 @@ if ($add_lube) {
       $message = "lube up your cock...\n    ...with Icy Hot";
     }
   } elsif ($lube_enabled) {
-    $$state{no_lube_until} = $now + $$options{lube_break};
+    $$state{lube_break} = $$state{lube_per_break};
     $message = "lube up your cock";
   }
 }
 
 if ($add_time) {
-  my $added_time = 0;
-  $$state{match_count} = 0;
+  $$state{matches} = 0;
 
-  foreach (1 .. int(rand(3)) + 1) {
-    if (int(rand(6)) == int(rand(6))) {
-      $add_time++;
-    }
+  my $time_to_add = $$state{time_elapsed} * ($$state{time_bonus_pct} / 100);
+  my $extra_time = 0;
+  while ($time_to_add > $extra_time) {
+    $extra_time += extend_session($state);
   }
 
-  foreach (1 .. int(rand($add_time)) + 1) {
-    if ($$state{max_time} > $$state{run_time}) {
-      down_then_up($options,$state);
-      $added_time++;
-    }
-  }
-
-  if ($added_time > 0) {
-    if ($message eq '') {
-      $message = "enjoy some more stroking";
-    } else {
-      $message = "$message...\n    and stroke a bit longer";
-    }
+  if ($message eq '') {
+    $message = "enjoy some more stroking";
+  } else {
+    $message = "$message...\n    and stroke a bit longer";
   }
 }
 
@@ -188,47 +184,17 @@ if ($message ne '') {
   printf "  Mistress says %s\n", $message;
 } else {
   if ($icy_enabled) {
-    printf "  Icy: %i\n", $$state{icy_active_count};
-    $$state{icy_active_count}--;
+    printf "  Icy: %i\n", $$state{icy_active};
   }
 
-  if ($count) {
-    printf "  %i\n", $count;
+  if ($matches) {
+    printf "  %i\n", $matches;
   }
 }
 
-write_conf($state_file,$state);
+# Decrement various counters
+$$state{icy_active}--;
+$$state{icy_break}--;
+$$state{lube_break}--;
 
-sub down_then_up {
-  my $options     = shift;
-  my $state       = shift;
-
-  my $run_time    = 0;
-  my $start_pace  = $$state{final_pace};
-  my $mid_pace    = $$options{max_pace} - fuzzy($$options{extend_mid});
-  my $fast_pace   = $$options{max_pace} - fuzzy($$options{extend_fast});
-  my $bonus_time  = fuzzy($$options{extend_bonus});
-
-  for (0 .. int(rand($$options{extend_bonus_multiplier}))) {
-    $bonus_time += fuzzy($$options{extend_bonus});
-  }
-
-  my $build_time  = abs($start_pace - $mid_pace) / 4;
-  my $mid_time    = int(($bonus_time - $build_time) *
-                          ($$options{extend_mid_percent} / 100));
-
-  $run_time += extend_session($$options{program_file},$start_pace,
-                          $mid_pace,$build_time,$mid_time);
-
-  $$state{final_pace} = $mid_pace;
-
-  my $fast_time = $bonus_time - int($run_time);
-  $build_time = abs($fast_pace - $mid_pace) / 4;
-  $fast_time -= $build_time;
-
-  $run_time += extend_session($$options{program_file},$mid_pace,
-                          $fast_pace,$build_time,$fast_time);
-
-  $$state{final_pace} = $fast_pace;
-  $$state{run_time} += $run_time;
-}
+write_config($$state{state_file},$state);
