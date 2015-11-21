@@ -161,18 +161,24 @@ sub pick_images {
   my $errors = 0;
 
   my @pool = ();
-  foreach my $dir (split(/:/,$dirs)) {
-    if (opendir my $dir_fh,"$dir") {
-      my @files = grep { /.(jpe?g|gif|bmp|nef|cr2|png)$/i } readdir $dir_fh;
-      @files = map { "$dir/" . $_ } @files;
-      for my $loop (1 .. $multiplier) {
-        fisher_yates_shuffle(\@files);
-        push @pool,@files[1 .. $count];
+  foreach my $glob (split(/:/,$dirs)) {
+    foreach my $dir (glob $glob) {
+      if (opendir my $dir_fh,"$dir") {
+        my @files = grep { /.(jpe?g|gif|bmp|nef|cr2|png)$/i } readdir $dir_fh;
+        @files = map { "$dir/" . $_ } @files;
+        my $end = $count - 1;
+        if ($end > $#files) {
+          $end = $#files;
+        }
+        for my $loop (1 .. $multiplier) {
+          fisher_yates_shuffle(\@files);
+          push @pool,@files[0 .. $end];
+        }
+        closedir $dir_fh;
+      } else {
+        $errors++;
+        error_msg("Unable to opendir $dir: $!",0);
       }
-      closedir $dir_fh;
-    } else {
-      $errors++;
-      error_msg("Unable to opendir $dir: $!",0);
     }
   }
 
