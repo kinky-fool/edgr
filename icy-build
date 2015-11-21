@@ -172,8 +172,6 @@ if ($add_lube) {
 }
 
 if ($add_time) {
-  $$state{matches} = 0;
-
   my $time_to_add = $$state{time_elapsed} * ($$state{time_bonus_pct} / 100);
   my $extra_time = 0;
   while ($time_to_add > $extra_time) {
