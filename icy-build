@@ -12,8 +12,7 @@ my $config_file = "$ENV{HOME}/.config/sessions";
 my $config      = read_config("$config_file");
 my $state       = read_config("$$config{state_file}");
 
-my $until_end   = $$state{elapsed} - (time() - $$state{time_start});
-
+my $until_end   = $$state{time_elapsed} - (time() - $$state{time_start});
 my $matches     = $$state{matches};
 
 # Check image filename for match
