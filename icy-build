@@ -86,6 +86,8 @@ if ($match) {
 
   # Not in the loop above because this shouldn't be looped
   if ($bonus) {
+    $$state{lube_break} -= $$state{lube_drop_bonus};
+    $$state{icy_break} -= $$state{icy_drop_bonus};
     $matches++;
     if (!int(rand(4)) && $icy_enabled && $$state{icy_active} == 1) {
       $add_lube++;
