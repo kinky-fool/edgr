@@ -32,7 +32,7 @@ my $add_time  = 0;
 # Penalize for gaps between matching images
 $$state{matches_gap}++;
 
-my $max_gap = $$state{matches_max} - $matches + 1;
+my $max_gap = $$state{matches_max} - $matches + 2;
 
 for my $save (1 .. $$state{saves}) {
   if ($$state{matches_gap} > $max_gap) {
@@ -45,30 +45,10 @@ for my $save (1 .. $$state{saves}) {
 }
 
 if ($matches > 0 and $$state{matches_gap} > $max_gap) {
-  $$state{icy_bonus}++;
-  if ($$state{icy_active} < 0) {
-    $$state{icy_active} = 0;
-  }
-  $$state{icy_active} += $$state{icy_bonus};
+  $$state{prize_rank}++;
+  $$state{prize_active} += $$state{prize_rank};
+  $$state{prize_active} = $$state{prize_rank};
   $matches = 0;
-}
-
-# Initialize lube settings
-my $icy_enabled   = 1;
-my $lube_enabled  = 1;
-
-if ($$state{lube_break} > 0) {
-  $lube_enabled = 0;
-}
-
-if ($$state{icy_active} < 0) {
-  $$state{icy_active} = 0;
-}
-
-if ($$state{icy_break} > 0 or
-    $$state{icy_armed} == 0 or
-    $$state{icy_active} == 0)  {
-  $icy_enabled = 0;
 }
 
 if ($match) {
@@ -76,57 +56,60 @@ if ($match) {
   $$state{matches_gap} = 0;
 
   # Is this a bonus match?
-  my $bonus = 0;
-  foreach my $dir (split(/:/,$$state{image_bonus_dirs})) {
-    my ($img_dir) = $image =~ m|^(.*/)[^/]+$|;
-    if ($img_dir =~ m|^$dir|) {
-      $bonus = 1;
+  my $bonus_match = 0;
+  foreach my $glob (split(/:/,$$state{image_bonus_dirs})) {
+    foreach my $dir (glob $glob) {
+      my ($img_dir) = $image =~ m|^(.*/)[^/]+$|;
+      if ($img_dir =~ m|^$dir|) {
+        $bonus_match = 1;
+      }
     }
   }
 
   # Not in the loop above because this shouldn't be looped
-  if ($bonus) {
-    $$state{lube_break} -= $$state{lube_drop_bonus};
-    $$state{icy_break} -= $$state{icy_drop_bonus};
+  if ($bonus_match) {
+    # Decrement counters, again
+    $$state{reward_break}--;
     $matches++;
-    if (!int(rand(4)) && $icy_enabled && $$state{icy_active} == 1) {
-      $add_lube++;
-    }
-  }
-
-  my @chances = split(/ /,$$state{chances});
-  my $chance = $chances[$matches];
-
-  if ($icy_enabled > 0 || $bonus > 0) {
-    $chance = $chance / 2;
-  }
-
-  if ($lube_enabled) {
-    if (int(rand($chance)) == 1) {
-      $add_lube++;
-    }
-  }
-
-  if ($icy_enabled && $bonus) {
-    $chance = $chance * 2 / 3;
-    if (int(rand($chance)) == 1) {
-      $add_lube++;
-    }
   }
 
   if ($matches > $$state{matches_max}) {
-    $matches = 0;
+    $matches  = 0;
+    $add_time = 1;
+  }
 
-    if (!int(rand(4)) && ($icy_enabled || $lube_enabled)) {
-      $add_lube++;
+  # Decrement counter
+  if ($$state{reward_break} > 0) {
+    $$state{reward_break}--;
+  } else {
+    my @chances = split(/ /,$$state{chances});
+    my $chance = $chances[$matches];
+    my $spins = 1;
+
+    if ($$state{prize_active} or $bonus_match) {
+      $spins++;
     }
 
-    if ($add_lube && ($icy_enabled || $lube_enabled)) {
-      if (!int(rand(3))) {
-        $add_time++;
+    if ($$state{prize_active} and $bonus_match) {
+      $spins++;
+    }
+
+    if ($$state{prize_active} == 1 and $bonus_match) {
+      $spins++;
+    }
+
+    for (1 .. $spins) {
+      if (int(rand($chance)) == 1) {
+        if ($$state{prize_active} and $$state{icy_armed} == 0) {
+          if (int(rand($chance) / 2) == 1) {
+            $add_lube++;
+          } else {
+            $add_time++;
+          }
+        } else {
+          $add_lube++;
+        }
       }
-    } else {
-      $add_time++;
     }
   }
 
@@ -134,12 +117,22 @@ if ($match) {
   $$state{matches} = $matches;
 }
 
+if ($add_time or $add_lube) {
+  $$state{reward_break} = $$state{break_length};
+}
+
 if ($add_lube) {
   if ($until_end < $$state{time_for_lube}) {
     $add_time++;
   }
 
-  if ($icy_enabled and $add_lube > 1) {
+  my $icy_on = 0;
+
+  if ($$state{prize_active} and $$state{icy_armed}) {
+    $icy_on = 1;
+  }
+
+  if ($icy_on and $add_lube) {
     my $dice_roll = int(rand(6)) + int(rand(6)) + 2;
 
     if ($dice_roll == 2) {
@@ -148,34 +141,38 @@ if ($add_lube) {
 
     if ($dice_roll == 7 || $dice_roll % 2 == 0) {
       if (!int(rand(3))) {
-        $icy_enabled = 0;
+        $icy_on = 0;
       } else {
         $add_lube = 1;
       }
     }
   }
 
-  if ($icy_enabled) {
-    $$state{matches} = 0;
-    $$state{icy_break} = $$state{icy_per_break};
+  if ($icy_on) {
+    $$state{prize_active} = 0;
     $message = "lube up your cock...\n    ...with Icy Hot";
-
     if ($add_lube > 2) {
       $message = "coat your cock with Icy Hot";
     } elsif ($add_lube == 2) {
       $message = "lube up your cock...\n    ...with Icy Hot";
     }
-  } elsif ($lube_enabled) {
-    $$state{lube_break} = $$state{lube_per_break};
+  } else {
     $message = "lube up your cock";
   }
 }
 
 if ($add_time) {
-  my $time_to_add = $$state{time_elapsed} * ($$state{time_bonus_pct} / 100);
-  my $extra_time = 0;
-  while ($time_to_add > $extra_time) {
-    $extra_time += extend_session($state);
+  $$state{prize_active} = 0;
+
+  my $time_added  = 0;
+  my $time_to_add = 0;
+
+  for (1 .. $add_time) {
+    $time_to_add += $$state{time_elapsed} * ($$state{time_bonus_pct} / 100);
+  }
+
+  while ($time_to_add > $time_added) {
+    $time_added += extend_session($state);
   }
 
   if ($message eq '') {
@@ -188,18 +185,19 @@ if ($add_time) {
 if ($message ne '') {
   printf "  Mistress says %s\n", $message;
 } else {
-  if ($icy_enabled) {
-    printf "  Icy: %i\n", $$state{icy_active};
+  if ($$state{prize_active}) {
+    printf "  Prize: %i\n", $$state{prize_active};
+    if ($match) {
+      $$state{prize_active}--;
+    }
   }
-
   if ($matches) {
     printf "  %i\n", $matches;
   }
 }
 
-# Decrement various counters
-$$state{icy_active}--;
-$$state{icy_break}--;
-$$state{lube_break}--;
+if ($$state{icy_armed}) {
+  printf "  Icy Armed\n";
+}
 
 write_config($$state{state_file},$state);
