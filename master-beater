@@ -143,7 +143,8 @@ sub begin_session {
       my $line = chomp;
       if ($line =~ /^# start/) {
         if ($$state{icy_chance} > rand($$state{icy_chance_max})) {
-          $$state{icy_active} += $$state{icy_bonus};
+          $$state{bonus_active} += $$state{bonus_rank};
+          write_config($$state{state_file},$state);
         }
       }
     }
@@ -157,7 +158,7 @@ sub pick_images {
   my $dirs  = shift;
   my $count = shift;
 
-  my $multiplier = 10;
+  my $multiplier = 5;
   my $errors = 0;
 
   my @pool = ();
@@ -194,11 +195,11 @@ sub sexy_slideshow {
   my $state = shift;
 
   my @playlist  = pick_images(
-                      "$$state{image_match_dirs}:$$state{image_bonus_dirs}",
-                      $$state{pics_match}
+                      "$$state{image_prize_dirs}:$$state{image_bonus_dirs}",
+                      $$state{pics_seed}
                     );
   push @playlist, pick_images($$state{image_bonus_dirs},$$state{pics_bonus});
-  push @playlist, pick_images($$state{image_match_dirs},$$state{pics_match});
+  push @playlist, pick_images($$state{image_prize_dirs},$$state{pics_prize});
   push @playlist, pick_images($$state{image_random_dirs},$$state{pics_random});
 
   fisher_yates_shuffle(\@playlist);
@@ -214,7 +215,7 @@ sub sexy_slideshow {
 
   my $command  = "$$state{image_viewer} --info '$$state{image_checker} '%f'' ";
      $command .= "--scale-down -Y -F --fontpath '$ENV{HOME}/.fonts/' ";
-     $command .= "-D $$state{image_delay} --font 'FiraSans-Regular/32' ";
+     $command .= "-D $$state{image_delay} --font 'FiraMono-Medium/32' ";
      $command .= "-Z -f $$state{image_playlist}";
 
   exec "$command >/dev/null 2>&1";
