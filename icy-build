@@ -30,52 +30,33 @@ foreach my $dir (split(/:/,$$state{image_bonus_dirs})) {
   }
 }
 
-if ($$state{matches} > $$state{matches_max}) {
-  if ($score) {
-    $$state{matches} = $$state{matches_max};
-  } else {
-    $$state{matches} = 0;
-  }
-}
-
-my $matches = $$state{matches};
-
-$$state{matches_gap}++;
-my $max_gap = ($$state{matches_max} - $matches) / 2 + 1;
-
-foreach my $save (1 .. $$state{saves}) {
-  if ($$state{matches_gap} > $max_gap) {
-    if ($matches > 0) {
-      $matches--;
-    }
-    $max_gap += ($$state{matches_max} - $matches) / 2;
-  }
-}
-
-if ($$state{matches} > 0 and $$state{matches_gap} > $max_gap) {
-  $$state{bonus_rank}++;
-  $$state{bonus_active} = $$state{bonus_rank};
-  $matches = 0;
-}
-
 my $win_prize = 0;
+my $add_time  = 0;
 
 if ($score) {
+  if ($score > 1) {
+    $$state{matches}++;
+  }
+  if ($$state{matches} >= $$state{matches_max}) {
+    $win_prize++;
+    $add_time++;
+    $$state{matches} = $$state{matches_max};
+  }
   # The gap between matched pictures is now 0
   $$state{matches_gap} = 0;
-
-  # Matched in a row
   $$state{matches_run}++;
-
-  if ($score > 1) {
-    if ($matches >= $$state{matches_max}) {
-      $matches = $$state{matches_max};
-      $win_prize++;
-    } else {
-      $matches++;
-    }
+} else {
+  if ($$state{matches} > $$state{matches_max}) {
+    $$state{matches} = 0;
   }
+  $$state{matches_gap}++;
+  $$state{matches_run} = 0;
+}
 
+my $gap_max   = ($$state{matches_max} - $$state{matches}) / 2 + 1;
+my $gap_cur   = $$state{matches_gap};
+
+if ($score) {
   foreach my $spin (1 .. $score) {
     my $chance = $$state{prize_chance};
 
@@ -99,24 +80,26 @@ if ($score) {
       $$state{prize_break}--;
     }
   }
-
-  # Update tracked count
-  $$state{matches} = $matches;
 } else {
-  # Penalize for gaps between matching images
-  $$state{matches_run} = 0;
+  foreach my $save (1 .. $$state{saves}) {
+    if ($gap_cur > $gap_max) {
+      if ($$state{matches} > 0) {
+        $$state{matches}--;
+      }
+      $gap_cur -= $gap_max;
+      $gap_max = ($$state{matches_max} - $$state{matches}) / 2;
+    }
+  }
+  if ($gap_cur > $gap_max) {
+    $$state{bonus_rank}++;
+    $$state{bonus_active} = $$state{bonus_rank};
+    $$state{matches} = 0;
+  }
 }
 
 if ($win_prize) {
-  my $add_time = 0;
-
   if ($until_end < $$state{time_for_lube}) {
     $add_time++;
-  }
-
-  if ($$state{matches} == $$state{matches_max} and $score > 1) {
-    $add_time++;
-    $$state{matches} = 0;
   }
 
   if ($$state{bonus_active} and $$state{bonus_break} == 0) {
@@ -176,13 +159,13 @@ $icy_con =~ s/-/+/ if ($$state{bonus_break} == 0);
 
 printf "  $icy_con  ";
 
-printf '+' x $matches;
-printf '-' x ($$state{matches_max} - $matches);
+printf '+' x $$state{matches};
+printf '-' x ($$state{matches_max} - $$state{matches});
 printf '  ';
 
 my $can_miss = 0;
-if ($max_gap > $$state{matches_gap}) {
-  $can_miss = $max_gap - $$state{matches_gap};
+if ($gap_max > $gap_cur) {
+  $can_miss = $gap_max - $gap_cur;
 }
 
 printf '+' x $can_miss;
