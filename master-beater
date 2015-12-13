@@ -144,8 +144,13 @@ sub begin_session {
       chomp $line;
       if ($line =~ /^# start/) {
         $state = set_state($$state{state_file});
-        if ($$state{icy_chance} > rand($$state{icy_chance_max})) {
+        my $spin = int(rand($$state{icy_chance_max}));
+        if ($$state{icy_chance} > $spin) {
           $$state{bonus_active} += $$state{bonus_rank};
+          if ($$state{bonus_rank} > $$state{icy_toggle_min} and
+              $$state{bonus_rank} < $$state{icy_toggle_max}) {
+            $$state{icy_armed} = toggle_bool($$state{icy_armed});
+          }
           write_config($$state{state_file},$state);
         }
       }
@@ -160,7 +165,7 @@ sub pick_images {
   my $dirs  = shift;
   my $count = shift;
 
-  my $multiplier = 5;
+  my $multiplier = 3;
   my $errors = 0;
 
   my @pool = ();
