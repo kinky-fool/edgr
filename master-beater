@@ -140,7 +140,8 @@ sub begin_session {
   if (open my $metronome_pipe,'-|',"$command 2>/dev/null") {
     local $SIG{HUP} = sub { print "foo\n"; close $metronome_pipe; exit 0 };
     while (<$metronome_pipe>) {
-      my $line = chomp;
+      my $line = $_;
+      chomp $line;
       if ($line =~ /^# start/) {
         if ($$state{icy_chance} > rand($$state{icy_chance_max})) {
           $$state{bonus_active} += $$state{bonus_rank};
