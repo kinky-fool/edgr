@@ -10,7 +10,7 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $DEBUG);
 $VERSION      = 0.1;
 $DEBUG        = 0;
 @ISA          = qw(Exporter);
-@EXPORT       = qw(fuzzy plus_or_minus
+@EXPORT       = qw(fuzzy plus_or_minus toggle_bool
                   sec_to_human error_msg debug_msg extend_session
                   read_config write_config set_state
                   fisher_yates_shuffle
@@ -140,6 +140,14 @@ sub plus_or_minus {
   }
 
   return $result;
+}
+
+sub toggle_bool {
+  my $value = shift;
+  if ($value) {
+    return 0;
+  }
+  return 1;
 }
 
 sub sec_to_human {
