@@ -143,6 +143,7 @@ sub begin_session {
       my $line = $_;
       chomp $line;
       if ($line =~ /^# start/) {
+        $state = set_state($$state{state_file});
         if ($$state{icy_chance} > rand($$state{icy_chance_max})) {
           $$state{bonus_active} += $$state{bonus_rank};
           write_config($$state{state_file},$state);
