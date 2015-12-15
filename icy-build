@@ -44,17 +44,17 @@ if ($score) {
   $$state{matches_gap} = 0;
   $$state{matches_run}++;
   $$state{matches} = $$state{matches_cur};
+
+  if ($score > 1) {
+    $$state{matches}++;
+  }
+
   if ($$state{matches} >= $$state{matches_max}) {
-    $win_prize++;
     $add_time++;
     if ($score > 1) {
       $$state{matches} = $$state{matches_max};
     } else {
       $$state{matches} = 0;
-    }
-  } else {
-    if ($score > 1) {
-      $$state{matches}++;
     }
   }
 
@@ -84,6 +84,11 @@ if ($score) {
 
   $$state{matches_cur} = $$state{matches};
 } else {
+  if ($$state{matches} >= $$state{matches_max}) {
+    $$state{matches} = 0;
+    $$state{matches_cur} = 0;
+  }
+
   my $saves = $$state{saves};
   while ($saves > 0 and $gap_cur >= $gap_max) {
     $saves--;
