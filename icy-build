@@ -188,6 +188,42 @@ if ($add_time) {
   }
 }
 
+my $light_pics = $$state{window_yellow} + $$state{window_green} - 1;
+if ($$state{window_green} and !$$state{countdown_final} and
+      ($light_pics * $$state{image_delay}) >= $until_end) {
+  $$state{light_yellow} = $$state{window_yellow};
+  $$state{light_green}  = $$state{window_green};
+  # Only one green light chance per game.
+  $$state{window_green} = 0;
+  $$state{countdown} = 1;
+  $$state{countdown_final} = 1;
+}
+
+if ($$state{window_green} and !$$state{countdown} and
+      (180 >= $until_end and !int(rand(12)))) {
+  $$state{light_yellow} = $$state{window_yellow};
+  $$state{countdown} = 1;
+  if (!int(rand(6))) {
+    $$state{light_green}  = $$state{window_green};
+    # Only one green light chance per game.
+    $$state{window_green} = 0;
+    $$state{countdown_final} = 1;
+  }
+}
+
+if ($$state{light_yellow}) {
+  printf "Yellow light\n";
+  $$state{light_yellow}--;
+} elsif ($$state{light_green}) {
+  printf "Green light\n";
+  $$state{light_green}--;
+}
+
+if (!$$state{light_yellow} and !$$state{light_green}) {
+  $$state{countdown} = 0;
+  $$state{countdown_final} = 0;
+}
+
 if ($message ne '') {
   printf "  Mistress says %s\n", $message;
 }
