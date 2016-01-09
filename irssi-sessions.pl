@@ -30,43 +30,34 @@ sub owner_message {
 
   my $state       = set_state($$config{state_file});
 
-  # Count the message
-  $$state{messages_seen}++;
-
   # Adjust the percent used to determine if Icy Hot is enabled
   my $icy_chance_add_max = Irssi::settings_get_int('icy_chance_add_max');
   $$state{icy_chance} += int(rand($icy_chance_add_max)+1);
 
   # Increase the Icy Hot bonus
-  $$state{icy_bonus} += Irssi::settings_get_int('icy_bonus');
+  $$state{bonus_rank} += Irssi::settings_get_int('add_rank');
 
   # Immediately increase Icy Hot active
-  $$state{icy_active} += Irssi::settings_get_int('icy_prize');
+  $$state{bonus_active} += Irssi::settings_get_int('add_active');
 
-  # Toggle the arming state for Icy Hot, based on messages received
-  if ($$state{messages_seen} > Irssi::settings_get_int('arm_after')) {
-    if (Irssi::settings_get_int('invert_arming') > 0) {
-      $$state{icy_armed} = 0;
-    } else {
-      $$state{icy_armed} = 1;
-    }
-  } else {
-    if (Irssi::settings_get_int('invert_arming') > 0) {
-      $$state{icy_armed} = 1;
-    } else {
-      $$state{icy_armed} = 0;
-    }
+  $$state{icy_armed} = toggle_bool($$state{icy_armed});
+  if ($$state{messages_seen} > Irssi::settings_get_int('lock_after')) {
+    # Toggle back
+    $$state{icy_armed} = toggle_bool($$state{icy_armed});
   }
 
   # Reduce break before Icy Hot can be used next
-  if ($$state{icy_break} > 0) {
-    $$state{icy_break} -= Irssi::settings_get_int('sub_icy_break');
+  if ($$state{bonus_break} > 0) {
+    $$state{bonus_break} -= Irssi::settings_get_int('sub_break');
   }
 
   # Reduce break before lube can be used next
-  if ($$state{lube_break} > 0) {
-    $$state{lube_break} -= Irssi::settings_get_int('sub_lube_break');
+  if ($$state{prize_break} > 0) {
+    $$state{prize_break} -= Irssi::settings_get_int('sub_break');
   }
+
+  # Count the message
+  $$state{messages_seen}++;
 
   write_config($$state{state_file},$state);
   return;
@@ -106,13 +97,11 @@ sub who_is_it {
 }
 
 Irssi::settings_add_str('sessions','owners','God:Satan');
-Irssi::settings_add_int('sessions','invert_arming',0);
-Irssi::settings_add_int('sessions','sub_icy_break',5);
-Irssi::settings_add_int('sessions','sub_lube_break',3);
-Irssi::settings_add_int('sessions','icy_bonus',3);
-Irssi::settings_add_int('sessions','icy_prize',10);
+Irssi::settings_add_int('sessions','sub_break',2);
+Irssi::settings_add_int('sessions','add_rank',2);
+Irssi::settings_add_int('sessions','add_active',4);
 Irssi::settings_add_int('sessions','icy_chance_add_max',5);
-Irssi::settings_add_int('sessions','arm_after',1);
+Irssi::settings_add_int('sessions','lock_after',5);
 Irssi::settings_add_str('sessions','config_file',"$ENV{HOME}/.config/sessions");
 
 Irssi::signal_add('message private','who_is_it');
