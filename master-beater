@@ -33,10 +33,10 @@ if ($$state{pace_cur} == 0) {
 }
 
 # Convert times into seconds
-$$state{time_min} = $$state{time_min} * 60;
-$$state{time_max} = $$state{time_max} * 60;
-
-$$state{time_extra} = $$state{time_max} - $$state{time_min};
+$$state{time_min}   = $$state{time_min} * 60;
+$$state{time_max}   = $$state{time_max} * 60;
+$$state{time_end}   = int(($$state{time_max} + $$state{time_min}) / 2);
+$$state{time_bonus} = $$state{time_bonus} * 60;
 
 if ($$state{dice_count} > 0) {
   $$state{time_extra} = 0;
@@ -45,22 +45,50 @@ if ($$state{dice_count} > 0) {
     push @rolls,int(rand($$state{dice_sides}) + 1);
   }
   @rolls = sort { $a <=> $b } @rolls;
+
+  $$state{time_min} = 0;
+  foreach my $die (@rolls[0 .. $$state{dice_count}-1]) {
+    $$state{time_min} += 60 * $die;
+  }
+
+  $$state{time_max} = 0;
+  foreach my $die (@rolls[$#rolls - ($$state{dice_count}-1) .. $#rolls]) {
+    $$state{time_max} += 60 * $die;
+  }
+
   my @lows  = @rolls[0 .. $$state{dice_low}-1];
   my @highs = @rolls[$#rolls - $$state{dice_high} + 1 .. $#rolls];
   my @used  = @rolls[$$state{dice_low} .. $#rolls - $$state{dice_high}];
   printf "Dice Rolls: %s [ %s ] %s\n","@lows","@used","@highs";
-  foreach my $spots (@used) {
-    $$state{time_extra} += $spots * 60;
+
+  $$state{time_end} = 0;
+  foreach my $die (@used) {
+    $$state{time_end} += $die * 60;
   }
 }
 
+
 if ($$state{fuzzify}) {
   $$state{time_min}   = fuzzy($$state{time_min});
-  $$state{time_extra} = fuzzy($$state{time_extra});
+  $$state{time_max}   = fuzzy($$state{time_max});
+  $$state{time_end}   = fuzzy($$state{time_end});
+  $$state{time_bonus} = fuzzy($$state{time_bonus});
 }
 
-$$state{time_max} = $$state{time_min} + $$state{time_extra};
-$$state{time_run} = $$state{time_min} + int($$state{time_extra} / 3);
+# Track the initial amount of bonus time
+$$state{time_bonus_start} = $$state{time_bonus};
+
+if ($$state{time_min} > $$state{time_end}) {
+  my $temp = $$state{time_min};
+  $$state{time_min} = $$state{time_end};
+  $$state{time_end} = $temp;
+}
+
+if ($$state{time_end} > $$state{time_max}) {
+  my $temp = $$state{time_end};
+  $$state{time_end} = $$state{time_max};
+  $$state{time_max} = $temp;
+}
 
 # Initialize the session
 my $finalized   = 0;
@@ -72,18 +100,18 @@ if (open my $session_fh,'>',"$$state{session_script}") {
 }
 
 while ($finalized == 0) {
-  # Twiddle time_run
+  # Twiddle time_end
   if ($$state{time_add_pct} > rand(100)) {
-    $$state{time_run} += fuzzy(int($$state{time_extra} / 60 * 3));
-    if ($$state{time_run} > $$state{time_max}) {
-      $$state{time_run} = $$state{time_max};
+    $$state{time_end} += fuzzy(20);
+    if ($$state{time_end} > $$state{time_max}) {
+      $$state{time_end} = $$state{time_max};
     }
   }
 
   if ($$state{time_sub_pct} > rand(100)) {
-    $$state{time_run} -= fuzzy(int($$state{time_extra} / 60 * 3));
-    if ($$state{time_run} < $$state{time_min}) {
-      $$state{time_run} = $$state{time_min};
+    $$state{time_end} -= fuzzy(20);
+    if ($$state{time_end} < $$state{time_min}) {
+      $$state{time_end} = $$state{time_min};
     }
   }
 
@@ -93,7 +121,7 @@ while ($finalized == 0) {
     if ($$state{time_elapsed} > $$state{time_max}) {
       $finalized = 1;
     }
-    if ($$state{time_elapsed} > $$state{time_run}) {
+    if ($$state{time_elapsed} > $$state{time_end}) {
       $finalized = 1;
     }
   }
@@ -236,7 +264,7 @@ sub do_cleanup {
 
   printf "Session Length: %s [ %s ] %s\n",
     sec_to_human($$state{time_min}),
-    sec_to_human($$state{time_elapsed}),
+    sec_to_human($$state{time_orig}),
     sec_to_human($$state{time_max});
   printf "Elapsed Time:   %s\n",sec_to_human(time() - $$state{time_start});
   printf "Added Time:     %s\n",

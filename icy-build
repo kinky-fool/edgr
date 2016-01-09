@@ -144,15 +144,40 @@ if ($win_prize) {
     $$state{prize_break} = $$state{prize_timeout};
     $message = "lube up your cock";
   }
+}
 
-  if ($add_time) {
-    my $time_added  = 0;
-    my $time_to_add = 0;
+if ($message ne '' and $until_end < $$state{time_for_lube}) {
+  $add_time++;
+}
 
-    for (1 .. $add_time) {
-      $time_to_add += $$state{time_elapsed} * ($$state{time_bonus_pct} / 100);
+if ($add_time) {
+  my $time_added  = 0;
+  my $time_to_add = 0;
+
+  for (1 .. $add_time) {
+    $time_to_add += fuzzy(30);
+  }
+
+  my $potential = $$state{time_elapsed} + $time_to_add;
+  if ($potential > $$state{time_max}) {
+    if (($$state{time_max} + $$state{time_bonus}) > $potential) {
+      my $bump = fuzzy(45);
+      if ($bump > $$state{time_bonus}) {
+        $bump = $$state{time_bonus};
+      }
+
+      if ($$state{time_bonus} / $$state{time_bonus_start} > rand(1)) {
+        $$state{time_max}   += $bump;
+        $$state{time_bonus} -= $bump;
+      }
     }
 
+    if ($potential > $$state{time_max}) {
+      $time_to_add = 0;
+    }
+  }
+
+  if ($time_to_add > 0) {
     while ($time_to_add > $time_added) {
       $time_added += extend_session($state);
     }
