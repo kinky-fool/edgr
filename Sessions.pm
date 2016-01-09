@@ -380,7 +380,7 @@ sub set_state {
     "low_end=i"   => \$$state{endzone_low},
     "high_end=i"  => \$$state{endzone_high},
     "fuzzify=i"   => \$$state{fuzzify},
-    "icy_on"      => \$$state{icy_armed},
+    "icy_on"      => \$$state{icy_on},
   ) or die("Error in args.\n");
 
   return $state;

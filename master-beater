@@ -129,7 +129,7 @@ while ($finalized == 0) {
 
 $$state{time_orig} = $$state{time_elapsed};
 
-if (!int(rand(6))) {
+if ($$state{icy_on} and !int(rand(6))) {
   $$state{icy_armed} = 1;
 }
 
@@ -175,8 +175,9 @@ sub begin_session {
         my $spin = int(rand($$state{icy_chance_max}));
         if ($$state{icy_chance} > $spin) {
           $$state{bonus_active} += $$state{bonus_rank};
-          if ($$state{bonus_rank} > $$state{icy_toggle_min} and
-              $$state{bonus_rank} < $$state{icy_toggle_max}) {
+          if ($$state{bonus_rank} >= $$state{icy_toggle_min} and
+              $$state{bonus_rank} <= $$state{icy_toggle_max} and
+              $$state{icy_on}){
             $$state{icy_armed} = toggle_bool($$state{icy_armed});
           }
           write_config($$state{state_file},$state);
