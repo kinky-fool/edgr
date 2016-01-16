@@ -129,8 +129,8 @@ while ($finalized == 0) {
 
 $$state{time_orig} = $$state{time_elapsed};
 
-if ($$state{icy_on} and !int(rand(6))) {
-  $$state{icy_armed} = 1;
+if ($$state{prize_on} and !int(rand(6))) {
+  $$state{prize_armed} = 1;
 }
 
 write_config($$state{state_file},$state);
@@ -177,8 +177,8 @@ sub begin_session {
           $$state{bonus_active} += $$state{bonus_rank};
           if ($$state{bonus_rank} >= $$state{icy_toggle_min} and
               $$state{bonus_rank} <= $$state{icy_toggle_max} and
-              $$state{icy_on}){
-            $$state{icy_armed} = toggle_bool($$state{icy_armed});
+              $$state{prize_on}){
+            $$state{prize_armed} = toggle_bool($$state{prize_armed});
           }
           write_config($$state{state_file},$state);
         }

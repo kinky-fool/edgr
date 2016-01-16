@@ -14,6 +14,19 @@ my $state       = read_config("$$config{state_file}");
 
 my $until_end   = $$state{time_elapsed} - (time() - $$state{time_start});
 
+sub win_bonus {
+  my $chance  = shift;
+  my $score   = shift;
+
+  if ($score > 1) {
+    $chance -= 2;
+  }
+  if (int(rand($chance)) == 1) {
+    return 1;
+  }
+  return 0;
+}
+
 ## Do score stuff
 
 my $score   = 0;
@@ -33,6 +46,7 @@ foreach my $dir (split(/:/,$$state{image_bonus_dirs})) {
 }
 
 my $win_prize = 0;
+my $add_lube  = 0;
 my $add_time  = 0;
 
 if ($score) {
@@ -56,26 +70,28 @@ if ($score) {
   $$state{matches_cur} = $$state{matches};
 
   foreach my $spin (1 .. $score) {
-    my $chance = $$state{prize_chance};
+    $$state{prize_timeout}--  if ($$state{prize_timeout} > 0);
+    $$state{time_timeout}--   if ($$state{time_timeout} > 0);
+    $$state{lube_timeout}--   if ($$state{lube_timeout} > 0);
 
-    if ($score > 1) {
-      $chance = int($chance * 4 / 5);
+    if ($$state{bonus_active} > 0) {
+      if ($$state{prize_on} and $$state{prize_armed}
+          and $$state{prize_timeout} == 0) {
+        if (win_bonus($$state{prize_chance},$score)) {
+          $win_prize++;
+        }
+      }
+
+      if ($$state{time_timeout} == 0) {
+        if (win_bonus($$state{time_chance},$score)) {
+          $add_time++;
+        }
+      }
     }
-
-    if ($$state{bonus_active} and $$state{bonus_break} == 0) {
-      $chance = int($chance * 6 / 4);
-    }
-
-    if (int(rand($chance)) == 1) {
-      $win_prize++;
-    }
-
-    if ($$state{bonus_break} > 0) {
-      $$state{bonus_break}--;
-    }
-
-    if ($$state{prize_break} > 0) {
-      $$state{prize_break}--;
+    if ($$state{lube_timeout} == 0) {
+      if (win_bonus($$state{lube_chance},$score)) {
+        $add_lube++;
+      }
     }
   }
 } else {
@@ -112,36 +128,32 @@ foreach my $save (1 .. $$state{saves}) {
 
 if ($gap_cur >= $gap_max) {
   $$state{bonus_rank}++;
-  $$state{bonus_active} = $$state{bonus_rank};
+  $$state{bonus_active} += $$state{bonus_rank};
   $$state{matches_cur} = 0;
 }
 
-if ($win_prize) {
-  if ($$state{bonus_active} and $$state{bonus_break} == 0) {
-    $$state{bonus_break} = $$state{bonus_timeout};
-    if ($$state{icy_armed}) {
-      $message = "lube up your cock...\n    ...with Icy Hot";
-      if ($win_prize > 2) {
-        $message = "coat your cock with Icy Hot";
-      } elsif ($win_prize == 2) {
-        $message = "lube up your cock...\n    ...with Icy Hot";
-      }
-
-      # Chance to avoid Icy Hot
-      if (int(rand(6)) == int(rand(6))) {
-        $message = "lube up your cock";
-      }
-
-      if (int(rand(6)) == 1) {
-        $add_time++;
-      }
-    } else {
-      $add_time++;
-    }
-  } elsif ($$state{prize_break} == 0) {
-    $$state{prize_break} = $$state{prize_timeout};
-    $message = "lube up your cock";
+if ($add_lube > 0) {
+  $message = "lube up your cock";
+  if ($$state{prize_on} > 0) {
+    $message = "lube up your cock...\n    ...with Liquid Silk";
   }
+  if ($win_prize == 0) {
+    $$state{lube_timeout} = $$state{lube_break};
+  }
+}
+
+if ($win_prize > 0) {
+  $message = "lube up your cock...\n    ...with Icy Hot";
+  if ($win_prize > 1) {
+    $message = "coat your cock with Icy Hot";
+  }
+
+  # Chance to escape Icy Hot
+  if (int(rand(6)) == int(rand(6))) {
+    $message = "lube up your cock...\n    ...with Liquid Silk";
+  }
+
+  $$state{prize_timeout} = $$state{prize_break};
 }
 
 if ($message ne '' and $until_end < $$state{time_for_lube}) {
@@ -153,13 +165,13 @@ if ($add_time) {
   my $time_to_add = 0;
 
   for (1 .. $add_time) {
-    $time_to_add += fuzzy(30);
+    $time_to_add += fuzzy($$state{time_add});
   }
 
   my $potential = $$state{time_elapsed} + $time_to_add;
   if ($potential > $$state{time_max}) {
     if (($$state{time_max} + $$state{time_bonus}) > $potential) {
-      my $bump = fuzzy(45);
+      my $bump = fuzzy($$state{time_add});
       if ($bump > $$state{time_bonus}) {
         $bump = $$state{time_bonus};
       }
@@ -185,6 +197,7 @@ if ($add_time) {
     } else {
       $message = "$message...\n    and stroke a bit longer";
     }
+    $$state{time_timeout} = $$state{time_break};
   }
 }
 
@@ -228,12 +241,14 @@ if ($message ne '') {
   printf "  Mistress says %s\n", $message;
 }
 
-my $icy_con = '---';
-$icy_con =~ s/-/+/ if ($$state{icy_armed});
-$icy_con =~ s/-/+/ if ($$state{bonus_active});
-$icy_con =~ s/-/+/ if ($$state{bonus_break} == 0);
-
-printf "  $icy_con  ";
+my $status = '---';
+if (($$state{prize_timeout} == 0 and $$state{prize_armed})
+      or $$state{time_timeout} == 0) {
+  $status =~ s/-/+/;
+}
+$status =~ s/-/+/ if ($$state{prize_armed} > 0);
+$status =~ s/-/+/ if ($$state{bonus_active} > 0);
+printf "  $status  ";
 
 printf '+' x $$state{matches_cur};
 printf '-' x ($$state{matches_max} - $$state{matches_cur});
