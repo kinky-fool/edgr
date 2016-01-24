@@ -225,7 +225,7 @@ if ($$state{window_green} and !$$state{countdown} and
 }
 
 if ($$state{light_yellow}) {
-  printf "Yellow light\n";
+  print $$state{light_yellow},"\n";
   $$state{light_yellow}--;
 } elsif ($$state{light_green}) {
   printf "Green light\n";
