@@ -66,6 +66,9 @@ my $win_prize = 0;
 my $add_lube  = 0;
 
 if ($score) {
+  if ($$state{matches} > $$state{matches_cur} and $$state{matches_cur} != 0) {
+    $$state{prize_rank} += ($$state{matches} - $$state{matches_cur});
+  }
   $$state{matches} = $$state{matches_cur};
   $$state{matches_gap} = 0;
 
@@ -133,9 +136,8 @@ foreach my $save (1 .. $$state{saves}) {
 
 if ($gap_cur >= $gap_max) {
   $$state{time_rank}++;
-  $$state{bonus_rank}++;
-  $$state{bonus_active} += $$state{bonus_rank};
   $$state{matches_cur} = 0;
+  $$state{prize_rank} = 0;
 }
 
 if ($add_lube > 0) {
