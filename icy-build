@@ -14,24 +14,6 @@ my $state       = read_config("$$config{state_file}");
 
 my $until_end   = $$state{time_elapsed} - (time() - $$state{time_start});
 
-sub win_bonus {
-  my $chance  = shift;
-  my $score   = shift;
-
-  if ($score > 1) {
-    $chance -= 2;
-  }
-
-  if ($chance < 1) {
-    $chance = 1;
-  }
-
-  if (!int(rand($chance))) {
-    return 1;
-  }
-  return 0;
-}
-
 ## Do score stuff
 
 my $score   = 0;
@@ -179,26 +161,6 @@ if ($$state{time_added}) {
   }
 }
 
-sub add_time {
-  my $state = shift;
-  my $time_added = 0;
-
-  if ($$state{time_rank} > 0) {
-    my $time_to_add = fuzzy($$state{time_add} * $$state{time_rank});
-    my $potential = $$state{time_elapsed} + $time_to_add;
-    if ($$state{time_max} >= $potential) {
-      $time_added += extend_session($state);
-    }
-  }
-
-  $$state{time_added} += $time_added;
-  # Reset the time_rank
-  $$state{time_rank} = 0;
-  # Reset the time timeout
-  $$state{time_timeout} = $$state{time_break};
-}
-
-
 if ($$state{go_for_green}) {
   $$state{green_light}  = 0;
   $$state{go_for_green} = 0;
@@ -278,3 +240,40 @@ if ($score) {
 }
 
 write_config($$state{state_file},$state);
+
+sub win_bonus {
+  my $chance  = shift;
+  my $score   = shift;
+
+  if ($score > 1) {
+    $chance -= 2;
+  }
+
+  if ($chance < 1) {
+    $chance = 1;
+  }
+
+  if (!int(rand($chance))) {
+    return 1;
+  }
+  return 0;
+}
+
+sub add_time {
+  my $state = shift;
+  my $time_added = 0;
+
+  if ($$state{time_rank} > 0) {
+    my $time_to_add = fuzzy($$state{time_add} * $$state{time_rank});
+    my $potential = $$state{time_elapsed} + $time_to_add;
+    if ($$state{time_max} >= $potential) {
+      $time_added += extend_session($state);
+    }
+  }
+
+  $$state{time_added} += $time_added;
+  # Reset the time_rank
+  $$state{time_rank} = 0;
+  # Reset the time timeout
+  $$state{time_timeout} = $$state{time_break};
+}
