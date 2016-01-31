@@ -50,6 +50,12 @@ foreach my $dir (split(/:/,$$state{image_bonus_dirs})) {
   }
 }
 
+if ($$state{end_game_start} >= $until_end) {
+  $$state{end_game} = 1;
+} else {
+  $$state{end_game} = 0;
+}
+
 my $win_prize = 0;
 my $add_lube  = 0;
 my $add_time  = 0;
@@ -93,7 +99,8 @@ if ($score) {
         }
       }
     }
-    if ($$state{lube_timeout} == 0) {
+
+    if (!($$state{lube_timeout} or $$state{end_game})) {
       if (win_bonus($$state{lube_chance},$score)) {
         $add_lube++;
       }
@@ -244,14 +251,13 @@ if ($$state{countdown} > 0) {
 
 if (!($$state{countdown} or $$state{green_light} or $$state{go_for_green})) {
   if ($$state{window_yellow} > 0 or $$state{window_green} > 0) {
-    my $time_needed = ($$state{window_yellow} + $$state{window_green} + 1) *
+    my $time_needed = ($$state{window_yellow} + $$state{window_green}) *
                         $$state{image_delay};
     if ($$state{greens} > 0 and int(rand($$state{countdown_chance}))) {
       $time_needed = $$state{window_yellow} * $$state{image_delay};
     }
-    if (($$state{countdown_fromend} >= $until_end and
-        !int(rand($$state{countdown_chance}))) or
-        ($time_needed >= $until_end)) {
+    if ($$state{end_game} and (!int(rand($$state{countdown_chance})) or
+        $time_needed >= ($until_end + $$state{image_delay}))) {
       $$state{countdown} = $$state{window_yellow};
     }
   }
