@@ -228,12 +228,9 @@ if ($message ne '') {
 }
 
 my $status = '---';
-if (($$state{prize_timeout} == 0 and $$state{prize_armed})
-      or $$state{time_timeout} == 0) {
-  $status =~ s/-/+/;
-}
-$status =~ s/-/+/ if ($$state{prize_armed} > 0);
-$status =~ s/-/+/ if ($$state{bonus_active} > 0);
+$status =~ s/-/+/ if ($$state{prize_enabled});
+$status =~ s/-/+/ if ($$state{time_enabled});
+$status =~ s/-/+/ if ($$state{lube_enabled});
 printf "  $status  ";
 
 printf '+' x $$state{matches_cur};
@@ -257,6 +254,7 @@ write_config($$state{state_file},$state);
 sub win_bonus {
   my $chance  = shift;
   my $score   = shift;
+  return 0 unless $score;
 
   if ($score > 1) {
     $chance -= 2;
