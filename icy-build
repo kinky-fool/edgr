@@ -267,7 +267,9 @@ sub add_time {
     my $time_to_add = fuzzy($$state{time_add} * $$state{time_rank});
     my $potential = $$state{time_elapsed} + $time_to_add;
     if ($$state{time_max} >= $potential) {
-      $time_added += extend_session($state);
+      while ($time_to_add > $time_added) {
+        $time_added += extend_session($state);
+      }
     }
   }
 
