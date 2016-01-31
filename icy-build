@@ -58,7 +58,6 @@ if ($$state{end_game_start} >= $until_end) {
 
 my $win_prize = 0;
 my $add_lube  = 0;
-my $add_time  = 0;
 
 if ($score) {
   $$state{matches} = $$state{matches_cur};
@@ -66,9 +65,10 @@ if ($score) {
 
   if ($score > 1) {
     $$state{matches}++;
-    $$state{matches_run}++;
     if ($$state{matches} >= $$state{matches_max}) {
-      $add_time++;
+      $$state{matches_run}++;
+      $$state{time_rank} = 3 * $$state{matches_run};
+      add_time($state);
       $$state{matches} = $$state{matches_max};
     }
   } else {
@@ -92,11 +92,11 @@ if ($score) {
           $win_prize++;
         }
       }
+    }
 
-      if ($$state{time_timeout} == 0) {
-        if (win_bonus($$state{time_chance},$score)) {
-          $add_time++;
-        }
+    if (!$$state{time_timeout}) {
+      if (win_bonus($$state{time_chance},$score)) {
+        add_time($state);
       }
     }
 
@@ -139,6 +139,7 @@ foreach my $save (1 .. $$state{saves}) {
 }
 
 if ($gap_cur >= $gap_max) {
+  $$state{time_rank}++;
   $$state{bonus_rank}++;
   $$state{bonus_active} += $$state{bonus_rank};
   $$state{matches_cur} = 0;
@@ -168,49 +169,33 @@ if ($win_prize > 0) {
   $$state{prize_timeout} = $$state{prize_break};
 }
 
-if ($message ne '' and $until_end < $$state{time_for_lube}) {
-  $add_time++;
+if ($$state{time_added}) {
+  $$state{time_added} = 0;
+
+  if ($message eq '') {
+    $message = 'enjoy some more stroking';
+  } else {
+    $message .= "...\n     and stroke a bit longer";
+  }
 }
 
-if ($add_time) {
-  my $time_added  = 0;
-  my $time_to_add = 0;
+sub add_time {
+  my $state = shift;
+  my $time_added = 0;
 
-  for (1 .. $add_time) {
-    $time_to_add += fuzzy($$state{time_add});
-  }
-
-  my $potential = $$state{time_elapsed} + $time_to_add;
-  if ($potential > $$state{time_max}) {
-    if (($$state{time_max} + $$state{time_bonus}) > $potential) {
-      my $bump = fuzzy($$state{time_add});
-      if ($bump > $$state{time_bonus}) {
-        $bump = $$state{time_bonus};
-      }
-
-      if ($$state{time_bonus} / $$state{time_bonus_start} > rand(1)) {
-        $$state{time_max}   += $bump;
-        $$state{time_bonus} -= $bump;
-      }
-    }
-
-    if ($potential > $$state{time_max}) {
-      $time_to_add = 0;
-    }
-  }
-
-  if ($time_to_add > 0) {
-    while ($time_to_add > $time_added) {
+  if ($$state{time_rank} > 0) {
+    my $time_to_add = fuzzy($$state{time_add} * $$state{time_rank});
+    my $potential = $$state{time_elapsed} + $time_to_add;
+    if ($$state{time_max} >= $potential) {
       $time_added += extend_session($state);
     }
-
-    if ($message eq '') {
-      $message = "enjoy some more stroking";
-    } else {
-      $message = "$message...\n    and stroke a bit longer";
-    }
-    $$state{time_timeout} = $$state{time_break};
   }
+
+  $$state{time_added} += $time_added;
+  # Reset the time_rank
+  $$state{time_rank} = 0;
+  # Reset the time timeout
+  $$state{time_timeout} = $$state{time_break};
 }
 
 
