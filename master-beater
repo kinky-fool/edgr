@@ -187,12 +187,7 @@ sub begin_session {
         my $spin = int(rand($$state{icy_chance_max}));
         if ($$state{icy_chance} > $spin) {
           $$state{time_rank}++;
-          $$state{bonus_active} += $$state{bonus_rank};
-          if ($$state{bonus_rank} >= $$state{icy_toggle_min} and
-              $$state{bonus_rank} <= $$state{icy_toggle_max} and
-              $$state{prize_on}){
-            $$state{prize_armed} = toggle_bool($$state{prize_armed});
-          }
+          $$state{prize_rank}++;
           write_config($$state{state_file},$state);
         }
       }
