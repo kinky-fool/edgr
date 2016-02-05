@@ -50,7 +50,7 @@ if (!$$state{prize_timeout} and $$state{prize_on}) {
   $$state{prize_enabled} = 0;
 }
 
-if (!$$state{time_timeout}) {
+if (!$$state{time_timeout} and $$state{time_rank}) {
   $$state{time_enabled} = 1;
 } else {
   $$state{time_enabled} = 0;
