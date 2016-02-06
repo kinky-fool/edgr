@@ -44,8 +44,9 @@ if ($score) {
   $$state{lube_timeout}--   if ($$state{lube_timeout} > 0);
 }
 
-if (!$$state{prize_timeout} and $$state{prize_on}) {
-  $$state{prize_enabled} = int($$state{prize_rank} / $$state{prize_at_rank});
+if (!$$state{prize_timeout} and $$state{prize_on} and
+    ($$state{prize_rank} > $$state{prize_at_rank})) {
+  $$state{prize_enabled} = 1;
 } else {
   $$state{prize_enabled} = 0;
 }
@@ -78,6 +79,14 @@ if ($score) {
       $$state{matches_run}++;
       $$state{time_rank} = 2 * $$state{matches_run};
       add_time($state);
+      if ($$state{prize_enabled}) {
+        my $chances = $$state{prize_at_rank} - $$state{prize_rank};
+        foreach (1 .. $chances) {
+          if (win_bonus($$state{prize_chance},$score)) {
+            $win_prize++;
+          }
+        }
+      }
       $$state{matches} = $$state{matches_max};
     }
   } else {
@@ -90,10 +99,6 @@ if ($score) {
   $$state{matches_cur} = $$state{matches};
 
   foreach my $spin (1 .. $score) {
-    if ($$state{prize_enabled} and win_bonus($$state{prize_chance},$score)) {
-      $win_prize += $$state{prize_enabled};
-    }
-
     if ($$state{time_enabled} and win_bonus($$state{time_chance},$score)) {
       add_time($state);
     }
@@ -108,6 +113,7 @@ if ($score) {
   if ($$state{matches} >= $$state{matches_max}) {
     $$state{matches_cur} = 0;
     $$state{matches} = 0;
+    $$state{prize_rank} = 0;
   }
   $$state{matches_gap}++;
   $$state{matches_run} = 0;
