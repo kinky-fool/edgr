@@ -76,7 +76,7 @@ if ($score) {
     $$state{matches}++;
     if ($$state{matches} >= $$state{matches_max}) {
       $$state{matches_run}++;
-      $$state{time_rank} = 3 * $$state{matches_run};
+      $$state{time_rank} = 2 * $$state{matches_run};
       add_time($state);
       $$state{matches} = $$state{matches_max};
     }
@@ -135,7 +135,7 @@ foreach my $save (1 .. $$state{saves}) {
 }
 
 if ($gap_cur >= $gap_max) {
-  $$state{time_rank}++;
+  $$state{time_rank} += 2;
   $$state{matches_cur} = 0;
   $$state{prize_rank} = 0;
 }
