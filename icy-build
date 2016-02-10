@@ -133,10 +133,6 @@ foreach my $save (1 .. $$state{saves}) {
     if ($gap_max > 1) {
       $gap_max--;
     }
-
-    if ($gap_max > 1) {
-      $gap_max--;
-    }
   }
 }
 
