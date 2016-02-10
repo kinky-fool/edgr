@@ -275,13 +275,20 @@ sub do_cleanup {
 
   $state = set_state($$state{state_file});
 
+  my $real_elapsed  = time() - $$state{time_start};
+  my $added         = $$state{time_elapsed} - $$state{time_orig};
+  my $remaining     = $$state{time_elapsed} - $real_elapsed;
+
   printf "Session Length: %s [ %s ] %s\n",
     sec_to_human($$state{time_min}),
     sec_to_human($$state{time_orig}),
     sec_to_human($$state{time_max});
-  printf "Elapsed Time:   %s\n",sec_to_human(time() - $$state{time_start});
-  printf "Added Time:     %s\n",
-    sec_to_human($$state{time_elapsed} - $$state{time_orig});
+  printf "Elapsed Time:   %s\n",sec_to_human($real_elapsed);
+  printf "Added Time:     %s\n",sec_to_human($added);
+
+  if ($remaining > 0) {
+    printf "Remaining Time: %s\n", sec_to_human($remaining);
+  }
 
   if (-f $$state{state_file}) {
     unlink $$state{state_file};
