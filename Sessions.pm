@@ -380,7 +380,7 @@ sub init_state {
     "low_end=i"   => \$$state{endzone_low},
     "high_end=i"  => \$$state{endzone_high},
     "fuzzify=i"   => \$$state{fuzzify},
-    "icy_on"      => \$$state{prize_on},
+    "prize_on"    => \$$state{prize_on},
     "green=i"     => \$$state{window_green},
     "yellow=i"    => \$$state{window_yellow},
   ) or die("Error in args.\n");
