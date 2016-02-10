@@ -184,13 +184,12 @@ sub begin_session {
       chomp $line;
       if ($line =~ /^# start/) {
         $state = read_config($$state{state_file});
-        my $spin = int(rand($$state{icy_chance_max}));
-        if ($$state{icy_chance} > $spin) {
+        if ($$state{bonus_chance} > int(rand($$state{bonus_max}))) {
           if ($$state{time_rank} > 0) {
-            $$state{time_rank} += int(rand(4));
+            $$state{time_rank} += int(rand($$state{time_bonus}));
           }
           if ($$state{prize_rank} > 0) {
-            $$state{prize_rank} += int(rand(3));
+            $$state{prize_rank} += int(rand($$state{prize_bonus}));
           }
           write_config($$state{state_file},$state);
         }
