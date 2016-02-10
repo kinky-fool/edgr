@@ -80,7 +80,7 @@ if ($score) {
       $$state{time_rank} = 2 * $$state{matches_run};
       add_time($state);
       if ($$state{prize_enabled}) {
-        my $chances = $$state{prize_at_rank} - $$state{prize_rank};
+        my $chances = $$state{prize_rank} - $$state{prize_at_rank};
         foreach (1 .. $chances) {
           if (win_bonus($$state{prize_chance},$score)) {
             $win_prize++;
