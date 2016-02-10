@@ -12,7 +12,7 @@ $DEBUG        = 0;
 @ISA          = qw(Exporter);
 @EXPORT       = qw(fuzzy plus_or_minus toggle_bool
                   sec_to_human error_msg debug_msg extend_session
-                  read_config write_config set_state
+                  read_config write_config init_state
                   fisher_yates_shuffle
                 );
 @EXPORT_OK    = @EXPORT;
@@ -355,7 +355,7 @@ sub change_pace {
   return $actual_peak_time+$actual_build_time;
 }
 
-sub set_state {
+sub init_state {
   # Provide config file name to initialize state or
   # the current state file name to modify state
   my $config_file = shift;

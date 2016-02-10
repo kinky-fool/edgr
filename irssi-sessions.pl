@@ -28,7 +28,7 @@ sub owner_message {
   # Bail if a state isn't 'detected'
   return unless (-f $$config{state_file});
 
-  my $state       = set_state($$config{state_file});
+  my $state       = read_config("$$config{state_file}");
 
   # Adjust the percent used to determine if Icy Hot is enabled
   my $icy_chance_add_max = Irssi::settings_get_int('icy_chance_add_max');

@@ -8,7 +8,7 @@ use Sessions;
 
 my $conf_file   = "$ENV{HOME}/.config/sessions";
 # Read config file and command line args and populate %$state
-my $state       = set_state($conf_file);
+my $state       = init_state($conf_file);
 
 $$state{time_start} = time();
 $$state{go_down} = 3 + plus_or_minus(2);
@@ -183,7 +183,7 @@ sub begin_session {
       my $line = $_;
       chomp $line;
       if ($line =~ /^# start/) {
-        $state = set_state($$state{state_file});
+        $state = read_config($$state{state_file});
         my $spin = int(rand($$state{icy_chance_max}));
         if ($$state{icy_chance} > $spin) {
           if ($$state{time_rank} > 0) {
@@ -273,7 +273,7 @@ sub do_cleanup {
   killall 'HUP', 'feh';
   killall 'HUP', 'ctronome';
 
-  $state = set_state($$state{state_file});
+  $state = read_config($$state{state_file});
 
   my $real_elapsed  = time() - $$state{time_start};
   my $added         = $$state{time_elapsed} - $$state{time_orig};
