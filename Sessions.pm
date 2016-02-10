@@ -66,6 +66,8 @@ sub read_config {
 
       my ($option,$values) = split(/\ /,$line,2);
       foreach my $value (split(/:/,$values)) {
+        $value =~ s/~/$ENV{HOME}/;
+        $value =~ s/\$HOME/$ENV{HOME}/i;
         if (defined $options{$option}) {
           $options{$option} = join(':',$options{$option},$value);
         } else {
