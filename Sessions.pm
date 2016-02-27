@@ -404,6 +404,9 @@ sub init_state {
   $$state{time_added}   = 0;
   $$state{lube_armed}   = 0;
   $$state{end_game}     = 0;
+  $$state{bonus_rank}   = 0;
+  $$state{buffer}       = $$state{buffer_max};
+  $$state{lubed}        = 0;
 
   return $state;
 }

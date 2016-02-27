@@ -32,6 +32,29 @@ foreach my $dir (split(/:/,$$state{image_bonus_dirs})) {
   }
 }
 
+if (($$state{last_score} and $score) or ($$state{last_score} == $score)) {
+  $$state{streak}++;
+} else {
+  $$state{streak} = 0;
+}
+
+if ($score > 0) {
+  $$state{buffer} = $$state{buffer_max};
+  $$state{buffer_cur} = $$state{buffer_max};
+} else {
+  $$state{buffer}--;
+  if ($$state{buffer} <= 0) {
+    if ($$state{buffer_cur} > 0) {
+      $$state{buffer_cur}--;
+    }
+    $$state{buffer} = $$state{buffer_cur};
+    $$state{bonus_rank}++;
+    if ($$state{matches} > 0) {
+      $$state{matches}--;
+    }
+  }
+}
+
 if ($$state{end_game_start} >= $until_end) {
   $$state{end_game} = 1;
 } else {
@@ -45,13 +68,13 @@ if ($score) {
 }
 
 if (!$$state{prize_timeout} and $$state{prize_on} and
-    ($$state{prize_rank} > $$state{prize_at_rank})) {
+    ($$state{bonus_rank} > $$state{prize_at_rank})) {
   $$state{prize_enabled} = 1;
 } else {
   $$state{prize_enabled} = 0;
 }
 
-if (!$$state{time_timeout} and $$state{time_rank}) {
+if (!$$state{time_timeout} and $$state{bonus_rank}) {
   $$state{time_enabled} = 1;
 } else {
   $$state{time_enabled} = 0;
@@ -63,116 +86,98 @@ if (!($$state{lube_timeout} or $$state{end_game})) {
   $$state{lube_enabled} = 0;
 }
 
+my $add_time  = 0;
 my $win_prize = 0;
 my $add_lube  = 0;
 
-if ($score) {
-  if ($$state{matches} > $$state{matches_cur} and $$state{matches_cur} != 0) {
-    $$state{prize_rank} += ($$state{matches} - $$state{matches_cur});
-  }
-  $$state{matches} = $$state{matches_cur};
-  $$state{matches_gap} = 0;
-
-  if ($score > 1) {
-    $$state{matches}++;
-    if ($$state{matches} >= $$state{matches_max}) {
-      $$state{matches_run}++;
-      $$state{time_rank} = 2 * $$state{matches_run};
-      add_time($state);
-      if ($$state{prize_enabled}) {
-        my $chances = $$state{prize_rank} - $$state{prize_at_rank};
-        foreach (1 .. $chances) {
-          if (win_bonus($$state{prize_chance},$score)) {
-            $win_prize++;
-          }
-        }
-      }
-      $$state{matches} = $$state{matches_max};
-    }
-  } else {
-    $$state{matches_run} = 0;
-    if ($$state{matches} >= $$state{matches_max}) {
-      $$state{matches} = 0;
-    }
-  }
-
-  $$state{matches_cur} = $$state{matches};
-
-  foreach my $spin (1 .. $score) {
-    if ($$state{time_enabled} and win_bonus($$state{time_chance},$score)) {
-      add_time($state);
-    }
-
-    if ($$state{lube_enabled} and win_bonus($$state{lube_chance},$score)) {
-      $add_lube++;
-    }
+if ($score > 1) {
+  $$state{matches}++;
+  if ($$state{matches} >= $$state{matches_max}) {
+    $add_time = 1 + $$state{streak};
+    $$state{bonus_rank} = 1 + ($$state{streak} * 2);
+    $$state{matches} = $$state{matches_max};
   }
 } else {
-  $$state{matches_cur} = $$state{matches};
-
   if ($$state{matches} >= $$state{matches_max}) {
-    $$state{matches_cur} = 0;
     $$state{matches} = 0;
-    $$state{prize_rank} = 0;
-  }
-  $$state{matches_gap}++;
-  $$state{matches_run} = 0;
-}
-
-my $gap_max = int(($$state{matches_max} - $$state{matches}) / 2 + 2);
-my $gap_cur = $$state{matches_gap};
-
-foreach my $save (1 .. $$state{saves}) {
-  if ($gap_cur >= $gap_max) {
-    if ($$state{matches_cur} > 0) {
-      $$state{matches_cur}--;
-    }
-
-    $gap_cur = $gap_cur - $gap_max;
-
-    if ($gap_max > 1) {
-      $gap_max--;
+    $$state{bonus_rank} = 0;
+    if ($$state{streak}) {
+      $$state{matches} = $$state{matches_max};
     }
   }
 }
 
-if ($gap_cur >= $gap_max) {
-  $$state{time_rank} += 2;
-  $$state{matches_cur} = 0;
-  $$state{prize_rank} = 0;
-}
-
-if ($add_lube > 0) {
-  $message = "lube up your cock";
-  if ($$state{prize_on} > 0) {
-    $message = "lube up your cock...\n    ...with Liquid Silk";
-  }
-  if ($win_prize == 0) {
-    $$state{lube_timeout} = $$state{lube_break};
+if ($$state{lube_enabled}) {
+  foreach my $spin (1 .. (($$state{bonus_rank} + 1) * $score)) {
+    if (win_bonus($$state{lube_chance},$add_lube * 5)) {
+      $add_lube++;
+      if ($$state{bonus_rank} > 0) {
+        $$state{bonus_rank}--;
+      }
+    }
   }
 }
 
-if ($win_prize > 0) {
-  $message = "lube up your cock...\n    ...with Icy Hot";
-  if ($win_prize > 1) {
-    $message = "coat your cock with Icy Hot";
+if ($$state{time_enabled}) {
+  foreach my $spin (1 .. ($$state{bonus_rank} * $score)) {
+    if (win_bonus($$state{time_chance},$add_time * 10)) {
+      $add_time++;
+      if ($$state{bonus_rank} > 0) {
+        $$state{bonus_rank}--;
+      }
+    }
   }
+}
 
-  # Chance to escape Icy Hot
-  if (int(rand(6)) == int(rand(6))) {
-    $message = "lube up your cock...\n    ...with Liquid Silk";
+if ($$state{prize_enabled}) {
+  foreach my $spin (1 .. ($$state{bonus_rank} * $score)) {
+    if (win_bonus($$state{prize_chance},$win_prize * 15)) {
+      $win_prize++;
+      if ($$state{bonus_rank} > 0) {
+        $$state{bonus_rank}--;
+      }
+    }
   }
+}
 
+if ($add_lube) {
+  $$state{lube_timeout} = $$state{lube_break};
+  $message = 'use some lube';
+  if ($$state{prize_on}) {
+    $message = 'use some Liquid Silk';
+  }
+  $$state{lubed}++;
+  # Chance for respite
+  if ($win_prize and win_bonus($$state{lube_chance},$add_lube*3)) {
+    $win_prize = 0;
+  }
+}
+
+if ($win_prize) {
   $$state{prize_timeout} = $$state{prize_break};
+  $message = 'use some Icy Hot';
+  if ($win_prize > 3) {
+    $message = 'coat your cock with Icy Hot';
+  }
 }
 
-if ($$state{time_added}) {
-  $$state{time_added} = 0;
+if ($add_time) {
+  $$state{time_timeout} = $$state{time_break};
+  my $added_time = 0;
 
-  if ($message eq '') {
-    $message = 'enjoy some more stroking';
-  } else {
-    $message .= "...\n     and stroke a bit longer";
+  foreach my $time (1 .. $add_time) {
+    $added_time += add_time($state);
+  }
+
+  if ($added_time > 0) {
+    if ($message ne '') {
+      $message .= "...\n   ...and stroke a little longer.";
+    } else {
+      $message = 'enjoy some more time stroking.';
+      if (!int(rand(6))) {
+        $message = 'get yourself close to the edge.';
+      }
+    }
   }
 }
 
@@ -235,32 +240,26 @@ $status =~ s/-/+/ if ($$state{time_enabled});
 $status =~ s/-/+/ if ($$state{lube_enabled});
 printf "  $status  ";
 
-printf '+' x $$state{matches_cur};
-printf '-' x ($$state{matches_max} - $$state{matches_cur});
+printf '+' x $$state{matches};
+printf '-' x ($$state{matches_max} - $$state{matches});
 printf '  ';
 
-my $can_miss = 0;
-if ($gap_max > $gap_cur) {
-  $can_miss = $gap_max - $gap_cur;
-}
-
-printf '+' x $can_miss;
+printf '+' x $$state{buffer};
 printf "\n";
 
 if ($score) {
   $$state{bonus_active}-- if ($$state{bonus_active} > 0);
 }
 
+$$state{last_score} = $score;
+
 write_config($$state{state_file},$state);
 
 sub win_bonus {
-  my $chance  = shift;
-  my $score   = shift;
-  return 0 unless $score;
+  my $base    = shift;
+  my $offset  = shift;
 
-  if ($score > 1) {
-    $chance -= 2;
-  }
+  my $chance = $base - $offset;
 
   if ($chance < 1) {
     $chance = 1;
@@ -269,6 +268,7 @@ sub win_bonus {
   if (!int(rand($chance))) {
     return 1;
   }
+
   return 0;
 }
 
@@ -276,19 +276,15 @@ sub add_time {
   my $state = shift;
   my $time_added = 0;
 
-  if ($$state{time_rank} > 0) {
-    my $time_to_add = fuzzy($$state{time_add} * $$state{time_rank});
-    my $potential = $$state{time_elapsed} + $time_to_add;
-    if ($$state{time_max} >= $potential) {
-      while ($time_to_add > $time_added) {
-        $time_added += extend_session($state);
-      }
+  my $time_to_add = $$state{time_add};
+  if ($$state{fuzzify}) {
+    $time_to_add = fuzzy($time_to_add);
+  }
+  if ($$state{time_max} >= ($$state{time_elapsed} + $time_to_add)) {
+    while($time_to_add > $time_added) {
+      $time_added += extend_session($state);
     }
   }
 
-  $$state{time_added} += $time_added;
-  # Reset the time_rank
-  $$state{time_rank} = 0;
-  # Reset the time timeout
-  $$state{time_timeout} = $$state{time_break};
+  return $time_added;
 }

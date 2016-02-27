@@ -185,11 +185,8 @@ sub begin_session {
       if ($line =~ /^# start/) {
         $state = read_config($$state{state_file});
         if ($$state{bonus_chance} > int(rand($$state{bonus_max}))) {
-          if ($$state{time_rank} > 0) {
-            $$state{time_rank} += int(rand($$state{time_bonus}));
-          }
-          if ($$state{prize_rank} > 0) {
-            $$state{prize_rank} += int(rand($$state{prize_bonus}));
+          if ($$state{bonus_rank} > 0) {
+            $$state{bonus_rank} += int(rand($$state{bonus_bonus}));
           }
           write_config($$state{state_file},$state);
         }
