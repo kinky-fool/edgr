@@ -226,15 +226,12 @@ my $status = '---';
 $status =~ s/-/+/ if ($$state{prize_enabled});
 $status =~ s/-/+/ if ($$state{time_enabled});
 $status =~ s/-/+/ if ($$state{lube_enabled});
-printf "  $status  ";
 
-printf '+' x $$state{matches};
-printf '-' x ($$state{matches_max} - $$state{matches});
-printf '  ';
+my $matches = sprintf "%s%s",
+      '+' x $$state{matches},
+      '-' x ($$state{matches_max} - $$state{matches});
 
-printf '+' x $$state{buffer};
-printf "\n";
-
+my $buffer = sprintf "%s", '+' x $$state{buffer};
 
 my $gauge_count = 0;
 my $gauge_max = 0;
@@ -270,7 +267,16 @@ $gauge_max++;
 $gauge_count++ if (!$$state{lube_timeout});
 $gauge_max++;
 
-printf "  %s%s\n", '+' x $gauge_count, '-' x ($gauge_max - $gauge_count);
+my $gauge = sprintf "%s%s",
+            '+' x $gauge_count,
+            '-' x ($gauge_max - $gauge_count);
+
+printf "  $status"  if ($$state{show_status});
+printf "  $matches" if ($$state{show_matches});
+printf "  $gauge"   if ($$state{show_gauge});
+printf "  $buffer"  if ($$state{show_buffer});
+printf "\n" if ($$state{show_status} or $$state{show_matches} or
+                $$state{show_buffer} or $$state{show_gauge});
 
 if ($score) {
   $$state{bonus_active}-- if ($$state{bonus_active} > 0);
