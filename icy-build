@@ -235,6 +235,43 @@ printf '  ';
 printf '+' x $$state{buffer};
 printf "\n";
 
+
+my $gauge_count = 0;
+my $gauge_max = 0;
+
+$gauge_count++ if (!$$state{prize_timeout});
+$gauge_max++;
+
+$gauge_count++ if ($$state{prize_on});
+$gauge_max++;
+
+$gauge_count++ if ($$state{bonus_rank} >= $$state{prize_at_rank});
+$gauge_max++;
+
+$gauge_count++ if ($$state{prize_enabled});
+$gauge_max++;
+
+$gauge_count++ if (!$$state{time_timeout});
+$gauge_max++;
+
+$gauge_count++ if ($$state{bonus_rank} >= $$state{time_at_rank});
+$gauge_max++;
+
+$gauge_count++ if ($$state{end_game});
+$gauge_max++;
+
+$gauge_count++ if ($$state{time_max} >=
+                    $$state{time_elapsed} + $$state{time_add});
+$gauge_max++;
+
+$gauge_count++ if ($$state{time_enabled});
+$gauge_max++;
+
+$gauge_count++ if (!$$state{lube_timeout});
+$gauge_max++;
+
+printf "  %s%s\n", '+' x $gauge_count, '-' x ($gauge_max - $gauge_count);
+
 if ($score) {
   $$state{bonus_active}-- if ($$state{bonus_active} > 0);
 }
