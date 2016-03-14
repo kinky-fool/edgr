@@ -282,7 +282,7 @@ sub do_cleanup {
   printf "Elapsed Time:   %s\n",sec_to_human($real_elapsed);
   printf "Added Time:     %s\n",sec_to_human($added);
 
-  if ($remaining > 0) {
+  if (int($remaining) > 0) {
     printf "Remaining Time: %s\n", sec_to_human($remaining);
   }
 
