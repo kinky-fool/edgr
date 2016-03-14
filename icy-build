@@ -40,17 +40,17 @@ if (($$state{last_score} and $score) or ($$state{last_score} == $score)) {
 
 if ($score > 0) {
   $$state{buffer} = $$state{buffer_max};
-  $$state{buffer_cur} = $$state{buffer_max};
 } else {
-  $$state{buffer}--;
-  if ($$state{buffer} <= 0) {
-    if ($$state{buffer_cur} > 0) {
-      $$state{buffer_cur}--;
+  if ($$state{buffer} > 0) {
+    $$state{buffer}--;
+    if ($$state{buffer} == 0) {
+      $$state{bonus_rank} += $$state{buffer_max};
     }
-    $$state{buffer} = $$state{buffer_cur};
-    $$state{bonus_rank}++;
+  } else {
+    $$state{buffer} = 0;
     if ($$state{matches} > 0) {
       $$state{matches}--;
+      $$state{bonus_rank}++;
     }
   }
 }
@@ -144,7 +144,7 @@ if ($add_lube) {
 if ($win_prize) {
   $$state{prize_timeout} = $$state{prize_break};
   $message = 'use some Icy Hot';
-  if ($win_prize > 3) {
+  if ($win_prize > 4) {
     $message = 'coat your cock with Icy Hot';
   }
 }
