@@ -68,19 +68,21 @@ if ($score) {
 }
 
 if (!$$state{prize_timeout} and $$state{prize_on} and
-    ($$state{bonus_rank} > $$state{prize_at_rank})) {
+    ($$state{bonus_rank} >= $$state{prize_at_rank})) {
   $$state{prize_enabled} = 1;
 } else {
   $$state{prize_enabled} = 0;
 }
 
-if (!$$state{time_timeout} and $$state{bonus_rank}) {
+if (!$$state{time_timeout} and $$state{bonus_rank} and $$state{end_game} and
+    ($$state{bonus_rank} > $$state{time_at_rank}) and
+    ($$state{time_max} >= $$state{time_elapsed} + $$state{time_add})) {
   $$state{time_enabled} = 1;
 } else {
   $$state{time_enabled} = 0;
 }
 
-if (!($$state{lube_timeout} or $$state{end_game})) {
+if (!$$state{lube_timeout} and !$$state{end_game}) {
   $$state{lube_enabled} = 1;
 } else {
   $$state{lube_enabled} = 0;
