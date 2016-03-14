@@ -108,36 +108,21 @@ if ($score > 1) {
 }
 
 if ($$state{lube_enabled}) {
-  foreach my $spin (1 .. (($$state{bonus_rank} + 1) * $score)) {
-    if (win_bonus($$state{lube_chance},$add_lube * 5)) {
-      $add_lube++;
-      if ($$state{bonus_rank} > 0) {
-        $$state{bonus_rank}--;
-      }
-    }
-  }
+  my $new_rank = win_bonus($$state{lube_chance},$score,$$state{bonus_rank});
+  $add_lube = $$state{bonus_rank} - $new_rank;
+  $$state{bonus_rank} = $new_rank;
 }
 
 if ($$state{time_enabled}) {
-  foreach my $spin (1 .. ($$state{bonus_rank} * $score)) {
-    if (win_bonus($$state{time_chance},$add_time * 10)) {
-      $add_time++;
-      if ($$state{bonus_rank} > 0) {
-        $$state{bonus_rank}--;
-      }
-    }
-  }
+  my $new_rank = win_bonus($$state{time_chance},$score,$$state{bonus_rank});
+  $add_time = $$state{bonus_rank} - $new_rank;
+  $$state{bonus_rank} = $new_rank;
 }
 
 if ($$state{prize_enabled}) {
-  foreach my $spin (1 .. ($$state{bonus_rank} * $score)) {
-    if (win_bonus($$state{prize_chance},$win_prize * 15)) {
-      $win_prize++;
-      if ($$state{bonus_rank} > 0) {
-        $$state{bonus_rank}--;
-      }
-    }
-  }
+  my $new_rank = win_bonus($$state{prize_chance},$score,$$state{bonus_rank});
+  $win_prize = $$state{bonus_rank} - $new_rank;
+  $$state{bonus_rank} = $new_rank;
 }
 
 if ($add_lube) {
@@ -148,7 +133,8 @@ if ($add_lube) {
   }
   $$state{lubed}++;
   # Chance for respite
-  if ($win_prize and win_bonus($$state{lube_chance},$add_lube*3)) {
+  if ($win_prize and
+    win_bonus($$state{lube_chance},$score,$$state{bonus_rank})) {
     $win_prize = 0;
   }
 }
@@ -256,20 +242,25 @@ $$state{last_score} = $score;
 write_config($$state{state_file},$state);
 
 sub win_bonus {
-  my $base    = shift;
-  my $offset  = shift;
+  my $chance  = shift;
+  my $score   = shift;
+  my $rank    = shift;
 
-  my $chance = $base - $offset;
+  my $new_rank = $rank;
 
-  if ($chance < 1) {
-    $chance = 1;
+  foreach my $spin (1 .. $rank) {
+    if (!int(rand($chance))) {
+      if ($new_rank > 0) {
+        $new_rank = $new_rank - $score;
+      }
+
+      if ($chance >= 5) {
+        $chance = $chance - 5;
+      }
+    }
   }
 
-  if (!int(rand($chance))) {
-    return 1;
-  }
-
-  return 0;
+  return $new_rank;
 }
 
 sub add_time {
