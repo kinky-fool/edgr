@@ -306,10 +306,8 @@ sub add_time {
   my $state = shift;
   my $time_added = 0;
 
-  my $time_to_add = $$state{time_add};
-  if ($$state{fuzzify}) {
-    $time_to_add = fuzzy($time_to_add);
-  }
+  my $time_to_add = fuzzy($$state{time_add},$$state{fuzzify} + 1);
+
   if ($$state{time_max} >= ($$state{time_elapsed} + $time_to_add)) {
     while($time_to_add > $time_added) {
       $time_added += extend_session($state);

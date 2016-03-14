@@ -80,15 +80,9 @@ if ($$state{dice_count} > 0) {
 }
 
 # Convert times into seconds
-$$state{time_min} = $$state{time_min} * 60;
-$$state{time_max} = $$state{time_max} * 60;
-$$state{time_end} = $$state{time_end} * 60;
-
-if ($$state{fuzzify}) {
-  $$state{time_min} = fuzzy($$state{time_min});
-  $$state{time_max} = fuzzy($$state{time_max});
-  $$state{time_end} = fuzzy($$state{time_end});
-}
+$$state{time_min} = fuzzy($$state{time_min} * 60,$$state{fuzzify});
+$$state{time_max} = fuzzy($$state{time_max} * 60,$$state{fuzzify});
+$$state{time_end} = fuzzy($$state{time_end} * 60,$$state{fuzzify});
 
 if ($$state{time_min} > $$state{time_end}) {
   my $temp = $$state{time_min};
@@ -114,14 +108,14 @@ if (open my $session_fh,'>',"$$state{session_script}") {
 while ($finalized == 0) {
   # Twiddle time_end
   if ($$state{time_add_pct} > rand(100)) {
-    $$state{time_end} += fuzzy(20);
+    $$state{time_end} += fuzzy(20,2);
     if ($$state{time_end} > $$state{time_max}) {
       $$state{time_end} = $$state{time_max};
     }
   }
 
   if ($$state{time_sub_pct} > rand(100)) {
-    $$state{time_end} -= fuzzy(20);
+    $$state{time_end} -= fuzzy(20,2);
     if ($$state{time_end} < $$state{time_min}) {
       $$state{time_end} = $$state{time_min};
     }

@@ -101,31 +101,38 @@ sub write_config {
 }
 
 sub fuzzy {
-  my $num   = shift;
+  my $number  = shift;
+  my $degree  = shift;
 
-  # Control how far to deviate from $num
-  my $skew = int(rand(3))+2;
-  # Lean toward 0 or 2 * $num
-  my $lean = int(rand(4))+2;
-  # This is not superflous; the rand($lean) below will favor this direction
-  my $point = 1;
-  # "Flip a coin" to determine the direction of the lean
-  if (int(rand(2))) {
-    $point = -1;
-  }
+  return $number if ($degree <= 0);
 
-  my $result = $num;
+  for (1 .. int(rand($degree))) {
+    # Control how far to deviate from $num
+    my $skew = int(rand(3))+2;
+    # Lean toward 0 or 2 * $num
+    my $lean = int(rand(4))+2;
+    # This is not superflous; the rand($lean) below will favor this direction
+    my $point = 1;
+    # "Flip a coin" to determine the direction of the lean
+    if (int(rand(2))) {
+      $point = -1;
+    }
 
-  for (1 .. int($num)) {
-    if (!int(rand($skew))) {
-      if (int(rand($lean))) {
-        $result += $point;
-      } else {
-        $result += ($point * -1);
+    my $result = $number;
+
+    for (1 .. int($number)) {
+      if (!int(rand($skew))) {
+        if (int(rand($lean))) {
+          $result += $point;
+        } else {
+          $result += ($point * -1);
+        }
       }
     }
+
+    $number = $result;
   }
-  return $result;
+  return $number;
 }
 
 sub plus_or_minus {
@@ -221,27 +228,24 @@ sub extend_session {
   } else {
     $step_tier = sprintf "%.0f", (1 - $percent) * $#steps;
   }
-  my $step = $steps[$step_tier];
-  if ($$state{fuzzify}) {
-    $step = fuzzy($step);
-  }
+  my $step = fuzzy($steps[$step_tier],$$state{fuzzify});
   $step = 2 if ($step < 2);
 
   # Set initial new pace
   my $new = $pace + ($step * $dir);
 
   if ($percent*100 >= $high and $dir < 0) {
-    $new = $min + int($field * (fuzzy(50) / 100));
+    $new = $min + int($field * (fuzzy(50,1) / 100));
     if (!int(rand(4))) {
-      $new = $min + int($field * (fuzzy($low) / 100));
+      $new = $min + int($field * (fuzzy($low,1) / 100));
       $down = 3 + plus_or_minus(2);
     }
   }
 
   if ($percent*100 <= $low and $dir > 0) {
-    $new = $min + int($field * (fuzzy(50) / 100));
+    $new = $min + int($field * (fuzzy(50,1) / 100));
     if (!int(rand(4))) {
-      $new = $min + int($field * (fuzzy($high) / 100));
+      $new = $min + int($field * (fuzzy($high,1) / 100));
     }
   }
 
@@ -263,22 +267,18 @@ sub extend_session {
   }
 
   my $new_pct = ($new - $min) / $field;
+  my $delta_pct = abs($new - $pace) / $field;
+
   my $steady;
   if ($dir > 0) {
     $steady = sprintf "%.0f", $new_pct * 20;
   } else {
     $steady = sprintf "%.0f", (1 - $new_pct) * 20;
   }
+  $steady = fuzzy($steady,$$state{fuzzify});
   $steady = 2 if ($steady < 2);
 
-  my $delta_pct = abs($new - $pace) / $field;
-  my $build = int(30 * $delta_pct);
-
-  if ($$state{fuzzify}) {
-    $steady = fuzzy($steady);
-    $build  = fuzzy($build);
-  }
-
+  my $build = fuzzy(int(30 * $delta_pct),$$state{fuzzify});
   $build = 2 if ($build < 2);
 
   if ($new >= ($max - 10)) {
@@ -407,6 +407,8 @@ sub init_state {
   $$state{bonus_rank}   = 0;
   $$state{buffer}       = $$state{buffer_max};
   $$state{lubed}        = 0;
+
+  $$state{matches_max}  = fuzzy($$state{matches_max},$$state{fuzzify}+2);
 
   return $state;
 }
