@@ -405,7 +405,8 @@ sub init_state {
   $$state{lube_armed}   = 0;
   $$state{end_game}     = 0;
   $$state{bonus_rank}   = 0;
-  $$state{buffer}       = $$state{buffer_max};
+  $$state{buffer}       = $$state{buffer_reset};
+  $$state{bonus_jump}   = $$state{buffer_reset};
   $$state{lubed}        = 0;
 
   $$state{matches_max}  = fuzzy($$state{matches_max},$$state{fuzzify}+2);
