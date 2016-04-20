@@ -32,7 +32,6 @@ if ($$state{pace_cur} == 0) {
                       int($field * ($$state{endzone_low} / 100)) + 5;
 }
 
-
 if ($$state{dice_count} > 0) {
   $$state{time_extra} = 0;
   my @rolls = ();
@@ -80,9 +79,34 @@ if ($$state{dice_count} > 0) {
 }
 
 # Convert times into seconds
-$$state{time_min} = fuzzy($$state{time_min} * 60,$$state{fuzzify});
-$$state{time_max} = fuzzy($$state{time_max} * 60,$$state{fuzzify});
-$$state{time_end} = fuzzy($$state{time_end} * 60,$$state{fuzzify});
+$$state{time_min} *= 60;
+$$state{time_max} *= 60;
+$$state{time_end} *= 60;
+
+if ($$state{win} and $$state{win} =~ /[0-9]+/) {
+  my $start_time = $$state{time_end} - ($$state{win} * $$state{time_delta_win});
+  if ($start_time > $$state{time_min}) {
+    $$state{time_min} = $start_time;
+  }
+}
+
+if ($$state{lose} and $$state{lose} =~ /[0-9]+/) {
+  $$state{time_max} = $$state{time_end} +
+                        ($$state{lose} * $$state{time_delta_lose});
+}
+
+$$state{time_end} = $$state{time_min};
+
+if ($$state{lose} and $$state{win} and $$state{wrong} and
+    "$$state{wrong}$$state{win}$$state{lose}" =~ /[0-9]+/) {
+  my $bonus_boost = $$state{wrong} * ($$state{lose} / $$state{win});
+  $$state{time_max} += $$state{time_delta_max} * $bonus_boost;
+}
+
+# Fuzzify time, to a factor of $$state{fuzzify} fuzziness
+$$state{time_min} = fuzzy($$state{time_min},$$state{fuzzify});
+$$state{time_max} = fuzzy($$state{time_max},$$state{fuzzify});
+$$state{time_end} = fuzzy($$state{time_end},$$state{fuzzify});
 
 if ($$state{time_min} > $$state{time_end}) {
   my $temp = $$state{time_min};
@@ -106,21 +130,6 @@ if (open my $session_fh,'>',"$$state{session_script}") {
 }
 
 while ($finalized == 0) {
-  # Twiddle time_end
-  if ($$state{time_add_pct} > rand(100)) {
-    $$state{time_end} += fuzzy(20,2);
-    if ($$state{time_end} > $$state{time_max}) {
-      $$state{time_end} = $$state{time_max};
-    }
-  }
-
-  if ($$state{time_sub_pct} > rand(100)) {
-    $$state{time_end} -= fuzzy(20,2);
-    if ($$state{time_end} < $$state{time_min}) {
-      $$state{time_end} = $$state{time_min};
-    }
-  }
-
   extend_session($state);
 
   if ($$state{time_elapsed} > $$state{time_min}) {

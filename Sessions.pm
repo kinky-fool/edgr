@@ -371,8 +371,6 @@ sub init_state {
     "pace=i"      => \$$state{pace_cur},
     "short=f"     => \$$state{time_min},
     "long=f"      => \$$state{time_max},
-    "add=f"       => \$$state{time_add_pct},
-    "sub=f"       => \$$state{time_sub_pct},
     "sides=i"     => \$$state{dice_sides},
     "dice=i"      => \$$state{dice_count},
     "high=i"      => \$$state{extra_high},
@@ -385,29 +383,33 @@ sub init_state {
     "prize_on"    => \$$state{prize_on},
     "green=i"     => \$$state{window_green},
     "yellow=i"    => \$$state{window_yellow},
+    "win=i"       => \$$state{win},
+    "lose=i"      => \$$state{lose},
+    "score=i"     => \$$state{score},
+    "wrong=i"     => \$$state{wrong},
   ) or die("Error in args.\n");
 
   # Initialize counters and defaults
-  $$state{matches_cur}  = 0;
-  $$state{matches}      = 0;
-  $$state{matches_gap}  = 0;
-  $$state{streak}       = 0;
-  $$state{last_score}   = -1;
-  $$state{countdown}    = 0;
-  $$state{go_for_green} = 0;
-  $$state{green_light}  = 0;
-  $$state{greens}       = 0;
-  $$state{prize_armed}  = 0;
-  $$state{prize_rank}   = 0;
-  $$state{time_armed}   = 0;
-  $$state{time_rank}    = 0;
-  $$state{time_added}   = 0;
-  $$state{lube_armed}   = 0;
-  $$state{end_game}     = 0;
-  $$state{bonus_rank}   = 0;
-  $$state{buffer}       = $$state{buffer_reset};
-  $$state{bonus_jump}   = $$state{buffer_reset};
-  $$state{lubed}        = 0;
+  $$state{matches_cur}      = 0;
+  $$state{matches}          = 0;
+  $$state{matches_gap}      = 0;
+  $$state{streak}           = 0;
+  $$state{last_score}       = -1;
+  $$state{countdown}        = 0;
+  $$state{go_for_green}     = 0;
+  $$state{green_light}      = 0;
+  $$state{greens}           = 0;
+  $$state{prize_armed}      = 0;
+  $$state{prize_rank}       = 0;
+  $$state{time_armed}       = 0;
+  $$state{time_rank}        = 0;
+  $$state{time_added}       = 0;
+  $$state{lube_armed}       = 0;
+  $$state{end_game}         = 0;
+  $$state{bonus_rank}       = 0;
+  $$state{buffer}           = $$state{buffer_reset};
+  $$state{bonus_jump}       = $$state{buffer_reset};
+  $$state{lubed}            = 0;
 
   $$state{matches_max}  = fuzzy($$state{matches_max},$$state{fuzzify}+2);
 
