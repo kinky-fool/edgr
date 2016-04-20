@@ -69,7 +69,6 @@ if ($score > 0) {
     $$state{bonus_rank} += $$state{bonus_jump};
     $rank_info = sprintf "%s + %s = %s",
                   $rank_info,$$state{bonus_jump},$$state{bonus_rank};
-    $$state{buffer} = $$state{buffer_reset};
     $$state{matches} -= $$state{streak};
     if ($$state{matches} < 0) {
       $$state{matches} = 0;
@@ -77,6 +76,7 @@ if ($score > 0) {
     if ($$state{bonus_jump} > $$state{buffer_reset}) {
       $$state{bonus_jump}--;
     }
+    $$state{buffer} = $$state{bonus_jump};
   }
 }
 
