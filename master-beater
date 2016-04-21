@@ -91,7 +91,7 @@ if ($$state{win} and $$state{win} =~ /[0-9]+/) {
 }
 
 if ($$state{lose} and $$state{lose} =~ /[0-9]+/) {
-  $$state{time_max} = $$state{time_end} +
+  $$state{time_max} = $$state{time_min} +
                         ($$state{lose} * $$state{time_delta_lose});
 }
 
