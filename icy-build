@@ -49,8 +49,8 @@ if (($$state{prize_two} or !$$state{lubed}) and
 }
 
 if ($score > 0) {
+  $$state{buffer} += ($score - 1) * 2;
   if ($score > 1) {
-    $$state{buffer} += $score;
     if ($$state{buffer} < $$state{buffer_reset}) {
       $$state{buffer} = $$state{buffer_reset};
     }
@@ -69,7 +69,7 @@ if ($score > 0) {
     $$state{bonus_rank} += $$state{bonus_jump};
     $rank_info = sprintf "%s + %s = %s",
                   $rank_info,$$state{bonus_jump},$$state{bonus_rank};
-    $$state{matches} -= $$state{streak};
+    $$state{matches} -= $$state{bonus_jump};
     if ($$state{matches} < 0) {
       $$state{matches} = 0;
     }
