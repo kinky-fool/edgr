@@ -179,21 +179,6 @@ if ($old_rank < $$state{bonus_rank}) {
   printf " + %s = %s", $$state{bonus_rank} - $old_rank, $$state{bonus_rank};
 }
 
-my $prize_chance = $$state{prize_chance} - (5 * $win_prize);
-if ($prize_chance < 0) {
-  $prize_chance = 0;
-}
-
-my $lube_chance = $$state{lube_chance} - (5 * $add_lube);
-if ($lube_chance < 0) {
-  $lube_chance = 0;
-}
-
-my $time_chance = $$state{time_chance} - (5 * $add_time);
-if ($time_chance < 0) {
-  $time_chance = 0;
-}
-
 if ($win_prize > 0) {
   $$state{prize_timeout} = $$state{prize_break};
   # Chance to avoid prize
