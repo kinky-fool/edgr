@@ -83,22 +83,21 @@ $$state{time_min} *= 60;
 $$state{time_max} *= 60;
 $$state{time_end} *= 60;
 
-if ($$state{win} and $$state{win} =~ /[0-9]+/) {
+if ($$state{win} =~ /[0-9]+/) {
   my $start_time = $$state{time_end} - ($$state{win} * $$state{time_delta_win});
   if ($start_time > $$state{time_min}) {
     $$state{time_min} = $start_time;
   }
 }
 
-if ($$state{lose} and $$state{lose} =~ /[0-9]+/) {
+if ($$state{lose} =~ /[0-9]+/) {
   $$state{time_max} = $$state{time_min} +
                         ($$state{lose} * $$state{time_delta_lose});
 }
 
 $$state{time_end} = $$state{time_min};
 
-if ($$state{lose} and $$state{win} and $$state{wrong} and
-    "$$state{wrong}$$state{win}$$state{lose}" =~ /[0-9]+/) {
+if ("$$state{wrong}$$state{win}$$state{lose}" =~ /[0-9]+/) {
   my $bonus_boost = $$state{wrong} * ($$state{lose} / $$state{win});
   $$state{time_max} += $$state{time_delta_max} * $bonus_boost;
 }
@@ -187,10 +186,8 @@ sub begin_session {
       chomp $line;
       if ($line =~ /^# start/) {
         $state = read_config($$state{state_file});
-        if ($$state{bonus_chance} > int(rand($$state{bonus_max}))) {
-          if ($$state{bonus_rank} > 0) {
-            $$state{bonus_rank} += int(rand($$state{bonus_bonus}));
-          }
+        if ($$state{wrong} > int(rand($$state{score}))) {
+          $$state{bonus_rank} += int(rand($$state{lose}));
           write_config($$state{state_file},$state);
         }
       }
