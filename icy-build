@@ -6,7 +6,6 @@ use Sessions;
 
 my $image   = $ARGV[0];
 my $now     = time();
-my $message = '';
 
 my $config_file = "$ENV{HOME}/.config/sessions";
 my $config      = read_config("$config_file");
@@ -40,14 +39,6 @@ if (($$state{last_score} and $score) or ($$state{last_score} == $score)) {
 
 my $rank_info = "$$state{bonus_rank}";
 
-# Chance to enable Icy Hot if Liquid Silk is being used or lube has not
-# been used and the risk bonus rank has been met
-if (($$state{prize_two} or !$$state{lubed}) and
-    $$state{bonus_rank} >= $$state{prize_risk_at} and
-    win_bonus($$state{prize_chance},$score,$$state{bonus_rank}) >= 3) {
-  $$state{prize_on} = 1;
-}
-
 if ($score > 0) {
   $$state{buffer} += ($score - 1) * 2;
   if ($score > 1) {
@@ -80,12 +71,6 @@ if ($score > 0) {
   }
 }
 
-if ($$state{end_game_start} >= $until_end) {
-  $$state{end_game} = 1;
-} else {
-  $$state{end_game} = 0;
-}
-
 if ($score) {
   if ($$state{prize_timeout} > 0) {
     $$state{prize_timeout} -= $score;
@@ -116,20 +101,20 @@ if (!$$state{prize_timeout} and
   $$state{prize_enabled} = 0;
 }
 
-if (!$$state{time_timeout} and ($$state{bonus_rank} > $$state{time_at_rank})) {
+if (!$$state{time_timeout} and $$state{time_for_time} >= $until_end and
+    ($$state{bonus_rank} > $$state{time_at_rank})) {
   $$state{time_enabled} = 1;
 } else {
   $$state{time_enabled} = 0;
 }
 
-if (!$$state{lube_timeout}) {
+if (!$$state{lube_timeout} and $until_end >= $$state{no_more_lube}) {
   $$state{lube_enabled} = 1;
 } else {
   $$state{lube_enabled} = 0;
 }
 
 my $add_time  = 0;
-my $win_prize = 0;
 my $add_lube  = 0;
 
 if ($score > 1) {
@@ -138,6 +123,7 @@ if ($score > 1) {
     $add_time = 1 + $$state{streak};
     $$state{bonus_rank} = int($$state{bonus_rank} / 2);
     $rank_info = sprintf "%s / 2 = %s", $rank_info, $$state{bonus_rank};
+    $$state{time_enabled} = 1;
     $$state{matches} = $$state{matches_max};
   }
 } else {
@@ -163,69 +149,65 @@ if ($$state{time_enabled}) {
   $$state{bonus_rank} = $new_rank;
 }
 
-if ($$state{prize_enabled}) {
-  my $new_rank = win_bonus($$state{prize_chance},$score,$$state{bonus_rank});
-  $win_prize = $$state{bonus_rank} - $new_rank;
-  $$state{bonus_rank} = $new_rank;
-}
-
-my $summary = '';
-if ($old_rank > $$state{bonus_rank}) {
-  $rank_info = sprintf "%s - %s = %s",
-          $rank_info, $old_rank - $$state{bonus_rank}, $$state{bonus_rank};
-}
-
-if ($old_rank < $$state{bonus_rank}) {
-  printf " + %s = %s", $$state{bonus_rank} - $old_rank, $$state{bonus_rank};
-}
-
-if ($win_prize > 0) {
-  $$state{prize_timeout} = $$state{prize_break};
-  # Chance to avoid prize
-  if (!int(rand($lube_chance))) {
-    $win_prize = 0;
-  }
-}
-
-if ($win_prize >= 2 and $$state{prize_on}) {
-  $add_lube = 0;
-  $message = 'use some Icy Hot';
-  if ($win_prize >= 5) {
-    $message = 'coat your cock with Icy Hot';
-  }
-}
+my $message = '';
 
 if ($add_lube > 0) {
-  $$state{lube_timeout} = $$state{lube_break};
-  if (!$$state{prize_two} and !$$state{lubed}) {
-    if (!int(rand($lube_chance))) {
+  $$state{lube_timeout} = $$state{noop_break};
+  my $bonus = $add_lube - win_bonus($$state{lube_chance},$score,$add_lube);
+
+  # Enable Icy Hot
+  if ($bonus > 1 and ($$state{prize_two} or !$$state{lubed}) and
+      $$state{bonus_rank} >= $$state{prize_risk_at}) {
+    $$state{prize_on}   = 1;
+    $$state{prize_two}  = 1;
+  }
+
+  if ($bonus) {
+    print "lube bonus\n";
+    # Reset the timeout, even if not enabled or on, the good bonus ;)
+    $$state{prize_timeout} = $$state{prize_break};
+
+    if (!$$state{lubed}) {
       $$state{prize_two} = 1;
     }
-  }
-}
 
-if ($add_lube >= 2 and !$$state{end_game}) {
-  $message = 'lube your little dick';
-
-  if ($$state{prize_two} || $$state{prize_on}) {
-    $message = 'lube your dick with Liquid Silk';
-  }
-
-  $$state{lubed}++;
-}
-
-if ($add_time) {
-  $$state{time_timeout} = $$state{time_break};
-
-  if ($$state{time_max} >= ($$state{time_elapsed} + $$state{time_add}) and
-      ($$state{end_game} or ($$state{matches} >= $$state{matches_max}))) {
-    my $added_time = 0;
-
-    foreach my $time (1 .. $add_time) {
-      $added_time += add_time($state);
+    if ($$state{prize_on} and $$state{prize_enabled}) {
+      $message = 'use some Icy Hot';
+      if ($bonus >= 3) {
+        $message = 'coat your dick in Icy Hot';
+      }
     }
+  }
+
+  if ($message eq '' and !$$state{end_game}) {
+    $message = 'lube your little dick';
+    if ($$state{prize_two} || $$state{prize_on}) {
+      $message = 'lube your dick with Liquid Silk';
+    }
+    $$state{lubed}++;
+  }
+
+  if ($message ne '') {
+    $$state{lube_timeout} = $$state{lube_break};
+  }
+}
+
+if ($add_time > 0) {
+  $$state{time_timeout} = $$state{noop_break};
+  my $bonus = $add_time - win_bonus($$state{time_chance},$score,$add_time);
+  if ($bonus > 0) {
+    printf "time bonus\n";
+  }
+
+  if ($$state{time_elapsed} >= $$state{time_max}) {
+    if ($bonus > 0) {
+      $$state{time_max} += $bonus * $$state{time_add};
+    }
+  } else {
+    my $added_time = add_time($state,$add_time,$bonus);
 
     if ($added_time > 0) {
+      $$state{time_timeout} = $$state{time_break};
       if ($message ne '') {
         $message .= "...\n   ...and stroke some more";
       } else {
@@ -236,6 +218,16 @@ if ($add_time) {
       }
     }
   }
+}
+
+my $summary = '';
+if ($old_rank > $$state{bonus_rank}) {
+  $rank_info = sprintf "%s - %s = %s",
+          $rank_info, $old_rank - $$state{bonus_rank}, $$state{bonus_rank};
+}
+
+if ($old_rank < $$state{bonus_rank}) {
+  printf " + %s = %s", $$state{bonus_rank} - $old_rank, $$state{bonus_rank};
 }
 
 if ($$state{go_for_green}) {
@@ -381,13 +373,19 @@ sub win_bonus {
 
 sub add_time {
   my $state = shift;
+  my $count = shift;
+  my $bonus = shift;
+
   my $time_added = 0;
 
-  my $time_to_add = fuzzy($$state{time_add},$$state{fuzzify} + 1);
+  for (1 .. $count) {
+    my $time_to_add = $$state{time_add} + ($$state{time_add} * $bonus);
+    $time_to_add = fuzzy($time_to_add,$$state{fuzzify} + 1);
 
-  if ($$state{time_max} >= ($$state{time_elapsed} + $time_to_add)) {
-    while($time_to_add > $time_added) {
-      $time_added += extend_session($state);
+    if ($$state{time_max} >= ($$state{time_elapsed} + $time_to_add)) {
+      while($time_to_add > $time_added) {
+        $time_added += extend_session($state);
+      }
     }
   }
 
