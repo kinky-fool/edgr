@@ -365,6 +365,11 @@ sub init_state {
   my $config      = read_config("$config_file");
   my $state       = $config;
 
+  $$state{win}    = 0;
+  $$state{lose}   = 0;
+  $$state{wrong}  = 0;
+  $$state{score}  = 100;
+
   GetOptions(
     "max=i"       => \$$state{pace_max},
     "min=i"       => \$$state{pace_min},
