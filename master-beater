@@ -83,23 +83,23 @@ $$state{time_min} *= 60;
 $$state{time_max} *= 60;
 $$state{time_end} *= 60;
 
-if ($$state{win} =~ /[0-9]+/) {
-  my $start_time = $$state{time_end} - ($$state{win} * $$state{time_delta_win});
-  if ($start_time > $$state{time_min}) {
-    $$state{time_min} = $start_time;
-  }
-}
-
-if ($$state{lose} =~ /[0-9]+/) {
-  $$state{time_max} = $$state{time_min} +
-                        ($$state{lose} * $$state{time_delta_lose});
-}
-
-$$state{time_end} = $$state{time_min};
-
+# Bump maximum time based on performance
 if ("$$state{wrong}$$state{win}$$state{lose}" =~ /[0-9]+/) {
   my $bonus_boost = $$state{wrong} * ($$state{lose} / $$state{win});
   $$state{time_max} += $$state{time_delta_max} * $bonus_boost;
+}
+
+if ($$state{lose} =~ /[0-9]+/) {
+  my $time_mod = int($$state{lose} * $$state{time_delta_lose} / 2);
+  $$state{time_end} += $time_mod;
+  $$state{time_max} += $time_mod;
+}
+
+if ($$state{win} =~ /[0-9]+/) {
+  $$state{time_end} -= $$state{win} * $$state{time_delta_win};
+  if ($$state{time_min} > $$state{time_end}) {
+    $$state{time_end} = $$state{time_min};
+  }
 }
 
 # Fuzzify time, to a factor of $$state{fuzzify} fuzziness
