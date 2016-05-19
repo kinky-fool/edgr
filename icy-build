@@ -138,25 +138,43 @@ if ($score > 1) {
 my $old_rank = $$state{bonus_rank};
 
 if ($$state{lube_enabled}) {
-  my $new_rank = win_bonus($$state{lube_chance},$score,$$state{bonus_rank});
-  $add_lube = $add_lube + $$state{bonus_rank} - $new_rank;
-  $$state{bonus_rank} = $new_rank;
+  if ($$state{prize_two} and !int(rand(3))) {
+    $add_lube += int(rand(fuzzy($$state{lose},$$state{fuzzify} + 1)));
+  }
+
+  $add_lube += win_bonus($$state{lube_chance},$score,$$state{bonus_rank});
+
+  if ($add_lube > $$state{bonus_rank}) {
+    $add_lube = $$state{bonus_rank};
+    $$state{bonus_rank} = 0;
+  } else {
+    $$state{bonus_rank} -= $add_lube;
+  }
 }
 
 if ($$state{time_enabled}) {
-  my $new_rank = win_bonus($$state{time_chance},$score,$$state{bonus_rank});
-  $add_time = $add_time + $$state{bonus_rank} - $new_rank;
-  $$state{bonus_rank} = $new_rank;
+  if ($$state{lubed} and !$$state{prize_two}) {
+    $add_time += int(rand(fuzzy($$state{lose},$$state{fuzzify} + 1)));
+  }
+
+  $add_time += win_bonus($$state{time_chance},$score,$$state{bonus_rank});
+
+  if ($add_time > $$state{bonus_rank}) {
+    $add_time = $$state{bonus_rank};
+    $$state{bonus_rank} = 0;
+  } else {
+    $$state{bonus_rank} -= $add_time;
+  }
 }
 
 my $message = '';
 
 if ($add_lube > 0) {
-  my $win_prize = $add_lube - win_bonus($$state{prize_chance},$score,$add_lube);
-  my $bonus = $add_lube - win_bonus($$state{lube_chance},$score,$add_lube);
+  my $bonus     = win_bonus($$state{lube_chance},$score,$add_lube);
+  my $win_prize = win_bonus($$state{prize_chance},$score,$add_lube);
 
   # Saving 'roll'
-  if ($bonus - win_bonus($$state{lube_chance},$score,$bonus) > 1) {
+  if (win_bonus($$state{lube_chance},$score,$bonus) > 1) {
     $win_prize = 0;
   }
 
@@ -197,7 +215,7 @@ if ($add_lube > 0) {
 
 if ($add_time > 0) {
   $$state{time_timeout} = $$state{noop_break};
-  my $bonus = $add_time - win_bonus($$state{time_chance},$score,$add_time);
+  my $bonus = win_bonus($$state{time_chance},$score,$add_time);
 
   if ($$state{time_elapsed} >= $$state{time_max}) {
     if ($bonus > 0) {
@@ -357,21 +375,21 @@ sub win_bonus {
   my $score   = shift;
   my $rank    = shift;
 
-  my $new_rank = $rank;
+  my $bonus   = 0;
 
   foreach my $spin (1 .. $rank) {
     if (!int(rand($chance))) {
-      if ($new_rank >= $score) {
-        $new_rank = $new_rank - $score;
+      if ($rank - $bonus >= $score) {
+        $bonus += $score;
       }
 
       if ($chance >= 5) {
-        $chance -= int($chance * $score / 4);
+        $chance -= int($chance * $score / 6);
       }
     }
   }
 
-  return $new_rank;
+  return $bonus;
 }
 
 sub add_time {
