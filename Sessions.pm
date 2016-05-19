@@ -418,6 +418,23 @@ sub init_state {
 
   $$state{matches_max}  = fuzzy($$state{matches_max},$$state{fuzzify}+2);
 
+  # Adjust the slideshow composition based on score.
+  my $adjust = fuzzy(($$state{wrong}*2 + $$state{lose}*4 - $$state{win}*3),
+                      $$state{fuzzy}) * $$state{pics_add};
+
+  $$state{pics_random} += $adjust;
+  $$state{pics_bonus}  += $adjust;
+  $$state{pics_seed}   -= int($adjust / 2);
+  $$state{pics_prize}  -= int($adjust / 2);
+
+  if ($$state{pics_seed} < 0) {
+    $$state{pics_seed} = 0;
+  }
+
+  if ($$state{pics_prize} < 0) {
+    $$state{pics_prize} = 0;
+  }
+
   return $state;
 }
 
