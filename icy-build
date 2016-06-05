@@ -413,7 +413,7 @@ sub add_time {
     }
   }
 
-  while ($time_to_add > ($time_added + $$state{time_add})) {
+  while ($time_to_add > $time_added) {
     $time_added += extend_session($state);
   }
 
