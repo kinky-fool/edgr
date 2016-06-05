@@ -413,22 +413,22 @@ sub init_state {
   $$state{end_game}         = 0;
   $$state{bonus_rank}       = 0;
   $$state{buffer}           = $$state{buffer_reset};
-  $$state{bonus_jump}       = $$state{buffer_reset};
+  $$state{bonus_bump}       = $$state{buffer_reset};
   $$state{lubed}            = 0;
 
   $$state{matches_max}  = fuzzy($$state{matches_max},$$state{fuzzify}+2);
 
   # Adjust the slideshow composition based on score.
-  my $adjust = fuzzy(($$state{wrong}*2 + $$state{lose}*4 - $$state{win}*3),
+  my $adjust = fuzzy(($$state{wrong} + $$state{lose}*2 - $$state{win}),
                       $$state{fuzzy}) * $$state{pics_add};
 
   $$state{pics_random} += $adjust;
-  $$state{pics_bonus}  += $adjust;
-  $$state{pics_seed}   -= int($adjust / 2);
+  $$state{pics_bonus}  -= int($adjust / 3);
+  $$state{pics_seed}   += int($adjust / 2);
   $$state{pics_prize}  -= int($adjust / 2);
 
-  if ($$state{pics_seed} < 0) {
-    $$state{pics_seed} = 0;
+  if ($$state{pics_bonus} < 0) {
+    $$state{pics_bonus} = 0;
   }
 
   if ($$state{pics_prize} < 0) {
