@@ -378,13 +378,13 @@ sub win_bonus {
   my $bonus   = 0;
 
   foreach my $spin (1 .. $rank) {
-    if (!int(rand($chance))) {
+    if (!int(rand(int($chance)))) {
       if ($rank - $bonus >= $score) {
         $bonus += $score;
       }
 
       if ($chance >= 5) {
-        $chance -= int($chance * $score / 6);
+        $chance = $chance * (100 - $score * 15) / 100;
       }
     }
   }
