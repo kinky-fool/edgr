@@ -83,16 +83,19 @@ $$state{time_min} *= 60;
 $$state{time_max} *= 60;
 $$state{time_end} *= 60;
 
+if ($$state{lose} =~ /[0-9]+/) {
+  my $time_mod = int($$state{lose} * $$state{time_delta_lose} / 2);
+  $$state{time_end} += $time_mod * 2;
+  if ($$state{time_end} > $$state{time_max}) {
+    $$state{time_end} = $$state{time_max};
+  }
+  $$state{time_max} += $time_mod;
+}
+
 # Bump maximum time based on performance
 if ("$$state{wrong}$$state{win}$$state{lose}" =~ /[0-9]+/) {
   my $bonus_boost = $$state{wrong} * ($$state{lose} / $$state{win});
   $$state{time_max} += $$state{time_delta_max} * $bonus_boost;
-}
-
-if ($$state{lose} =~ /[0-9]+/) {
-  my $time_mod = int($$state{lose} * $$state{time_delta_lose} / 2);
-  $$state{time_end} += $time_mod;
-  $$state{time_max} += $time_mod;
 }
 
 if ($$state{win} =~ /[0-9]+/) {
