@@ -152,6 +152,7 @@ if ($score) {
 
   if ($prize_enabled) {
     $prize_on = win_bonus($$state{prize_chance},$score,$points);
+
     if ($prize_on > $points) {
       $prize_on = $points;
       $points = 0;
@@ -159,10 +160,22 @@ if ($score) {
       $points -= $prize_on;
     }
 
-    if ($$state{lubed} and $$state{prize_two}) {
-      # Ensure lube is on
-      $add_lube += 1;
-      $prize_on -= 1;
+    if ($prize_on > $$state{win}) {
+      if (!$$state{prize_two}) {
+        if ($$state{lubed}) {
+          $prize_on -= 1;
+          $add_time += 1;
+        } else {
+          $prize_on = 0;
+          $$state{prize_two} = 1;
+        }
+      } else {
+        $prize_on -= 1;
+        $add_lube += 1;
+      }
+    } else {
+      $points += $prize_on;
+      $prize_on = 0;
     }
   }
 
@@ -185,17 +198,6 @@ if ($score) {
       $points -= $add_time;
     }
     $add_time += $bonus_time;
-  }
-
-  if ($prize_on and !$$state{lubed} and !$$state{prize_two}) {
-    $prize_on = 0;
-    $$state{prize_two} = 1;
-  }
-
-  if ($prize_on > $$state{win} and $$state{lubed} and !$$state{prize_two}) {
-    # If prize is 'on' and not using Liquid Silk, switch to time
-    $add_time += 1;
-    $add_lube -= 1;
   }
 }
 
