@@ -120,8 +120,8 @@ if ($score) {
     $$state{prize_timeout} = 0;
   }
 
-  if (!$$state{prize_timeout}
-        and $$state{bonus_rank} >= $$state{prize_risk_at}) {
+  my $thresh = $$state{prize_risk_at} * $$state{win} / (2 * $$state{lose});
+  if (!$$state{prize_timeout} and $$state{bonus_rank} >= $thresh) {
     my $bonus_try = win_bonus($$state{prize_chance},$score,$points);
     if ($bonus_try > $$state{bonus}) {
       $$state{bonus} = $bonus_try;
@@ -188,7 +188,7 @@ if ($add_lube) {
   }
 
   if ($lube_message ne '') {
-    $$state{bonus} -= $add_lube;
+    $$state{bonus_rank} -= $add_lube;
     $$state{lubed}++;
     $message = $lube_message;
   }
