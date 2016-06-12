@@ -385,7 +385,7 @@ sub init_state {
     "low_end=i"   => \$$state{endzone_low},
     "high_end=i"  => \$$state{endzone_high},
     "fuzzify=i"   => \$$state{fuzzify},
-    "prize_on"    => \$$state{prize_on},
+    "prizes"      => \$$state{prize_armed},
     "green=i"     => \$$state{window_green},
     "yellow=i"    => \$$state{window_yellow},
     "win=i"       => \$$state{win},
@@ -415,6 +415,7 @@ sub init_state {
   $$state{buffer}           = $$state{buffer_reset};
   $$state{bonus_bump}       = $$state{buffer_reset};
   $$state{lubed}            = 0;
+  $$state{bonus}            = 0;
 
   $$state{matches_max}  = fuzzy($$state{matches_max},$$state{fuzzify}+2);
 
