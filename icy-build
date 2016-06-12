@@ -65,6 +65,7 @@ if ($$state{matches} >= $$state{matches_max}) {
     $$state{matches} = $$state{matches_max};
     if ($score > 1) {
       $bonus_time = $$state{buffer};
+      $$state{bonus_rank} -= $bonus_time;
     }
   } else {
     $$state{matches} = 0;
@@ -120,7 +121,7 @@ if ($score) {
   }
 
   if (!$$state{prize_timeout}
-        and $$state{prize_risk_at} > $$state{bonus_rank}) {
+        and $$state{bonus_rank} >= $$state{prize_risk_at}) {
     my $bonus_try = win_bonus($$state{prize_chance},$score,$points);
     if ($bonus_try > $$state{bonus}) {
       $$state{bonus} = $bonus_try;
@@ -163,7 +164,6 @@ if ($add_lube) {
       $$state{prize_two} = 1;
     } elsif ($$state{lubed} and $$state{prize_two}
               and $$state{prize_armed} and $$state{bonus} > $$state{win}) {
-      $$state{lubed}++;
       $$state{lube_timeout} = $$state{lube_break};
       $$state{prize_timeout} = $$state{prize_break} * ($$state{win} + 1);
       $lube_message = 'use some Icy Hot';
@@ -187,7 +187,11 @@ if ($add_lube) {
     }
   }
 
-  $message = $lube_message;
+  if ($lube_message ne '') {
+    $$state{bonus} -= $add_lube;
+    $$state{lubed}++;
+    $message = $lube_message;
+  }
 }
 
 if ($add_time or $bonus_time) {
@@ -239,6 +243,7 @@ if ($add_time or $bonus_time) {
       my $increase_by = ($add_time + $bonus_time) * $$state{time_add};
       $$state{time_max} += $increase_by;
       $$state{time_timeout} = $$state{time_break} * $$state{win};
+      $$state{bonus_rank} -= $add_time;
 
       my $extra_timeout = int($increase_by/5);
       $$state{time_timeout} += $extra_timeout;
