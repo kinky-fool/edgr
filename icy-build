@@ -11,7 +11,7 @@ my $config_file = "$ENV{HOME}/.config/sessions";
 my $config      = read_config("$config_file");
 my $state       = read_config("$$config{state_file}");
 
-my $until_end   = $$state{time_elapsed} - (time() - $$state{time_start});
+my $until_end   = $$state{session_length} - ($now - $$state{time_start});
 
 ## Do score stuff
 
@@ -202,7 +202,7 @@ if ($add_time or $bonus_time) {
   }
 
   # Add time, if the current session time is less than max
-  if ($$state{time_max} - 15 > $$state{time_elapsed}) {
+  if ($$state{time_max} - 15 > $$state{session_length}) {
     $$state{bonus_rank} -= $add_time;
     $$state{time_timeout} = $$state{time_break} * $$state{win};
 
@@ -238,7 +238,7 @@ if ($add_time or $bonus_time) {
     }
   }
 
-  if ($$state{time_elapsed} >= $$state{time_max} - 15) {
+  if ($$state{session_length} >= $$state{time_max} - 15) {
     if ($$state{bonus} > $$state{win}) {
       my $increase_by = ($add_time + $bonus_time) * $$state{time_add};
       $$state{time_max} += $increase_by;
@@ -364,7 +364,7 @@ $gauge_count++ if ($$state{end_game});
 $gauge_max++;
 
 $gauge_count++ if ($$state{time_max} >
-                    $$state{time_elapsed} + $$state{time_add});
+                    $$state{session_length} + $$state{time_add});
 $gauge_max++;
 
 $gauge_count++ if ($$state{time_enabled});
@@ -425,7 +425,7 @@ sub add_time {
     $time_to_add += fuzzy($$state{time_add},$$state{fuzzify} + 1);
   }
 
-  my $allowance = $$state{time_max} - $$state{time_elapsed};
+  my $allowance = $$state{time_max} - $$state{session_length};
 
   if ($time_to_add > $allowance) {
     if ($allowance > $$state{time_add}) {

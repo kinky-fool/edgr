@@ -195,7 +195,7 @@ sub extend_session {
       $dir = 1;
     } elsif ($percent*100 <= $low) {
       $dir = -1;
-    } elsif (($$state{time_elapsed} / $$state{time_max}) > rand(1)) {
+    } elsif (($$state{session_length} / $$state{time_max}) > rand(1)) {
       $dir = 1;
     } else {
       $dir = -1;
@@ -249,7 +249,7 @@ sub extend_session {
     }
   }
 
-  if ($pace < $max and $$state{time_elapsed} > $$state{time_min} and
+  if ($pace < $max and $$state{session_length} > $$state{time_min} and
       $down <= 0 and $dir < 0 and !int(rand(6))) {
     $new = $max;
   }
@@ -292,7 +292,7 @@ sub extend_session {
   my $time_added =
       change_pace($$state{session_script},$pace,$new,$build,$steady);
 
-  $$state{time_elapsed} += $time_added;
+  $$state{session_length} += $time_added;
   $$state{pace_cur} = $new;
   $$state{pace_dir} = $dir;
 

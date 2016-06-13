@@ -134,17 +134,17 @@ if (open my $session_fh,'>',"$$state{session_script}") {
 while ($finalized == 0) {
   extend_session($state);
 
-  if ($$state{time_elapsed} > $$state{time_min}) {
-    if ($$state{time_elapsed} > $$state{time_max}) {
+  if ($$state{session_length} > $$state{time_min}) {
+    if ($$state{session_length} > $$state{time_max}) {
       $finalized = 1;
     }
-    if ($$state{time_elapsed} > $$state{time_end}) {
+    if ($$state{session_length} > $$state{time_end}) {
       $finalized = 1;
     }
   }
 }
 
-$$state{time_orig} = $$state{time_elapsed};
+$$state{time_orig} = $$state{session_length};
 
 if ($$state{prize_on} and !int(rand(6))) {
   $$state{prize_armed} = 1;
@@ -275,8 +275,8 @@ sub do_cleanup {
   $state = read_config($$state{state_file});
 
   my $real_elapsed  = time() - $$state{time_start};
-  my $added         = $$state{time_elapsed} - $$state{time_orig};
-  my $remaining     = $$state{time_elapsed} - $real_elapsed;
+  my $added         = $$state{session_length} - $$state{time_orig};
+  my $remaining     = $$state{session_length} - $real_elapsed;
 
   printf "Session Length: %s [ %s ] %s\n",
     sec_to_human($$state{time_min}),
