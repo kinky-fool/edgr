@@ -5,13 +5,14 @@ use warnings;
 use Sessions;
 
 my $image   = $ARGV[0];
-my $now     = time();
 
 my $config_file = "$ENV{HOME}/.config/sessions";
 my $config      = read_config("$config_file");
 my $state       = read_config("$$config{state_file}");
 
-my $until_end   = $$state{session_length} - ($now - $$state{time_start});
+my $now       = time();
+my $elapsed   = $now - $$state{time_start};
+my $remaining = $$state{session_length} - $elapsed;
 
 ## Do score stuff
 
@@ -130,13 +131,13 @@ if ($score) {
     }
   }
 
-  if (!$$state{time_timeout} and $$state{time_for_time} >= $until_end and
+  if (!$$state{time_timeout} and $$state{time_for_time} >= $remaining and
       ($$state{bonus_rank} > $$state{time_at_rank})) {
     $add_time += win_bonus($$state{time_chance},$score,$points);
     $points -= $add_time;
   }
 
-  if (!$$state{lube_timeout} and $until_end >= $$state{no_more_lube}) {
+  if (!$$state{lube_timeout} and $remaining >= $$state{no_more_lube}) {
     $add_lube += win_bonus($$state{lube_chance},$score,$points);
     $points -= $add_lube;
   }
@@ -270,7 +271,7 @@ if ($$state{go_for_green}) {
       $pics++;
     }
     if (!int(rand($$state{green_chance})) or ($$state{greens} == 0 and
-        (($pics * $$state{image_delay}) > $until_end))) {
+        (($pics * $$state{image_delay}) > $remaining))) {
       $$state{green_light} = $pics;
     } else {
       printf "   0\n";
@@ -303,9 +304,9 @@ if (!($$state{countdown} or $$state{green_light} or $$state{go_for_green})) {
     if ($$state{greens} > 0 and int(rand($$state{countdown_chance}))) {
       $time_needed = $$state{window_yellow} * $$state{image_delay};
     }
-    if ($$state{green_zone} > $until_end and
+    if ($$state{green_zone} > $remaining and
         (!int(rand($$state{countdown_chance})) or
-        $time_needed > ($until_end + $$state{image_delay}))) {
+        $time_needed > ($remaining + $$state{image_delay}))) {
       $$state{countdown} = $$state{window_yellow};
     }
   }
