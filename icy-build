@@ -103,26 +103,13 @@ my $add_time  = 0;
 my $add_lube  = 0;
 
 if ($score) {
-  my $limit = $$state{wrong} + $$state{lose};
-  if ($$state{bonus_rank} > $limit or $$state{lubed}) {
-    $$state{lube_timeout} -= $score;
-    if ($$state{lube_timeout} < 0) {
-      $$state{lube_timeout} = 0;
-    }
-  }
-
-  $$state{time_timeout} -= $score;
-  if ($$state{time_timeout} < 0) {
-    $$state{time_timeout} = 0;
-  }
-
-  $$state{prize_timeout} -= $score;
-  if ($$state{prize_timeout} < 0) {
-    $$state{prize_timeout} = 0;
+  my $limit = $$state{wrong} * $$state{lose} / $$state{win};
+  if (!$$state{lubed} and $limit > $$state{bonus_rank}) {
+    $$state{lube_next} = $now + $$state{lube_delay};
   }
 
   my $thresh = $$state{prize_risk_at} * $$state{win} / (2 * $$state{lose});
-  if (!$$state{prize_timeout} and $$state{bonus_rank} >= $thresh) {
+  if ($$state{bonus_rank} >= $thresh) {
     my $bonus_try = win_bonus($$state{prize_chance},$score,$points);
     if ($bonus_try > $$state{bonus}) {
       $$state{bonus} = $bonus_try;
@@ -131,13 +118,13 @@ if ($score) {
     }
   }
 
-  if (!$$state{time_timeout} and $$state{time_for_time} >= $remaining and
-      ($$state{bonus_rank} > $$state{time_at_rank})) {
+  if ($now >= $$state{time_next} and $elapsed >= $$state{time_delay}) {
     $add_time += win_bonus($$state{time_chance},$score,$points);
     $points -= $add_time;
   }
 
-  if (!$$state{lube_timeout} and $remaining >= $$state{no_more_lube}) {
+  if ($now >= $$state{lube_next} and $elapsed >= $$state{lube_delay} and
+      $remaining >= $$state{lube_stop}) {
     $add_lube += win_bonus($$state{lube_chance},$score,$points);
     $points -= $add_lube;
   }
@@ -151,7 +138,7 @@ my $message = '';
 
 if ($add_lube) {
   my $lube_message = '';
-  $$state{lube_timeout} = $$state{lube_break} * $$state{lose};
+  $$state{lube_next} = $now + $$state{lube_break};
 
   if ($$state{bonus} > $$state{win}) {
     # 'Roll' to save
@@ -165,14 +152,12 @@ if ($add_lube) {
       $$state{prize_two} = 1;
     } elsif ($$state{lubed} and $$state{prize_two}
               and $$state{prize_armed} and $$state{bonus} > $$state{win}) {
-      $$state{lube_timeout} = $$state{lube_break};
-      $$state{prize_timeout} = $$state{prize_break} * ($$state{win} + 1);
+      $$state{lube_next} = $now + $$state{prize_lube_break};
       $lube_message = 'use some Icy Hot';
 
       if ($$state{bonus} > $$state{win} * 2) {
         $lube_message = 'coat your dick with Icy Hot';
-        $$state{prize_timeout} += $$state{prize_break} * 2;
-        $$state{lube_timeout} += $$state{lube_break} * $$state{win};
+        $$state{lube_next} = $now + ($$state{prize_lube_break} * 2);
       }
     }
 
@@ -184,7 +169,7 @@ if ($add_lube) {
     if ($$state{prize_two}) {
       $lube_message = 'use Liquid Silk on your little dick';
       # Shorten break for Liquid Silk
-      $$state{lube_timeout} -= $$state{lube_break};
+      $$state{lube_next} = $now + ($$state{lube_break} * 3/4);
     }
   }
 
@@ -197,7 +182,6 @@ if ($add_lube) {
 
 if ($add_time or $bonus_time) {
   if ($$state{bonus} > $$state{win}) {
-    $$state{prize_timeout} = $$state{prize_break} * $$state{win};
     $bonus_time += $$state{lose} * $$state{bonus};
     $$state{bonus} = 0;
   }
@@ -205,14 +189,10 @@ if ($add_time or $bonus_time) {
   # Add time, if the current session time is less than max
   if ($$state{time_max} - 15 > $$state{session_length}) {
     $$state{bonus_rank} -= $add_time;
-    $$state{time_timeout} = $$state{time_break} * $$state{win};
 
     my $added_time = add_time($state, $add_time + $bonus_time);
 
-    my $extra_timeout = int($added_time/5);
-    $$state{time_timeout} += $extra_timeout;
-    # Even if bonus was not active; delay prize a bit
-    $$state{prize_timeout} += $extra_timeout;
+    $$state{time_next} = $now + ($added_time / 2);
 
     my $add_time_msg = 'stroke just a bit more for me';
 
@@ -243,13 +223,8 @@ if ($add_time or $bonus_time) {
     if ($$state{bonus} > $$state{win}) {
       my $increase_by = ($add_time + $bonus_time) * $$state{time_add};
       $$state{time_max} += $increase_by;
-      $$state{time_timeout} = $$state{time_break} * $$state{win};
       $$state{bonus_rank} -= $add_time;
-
-      my $extra_timeout = int($increase_by/5);
-      $$state{time_timeout} += $extra_timeout;
-      # Even if bonus was not active; delay prize a bit
-      $$state{prize_timeout} += $extra_timeout;
+      $$state{next_time} = $now + ($increase_by / 2);
 
       my $longer = "risk some more time";
       if ($message ne '') {
