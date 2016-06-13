@@ -307,65 +307,6 @@ if ($$state{show_rank}) {
   }
 }
 
-my $status = '---';
-$status =~ s/-/+/ if ($$state{prize_enabled});
-$status =~ s/-/+/ if ($$state{time_enabled});
-$status =~ s/-/+/ if ($$state{lube_enabled});
-
-my $matches = sprintf "%s%s",
-      '+' x $$state{matches},
-      '-' x ($$state{matches_max} - $$state{matches});
-
-my $buffer = sprintf "%s", '+' x $$state{buffer};
-
-my $gauge_count = 0;
-my $gauge_max = 0;
-
-$gauge_count++ if (!$$state{prize_timeout});
-$gauge_max++;
-
-$gauge_count++ if ($$state{bonus_rank} > $$state{prize_at_rank});
-$gauge_max++;
-
-$gauge_count++ if ($$state{prize_enabled});
-$gauge_max++;
-
-$gauge_count++ if (!$$state{time_timeout});
-$gauge_max++;
-
-$gauge_count++ if ($$state{bonus_rank} > $$state{time_at_rank});
-$gauge_max++;
-
-$gauge_count++ if ($$state{end_game});
-$gauge_max++;
-
-$gauge_count++ if ($$state{time_max} >
-                    $$state{session_length} + $$state{time_add});
-$gauge_max++;
-
-$gauge_count++ if ($$state{time_enabled});
-$gauge_max++;
-
-$gauge_count++ if (!$$state{lube_timeout});
-$gauge_max++;
-
-my $gauge = sprintf "%s%s",
-            '+' x $gauge_count,
-            '-' x ($gauge_max - $gauge_count);
-
-
-printf "  $status"  if ($$state{show_status});
-printf "  $matches" if ($$state{show_matches});
-printf "  $gauge"   if ($$state{show_gauge});
-printf "  $buffer"  if ($$state{show_buffer});
-printf "\n" if ($$state{show_status} or $$state{show_matches} or
-                $$state{show_buffer} or $$state{show_gauge});
-
-if ($score) {
-  $$state{bonus_active}-- if ($$state{bonus_active} > 0);
-}
-
-
 write_config($$state{state_file},$state);
 
 sub win_bonus {
