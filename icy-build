@@ -102,25 +102,45 @@ my $points = $$state{bonus_rank};
 my $add_time  = 0;
 my $add_lube  = 0;
 
+my $limit = $$state{wrong} * $$state{lose} / $$state{win};
+if (!$$state{lubed} and $limit > $$state{bonus_rank}) {
+  $$state{lube_next} = $now + $$state{lube_delay};
+}
+
+if ($now > $$state{prize_until}) {
+  $$state{bonus} = 0;
+}
+
 if ($score) {
-  my $limit = $$state{wrong} * $$state{lose} / $$state{win};
-  if (!$$state{lubed} and $limit > $$state{bonus_rank}) {
-    $$state{lube_next} = $now + $$state{lube_delay};
+  if ($now >= $$state{time_next} and $elapsed >= $$state{time_delay}) {
+    $add_time += win_bonus($$state{time_chance},$score,$points);
+    $points -= $add_time;
   }
 
   my $thresh = $$state{prize_risk_at} * $$state{win} / (2 * $$state{lose});
   if ($$state{bonus_rank} >= $thresh) {
-    my $bonus_try = win_bonus($$state{prize_chance},$score,$points);
-    if ($bonus_try > $$state{bonus}) {
-      $$state{bonus} = $bonus_try;
-      $points -= $bonus_try;
-      $$state{bonus_rank} -= $bonus_try;
+    my $new_max   = 0;
+    foreach (1 .. $$state{lose}) {
+      my $bonus_try = win_bonus($$state{prize_chance},$score,$points);
+      if ($bonus_try > 0 and $bonus_try >= $$state{bonus}) {
+        if ($$state{lubed} and $$state{prize_two}) {
+          $$state{lube_next} -= $$state{lose} * $$state{lube_sooner};
+        }
+        if ($bonus_try > $new_max) {
+          $new_max = $bonus_try;
+          if ($$state{lubed} and $$state{prize_two}) {
+            $$state{lube_next} -= $$state{lose} * $$state{lube_sooner};
+          }
+        }
+      }
     }
-  }
 
-  if ($now >= $$state{time_next} and $elapsed >= $$state{time_delay}) {
-    $add_time += win_bonus($$state{time_chance},$score,$points);
-    $points -= $add_time;
+    if ($new_max > $$state{bonus}) {
+      $points -= $new_max;
+      $$state{bonus} = $new_max;
+      $$state{bonus_rank} -= $new_max;
+      $$state{prize_until} = $now + ($$state{prize_time} * $$state{lose});
+    }
   }
 
   if ($now >= $$state{lube_next} and $elapsed >= $$state{lube_delay} and
@@ -150,26 +170,26 @@ if ($add_lube) {
   if ($$state{bonus}) {
     if (!$$state{lubed} and !$$state{prize_two}) {
       $$state{prize_two} = 1;
-    } elsif ($$state{lubed} and $$state{prize_two}
+      $$state{bonus} = 0;
+    }
+    if ($$state{lubed} and $$state{prize_two}
               and $$state{prize_armed} and $$state{bonus} > $$state{win}) {
       $$state{lube_next} = $now + $$state{prize_lube_break};
       $lube_message = 'use some Icy Hot';
 
-      if ($$state{bonus} > $$state{win} * 2) {
+      if ($$state{bonus} > ($$state{win} * 2)) {
         $lube_message = 'coat your dick with Icy Hot';
-        $$state{lube_next} = $now + ($$state{prize_lube_break} * 2);
+        $$state{lube_next} = $now + ($$state{prize_lube_break} * 3);
       }
+      $$state{bonus} = 0;
     }
 
-    $$state{bonus} = 0;
   }
 
   if ($lube_message eq '') {
     $lube_message = 'lube your little dick';
     if ($$state{prize_two}) {
       $lube_message = 'use Liquid Silk on your little dick';
-      # Shorten break for Liquid Silk
-      $$state{lube_next} = $now + ($$state{lube_break} * 3/4);
     }
   }
 
@@ -297,7 +317,7 @@ if ($$state{bonus_rank} < 0) {
 
 if ($$state{show_rank}) {
   my $rank = $$state{bonus_rank};
-  printf " ";
+  printf " %s|", "$$state{bonus}";
   if ($old_rank > $rank) {
     printf "%s - %s = %s\n", $old_rank, $old_rank - $rank, $rank;
   } elsif ($rank > $old_rank) {
@@ -342,7 +362,7 @@ sub add_time {
     $time_to_add += fuzzy($$state{time_add},$$state{fuzzify} + 1);
   }
 
-  my $allowance = $$state{time_max} - $$state{session_length};
+  my $allowance = $$state{time_max} - $$state{session_length} + 60;
 
   if ($time_to_add > $allowance) {
     if ($allowance > $$state{time_add}) {
