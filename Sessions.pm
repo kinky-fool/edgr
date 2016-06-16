@@ -404,17 +404,15 @@ sub init_state {
   $$state{go_for_green}     = 0;
   $$state{green_light}      = 0;
   $$state{greens}           = 0;
-  $$state{prize_armed}      = 0;
   $$state{prize_rank}       = 0;
-  $$state{time_armed}       = 0;
   $$state{time_rank}        = 0;
   $$state{time_added}       = 0;
-  $$state{lube_armed}       = 0;
   $$state{end_game}         = 0;
   $$state{bonus_rank}       = 0;
   $$state{buffer}           = $$state{buffer_reset};
   $$state{bonus_bump}       = $$state{buffer_reset};
   $$state{lubed}            = 0;
+  $$state{prize_until}      = 0;
   $$state{bonus}            = 0;
 
   $$state{matches_max}  = fuzzy($$state{matches_max},$$state{fuzzify}+2);
