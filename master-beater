@@ -320,6 +320,26 @@ sub do_cleanup {
     printf STDERR "Unable to open %s: %s\n",$$state{session_log},$!;
   }
 
+  if (open my $log,'<',$$state{session_log}) {
+    my $now = time;
+    my $stroked     = 0;
+    my $unfinished  = 0;
+    while (my $line = <$log>) {
+      my ($time,$length,$added,$elapsed,$remains)
+          = split(/:/,$line);
+      if ($time > ($now - 24 * 60 * 60)) {
+        $stroked     += $elapsed;
+        $unfinished  += $remains;
+      }
+    }
+    close $log;
+    printf "\nPast 24 hours:\n";
+    printf "  Stroked:      %s\n",sec_to_human($stroked);
+    printf "  Unfinished:   %s\n",sec_to_human($unfinished);
+  } else {
+    printf STDERR "Unable to open %s: %s\n",$$state{session_log},$!;
+  }
+
   if (-f $$state{state_file}) {
     unlink $$state{state_file};
   }
