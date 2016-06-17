@@ -205,6 +205,9 @@ if ($add_lube) {
 
 if ($add_time or $bonus_time) {
   my $time_points = 0;
+  my $added_time = 0;
+  my $increase_by = 0;
+
   if ($$state{bonus} > $$state{win}) {
     $time_points = $$state{lose} * $$state{bonus};
   }
@@ -212,16 +215,13 @@ if ($add_time or $bonus_time) {
 
   # Add time, if the current session time is less than max
   if ($$state{time_max} > $$state{session_length}) {
-
-    my $added_time = add_time($state, $time_points);
-
+    $added_time = add_time($state, $time_points);
     $$state{time_next} = $now + ($added_time  * 2);
 
     my $add_time_msg = '';
 
     if ($added_time > 0) {
       $$state{bonus_rank} -= $add_time + $bonus_time;
-      $$state{bonus} = 0;
       $add_time_msg = 'stroke just a bit more for me';
     }
 
@@ -246,21 +246,25 @@ if ($add_time or $bonus_time) {
     } else {
       $message = "$add_time_msg";
     }
-  } else {
-    if ($$state{bonus} >= $$state{win}) {
-      $$state{bonus_rank} -= $add_time + $bonus_time;
-      my $increase_by = fuzzy($time_points*$$state{time_add},$$state{fuzzify});
-      $$state{time_max} += $increase_by;
-      $$state{next_time} = $now + ($increase_by * 2);
+  }
 
-      my $longer = "risk some more time";
-      if ($message ne '') {
-        $message .= " and...\n  ...$longer";
-      } else {
-        $message = "$longer";
-      }
-      $$state{bonus} = 0;
+  if ($$state{session_length} >= $$state{time_max} and
+      $$state{bonus} >= $$state{win}) {
+    $$state{bonus_rank} -= $add_time + $bonus_time;
+    $increase_by = fuzzy($time_points*$$state{time_add},$$state{fuzzify});
+    $$state{time_max} += $increase_by;
+    $$state{next_time} = $now + ($increase_by * 2);
+
+    my $longer = "risk some more time";
+    if ($message ne '') {
+      $message .= " and...\n  ...$longer";
+    } else {
+      $message = "$longer";
     }
+  }
+
+  if ($increase_by + $added_time > 0) {
+    $$state{bonus} = 0;
   }
 }
 
