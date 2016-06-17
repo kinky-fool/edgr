@@ -288,6 +288,25 @@ sub do_cleanup {
     printf "Remaining Time: %s\n", sec_to_human($remaining);
   }
 
+  my $strokes = 0;
+  my $bpm_sum = 0;
+
+  if (open my $script,'<',$$state{session_script}) {
+    while (my $line = <$script>) {
+      if ($line =~ /^[0-9]/) {
+        my ($beats,$bpm) = ($line =~ /^([0-9]+) ([0-9]+)/);
+        $strokes += $beats;
+        $bpm_sum += ($beats * $bpm);
+      }
+    }
+    close $script;
+  } else {
+    printf STDERR "Unable to open %s: %s\n",$$state{session_script},$!;
+  }
+
+  printf "Strokes:        %s\n",$strokes;
+  printf "Average BPM:    %s\n",int($bpm_sum / $strokes);
+
   if (-f $$state{state_file}) {
     unlink $$state{state_file};
   }
