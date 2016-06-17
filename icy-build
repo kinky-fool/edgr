@@ -253,7 +253,7 @@ if ($add_time or $bonus_time) {
     $$state{bonus_rank} -= $add_time + $bonus_time;
     $increase_by = fuzzy($time_points*$$state{time_add},$$state{fuzzify});
     $$state{time_max} += $increase_by;
-    $$state{next_time} = $now + ($increase_by * 2);
+    $$state{time_next} = $now + ($increase_by * 2);
 
     my $longer = "risk some more time";
     if ($message ne '') {
