@@ -170,11 +170,12 @@ if ($add_lube) {
     }
   }
 
-  if ($$state{bonus}) {
+  if ($$state{bonus} and $$state{bonus} >= $$state{win} / 2) {
     if (!$$state{lubed} and !$$state{prize_two}) {
       $$state{prize_two} = 1;
       $$state{bonus} = 0;
     }
+
     if ($$state{lubed} and $$state{prize_two}
               and $$state{prize_armed} and $$state{bonus} > $$state{win}) {
       $$state{lube_next} = $now + $$state{prize_lube_break};
@@ -186,7 +187,6 @@ if ($add_lube) {
       }
       $$state{bonus} = 0;
     }
-
   }
 
   if ($lube_message eq '') {
