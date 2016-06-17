@@ -151,6 +151,8 @@ if ($score) {
   }
 }
 
+my $cur_bonus = $$state{bonus};
+
 if ($points < 0) {
   $points = 0;
 }
@@ -322,7 +324,7 @@ if ($$state{bonus_rank} < 0) {
 
 if ($$state{show_rank}) {
   my $rank = $$state{bonus_rank};
-  printf " %s|", "$$state{bonus}";
+  printf " %s|", "$cur_bonus";
   if ($old_rank > $rank) {
     printf "%s - %s = %s\n", $old_rank, $old_rank - $rank, $rank;
   } elsif ($rank > $old_rank) {
