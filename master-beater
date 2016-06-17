@@ -184,8 +184,7 @@ sub begin_session {
      $command .= "-w2 $$state{tock_file} -p $$state{session_script}";
   if (open my $metronome_pipe,'-|',"$command 2>/dev/null") {
     local $SIG{HUP} = sub { print "foo\n"; close $metronome_pipe; exit 0 };
-    while (<$metronome_pipe>) {
-      my $line = $_;
+    while (my $line = <$metronome_pipe>) {
       chomp $line;
       if ($line =~ /^# start/) {
         $state = read_config($$state{state_file});
