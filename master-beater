@@ -307,6 +307,19 @@ sub do_cleanup {
   printf "Strokes:        %s\n",$strokes;
   printf "Average BPM:    %s\n",int($bpm_sum / $strokes);
 
+  if (open my $log,'>>',$$state{session_log}) {
+    my $now = time;
+    printf $log "%s:%s:%s:%s:%s\n",
+            $now,
+            $$state{session_length},
+            $added,
+            $real_elapsed,
+            $remaining;
+    close $log;
+  } else {
+    printf STDERR "Unable to open %s: %s\n",$$state{session_log},$!;
+  }
+
   if (-f $$state{state_file}) {
     unlink $$state{state_file};
   }
