@@ -134,11 +134,13 @@ if ($score) {
       }
     }
 
-    if ($new_max > $$state{bonus}) {
-      $points -= $new_max;
-      $$state{bonus} = $new_max;
-      $$state{bonus_rank} -= $new_max;
+    if ($new_max >= $$state{bonus}) {
       $$state{prize_until} = $now + ($$state{prize_time} * $$state{lose});
+      if ($new_max > $$state{bonus}) {
+        $$state{bonus} = $new_max;
+        $points -= $new_max;
+        $$state{bonus_rank} -= $new_max;
+      }
     }
   }
 
