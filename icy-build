@@ -387,5 +387,9 @@ sub add_time {
     $time_added += extend_session($state);
   }
 
+  if ($$state{session_length} > $$state{time_max}) {
+    $$state{time_max} = $$state{session_length};
+  }
+
   return $time_added;
 }
