@@ -122,15 +122,13 @@ if ($score) {
     foreach (1 .. $$state{lose}) {
       my $bonus_try = win_bonus($$state{prize_chance},$score,$points);
       if ($bonus_try > 0 and $bonus_try >= $$state{bonus}) {
-        if ($$state{lubed} and $$state{prize_two}) {
-          $$state{lube_next} -= $$state{lose} * $$state{lube_sooner};
-        }
         if ($bonus_try > $new_max) {
           $new_max = $bonus_try;
-          if ($$state{lubed} and $$state{prize_two}) {
-            $$state{lube_next} -= $$state{lose} * $$state{lube_sooner};
-          }
         }
+      }
+
+      if ($bonus_try >= $$state{win} and $$state{prize_two} > 0) {
+        $$state{lube_next} -= ($bonus_try-$$state{win}+1)*$$state{lube_sooner};
       }
     }
 
