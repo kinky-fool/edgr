@@ -314,7 +314,7 @@ sub do_cleanup {
             $$state{session_length},
             $added,
             $real_elapsed,
-            $remaining;
+            int($remaining);
     close $log;
   } else {
     printf STDERR "Unable to open %s: %s\n",$$state{session_log},$!;
