@@ -164,18 +164,19 @@ if ($add_lube) {
   if ($$state{bonus} > $$state{win}) {
     # 'Roll' to save
     if (win_bonus($$state{lube_chance},$score,$points) > $$state{bonus}) {
-      $$state{bonus} = 1;
+      $$state{bonus} = 0;
     }
   }
 
-  if ($$state{bonus} and $$state{bonus} >= $$state{win} / 2) {
-    if (!$$state{lubed} and !$$state{prize_two}) {
+  if ($$state{prize_armed}) {
+    if ($$state{bonus} > $$state{win} / 2 and
+        !$$state{lubed} and !$$state{prize_two}) {
       $$state{prize_two} = 1;
       $$state{bonus} = 0;
     }
 
-    if ($$state{lubed} and $$state{prize_two}
-              and $$state{prize_armed} and $$state{bonus} > $$state{win}) {
+    if ($$state{bonus} > $$state{win} and
+        $$state{lubed} and $$state{prize_two}) {
       $$state{lube_next} = $now + $$state{prize_lube_break};
       $lube_message = 'use some Icy Hot';
 
