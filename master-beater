@@ -309,12 +309,14 @@ sub do_cleanup {
 
   if (open my $log,'>>',$$state{session_log}) {
     my $now = time;
-    printf $log "%s:%s:%s:%s:%s\n",
+    printf $log "%s:%s:%s:%s:%s:%s:%s\n",
             $now,
             $$state{session_length},
             $added,
             $real_elapsed,
-            int($remaining);
+            int($remaining),
+            $$state{prize_armed},
+            $$state{icy_used};
     close $log;
   } else {
     printf STDERR "Unable to open %s: %s\n",$$state{session_log},$!;
@@ -325,7 +327,7 @@ sub do_cleanup {
     my $stroked     = 0;
     my $unfinished  = 0;
     while (my $line = <$log>) {
-      my ($time,$length,$added,$elapsed,$remains)
+      my ($time,$length,$added,$elapsed,$remains,$icy_on,$icy_used)
           = split(/:/,$line);
       if ($time > ($now - 24 * 60 * 60)) {
         $stroked     += $elapsed;

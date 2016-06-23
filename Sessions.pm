@@ -369,6 +369,7 @@ sub init_state {
   $$state{lose}   = 0;
   $$state{wrong}  = 0;
   $$state{score}  = 100;
+  $$state{prize_armed} = 0;
 
   GetOptions(
     "max=i"       => \$$state{pace_max},
@@ -412,6 +413,7 @@ sub init_state {
   $$state{buffer}           = $$state{buffer_reset};
   $$state{bonus_bump}       = $$state{buffer_reset};
   $$state{lubed}            = 0;
+  $$state{icy_used}         = 0;
   $$state{prize_until}      = 0;
   $$state{bonus}            = 0;
 
