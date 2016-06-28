@@ -245,28 +245,28 @@ if ($add_time or $bonus_time) {
     if ($added_time > 0) {
       $$state{bonus_rank} -= $add_time + $bonus_time;
       $add_time_msg = 'stroke just a bit more for me';
-    }
 
-    if ($added_time > 20) {
-      $add_time_msg = 'stroke a little longer for me';
-    }
+      if ($added_time > 20) {
+        $add_time_msg = 'stroke a little longer for me';
+      }
 
-    if ($added_time > 40) {
-      $add_time_msg = 'stroke longer for me';
-    }
+      if ($added_time > 40) {
+        $add_time_msg = 'stroke longer for me';
+      }
 
-    if ($added_time > 80) {
-      $add_time_msg = 'stroke a bit longer for me';
-    }
+      if ($added_time > 80) {
+        $add_time_msg = 'stroke a bit longer for me';
+      }
 
-    if ($added_time > 120) {
-      $add_time_msg = 'stroke quite a bit more for me';
-    }
+      if ($added_time > 120) {
+        $add_time_msg = 'stroke quite a bit more for me';
+      }
 
-    if ($message ne '') {
-      $message .= " and...\n  ...$add_time_msg";
-    } else {
-      $message = "$add_time_msg";
+      if ($message ne '') {
+        $message .= " and...\n  ...$add_time_msg";
+      } else {
+        $message = "$add_time_msg";
+      }
     }
   }
 
