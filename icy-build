@@ -113,6 +113,9 @@ if ($now > $$state{prize_until}) {
 if ($score) {
   if ($now >= $$state{time_next} and $elapsed >= $$state{time_delay}) {
     $add_time += win_bonus($$state{time_chance},$score,$points);
+    if ($add_time > $$state{lose} * 2) {
+      $add_time = $$state{lose} * 2;
+    }
     $points -= $add_time;
   }
 
@@ -121,6 +124,9 @@ if ($score) {
     my $new_max   = 0;
     foreach (1 .. $$state{lose}) {
       my $bonus_try = win_bonus($$state{prize_chance},$score,$points);
+      if ($bonus_try > $$state{lose} * 2) {
+        $bonus_try = $$state{lose} * 2;
+      }
       if ($bonus_try > 0 and $bonus_try >= $$state{bonus}) {
         if ($bonus_try > $new_max) {
           $new_max = $bonus_try;
@@ -145,6 +151,9 @@ if ($score) {
   if ($now >= $$state{lube_next} and $elapsed >= $$state{lube_delay} and
       $remaining >= $$state{lube_stop}) {
     $add_lube += win_bonus($$state{lube_chance},$score,$points);
+    if ($add_lube > $$state{win}) {
+      $add_lube = $$state{win};
+    }
     $points -= $add_lube;
   }
 }
@@ -175,7 +184,7 @@ if ($add_lube) {
       $$state{bonus} = 0;
     }
 
-    if ($$state{bonus} > $$state{win} and
+    if (($$state{bonus} > $$state{win} or $$state{bonus} == $$state{lose}*2) and
         $$state{lubed} and $$state{prize_two}) {
       $$state{lube_next} = $now + $$state{prize_lube_break};
       $lube_message = 'use some Icy Hot';
