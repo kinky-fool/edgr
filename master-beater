@@ -8,7 +8,7 @@ use Sessions;
 
 my $conf_file   = "$ENV{HOME}/.config/sessions";
 # Read config file and command line args and populate %$state
-my $state       = init_state($conf_file);
+my $state       = init_session_state($conf_file);
 
 $$state{time_start} = time();
 $$state{go_down} = 3 + plus_or_minus(2);

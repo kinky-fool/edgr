@@ -17,7 +17,7 @@ $DEBUG        = 0;
                     extend_session
                     fisher_yates_shuffle
                     fuzzy
-                    init_state
+                    init_session_state
                     plus_or_minus
                     read_config
                     sec_to_human
@@ -287,7 +287,7 @@ sub fuzzy {
   return $number;
 }
 
-sub init_state {
+sub init_session_state {
   # Provide config file name to initialize state or
   # the current state file name to modify state
   my $config_file = shift;
