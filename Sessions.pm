@@ -350,7 +350,15 @@ sub init_session_state {
   $$state{prize_until}      = 0;
   $$state{bonus}            = 0;
 
-  $$state{matches_max}  = fuzzy($$state{matches_max},$$state{fuzzify}+2);
+  $$state{matches_max}      = fuzzy($$state{matches_max},$$state{fuzzify}+2);
+  $$state{time_start}       = time();
+  $$state{go_down}          = 3 + plus_or_minus(2);
+  $$state{pace_dir}         = -1;
+
+  if (int(rand($$state{go_down}))) {
+    $$state{go_down}  = 0;
+    $$state{pace_dir} = 1;
+  }
 
   # Adjust the slideshow composition based on score.
   my $adjust = fuzzy(($$state{wrong} + $$state{lose}*2 - $$state{win}),
