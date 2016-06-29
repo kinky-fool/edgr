@@ -12,6 +12,7 @@ $DEBUG        = 0;
 @ISA          = qw(Exporter);
 @EXPORT       = qw(fuzzy plus_or_minus toggle_bool
                   sec_to_human error_msg debug_msg extend_session
+                  sec_to_human_precise
                   read_config write_config init_state
                   fisher_yates_shuffle
                 );
@@ -427,6 +428,47 @@ sub sec_to_human {
   } else {
     return sprintf '%.1f seconds', $secs;
   }
+}
+
+sub sec_to_human_precise {
+  my $secs = shift;
+
+  my $output = '';
+
+  my $years;
+  my $days;
+  my $hours;
+  my $minutes;
+
+  print "secs: $secs\n";
+
+  if ($secs >= 365*24*24*60) {
+    $years = int($secs/(365*24*60*60));
+    $output .= sprintf('%iy ',$years);
+    $secs -= $years * 365*24*60*60;
+  }
+
+  if ($secs >= 24*60*60 or $years > 0) {
+    $days = int($secs/(24*60*60));
+    $output .= sprintf('%id ',$days);
+    $secs -= $days * 24*60*60;
+  }
+
+  if ($secs >= 60*60 or $years + $days > 0) {
+    $hours = int($secs/(60*60));
+    $output .= sprintf('%ih ',$hours);
+    $secs -= $hours * 60*60;
+  }
+
+  if ($secs >= 60 or $years + $days + $hours > 0) {
+    $minutes = int($secs/60);
+    $output .= sprintf('%im ',$minutes);
+    $secs -= $minutes * 60;
+  }
+
+  $output .= sprintf('%is',$secs);
+
+  return $output;
 }
 
 sub toggle_bool {
