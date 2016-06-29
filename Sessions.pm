@@ -18,10 +18,13 @@ $DEBUG        = 0;
                     fisher_yates_shuffle
                     fuzzy
                     init_session_state
+                    pick_images
+                    play_metronome_script
                     plus_or_minus
                     read_config
                     sec_to_human
                     sec_to_human_precise
+                    sexy_slideshow
                     toggle_bool
                     write_config
                 );
@@ -369,6 +372,66 @@ sub init_session_state {
   return $state;
 }
 
+sub pick_images {
+  my $dirs  = shift;
+  my $count = shift;
+
+  my $multiplier = 3;
+  my $errors = 0;
+
+  my @pool = ();
+  foreach my $glob (split(/:/,$dirs)) {
+    foreach my $dir (glob $glob) {
+      if (opendir my $dir_fh,"$dir") {
+        my @files = grep { /.(jpe?g|gif|bmp|nef|cr2|png)$/i } readdir $dir_fh;
+        @files = map { "$dir/" . $_ } @files;
+        my $end = $count - 1;
+        if ($end > $#files) {
+          $end = $#files;
+        }
+        for my $loop (1 .. $multiplier) {
+          fisher_yates_shuffle(\@files);
+          push @pool,@files[0 .. $end];
+        }
+        closedir $dir_fh;
+      } else {
+        $errors++;
+        error_msg("Unable to opendir $dir: $!",0);
+      }
+    }
+  }
+
+  if ($errors == 0) {
+    fisher_yates_shuffle(\@pool);
+    return @pool[1 .. $count];
+  } else {
+    return;
+  }
+}
+
+sub play_metronome_script {
+  my $state = shift;
+
+  my $command  = "aoss $$state{ctronome} -c 1 -w1 $$state{tick_file} ";
+     $command .= "-w2 $$state{tock_file} -p $$state{session_script}";
+  if (open my $metronome_pipe,'-|',"$command 2>/dev/null") {
+    local $SIG{HUP} = sub { close $metronome_pipe; exit 0 };
+    while (my $line = <$metronome_pipe>) {
+      chomp $line;
+      if ($line =~ /^# start/) {
+        $state = read_config($$state{state_file});
+        if ($$state{wrong} > int(rand($$state{score}))) {
+          $$state{bonus_rank} += int(rand($$state{lose}));
+          write_config($$state{state_file},$state);
+        }
+      }
+    }
+    close $metronome_pipe;
+  } else {
+    error_msg("Unable to open pipe: $!",3);
+  }
+}
+
 sub plus_or_minus {
   my $num     = shift;
 
@@ -478,6 +541,36 @@ sub sec_to_human_precise {
   $output .= sprintf('%is',$secs);
 
   return $output;
+}
+
+sub sexy_slideshow {
+  my $state = shift;
+
+  my @playlist  = pick_images(
+                      "$$state{image_prize_dirs}:$$state{image_bonus_dirs}",
+                      $$state{pics_seed}
+                    );
+  push @playlist, pick_images($$state{image_bonus_dirs},$$state{pics_bonus});
+  push @playlist, pick_images($$state{image_prize_dirs},$$state{pics_prize});
+  push @playlist, pick_images($$state{image_random_dirs},$$state{pics_random});
+
+  fisher_yates_shuffle(\@playlist);
+
+  if (open my $playlist_fh,'>',$$state{image_playlist}) {
+    foreach my $image (@playlist) {
+      print $playlist_fh "$image\n";
+    }
+    close $playlist_fh;
+  } else {
+    error_msg("Unable to open image playlist: $!",4);
+  }
+
+  my $command  = "$$state{image_viewer} --info '$$state{image_checker} '%f'' ";
+     $command .= "--scale-down -Y -F --fontpath '$ENV{HOME}/.fonts/' ";
+     $command .= "-D $$state{image_delay} --font 'FiraMono-Medium/32' ";
+     $command .= "-Z -f $$state{image_playlist}";
+
+  exec "$command >/dev/null 2>&1";
 }
 
 sub toggle_bool {
