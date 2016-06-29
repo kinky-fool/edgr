@@ -10,11 +10,20 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $DEBUG);
 $VERSION      = 0.1;
 $DEBUG        = 0;
 @ISA          = qw(Exporter);
-@EXPORT       = qw(fuzzy plus_or_minus toggle_bool
-                  sec_to_human error_msg debug_msg extend_session
-                  sec_to_human_precise
-                  read_config write_config init_state
-                  fisher_yates_shuffle
+# Functions used in scripts
+@EXPORT       = qw(
+                    debug_msg
+                    error_msg
+                    extend_session
+                    fisher_yates_shuffle
+                    fuzzy
+                    init_state
+                    plus_or_minus
+                    read_config
+                    sec_to_human
+                    sec_to_human_precise
+                    toggle_bool
+                    write_config
                 );
 @EXPORT_OK    = @EXPORT;
 
