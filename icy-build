@@ -32,6 +32,17 @@ foreach my $dir (split(/:/,$$state{image_bonus_dirs})) {
   }
 }
 
+foreach my $special_image (split(/:/,$$state{special_image})) {
+  if ($image =~ m|^$special_image|
+    and !$$state{lubed} and !$$state{prize_two}) {
+    if ($$state{prize_armed}) {
+      $$state{prize_two} = 1;
+    } else {
+      $$state{prize_armed} = 1;
+    }
+  }
+}
+
 if (($$state{last_score} == 1 and $score == 2) or
       $$state{last_score} == $score) {
   $$state{streak}++;
