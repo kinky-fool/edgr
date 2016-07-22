@@ -208,17 +208,17 @@ if ($add_time or $bonus_time) {
   my $added_time = 0;
   my $increase_by = 0;
 
-  $time_points = $add_time + $bonus_time + $$state{lose};
+  $time_points = $add_time + $bonus_time;
+  $time_points += int(($add_time+$bonus_time) * ($$state{bonus}/$$state{win}));
 
   if ($$state{time_max} > $$state{session_length}) {
-    $added_time = add_time($state, $time_points*$$state{bonus});
+    $added_time = add_time($state, $time_points);
     $$state{time_next} = $now + ($added_time  * 2);
-
-    my $add_time_msg = '';
 
     if ($added_time > 0) {
       $$state{bonus_rank} -= $add_time + $bonus_time;
-      $add_time_msg = 'stroke just a bit more for me';
+      $$state{bonus} = 0;
+      my $add_time_msg = 'stroke just a bit more for me';
 
       if ($added_time > 20) {
         $add_time_msg = 'stroke a little longer for me';
@@ -242,11 +242,6 @@ if ($add_time or $bonus_time) {
         $message = "$add_time_msg";
       }
     }
-  }
-
-  if ($increase_by + $added_time > 0) {
-    $$state{bonus_rank} -= $bonus_time + $add_time;
-    $$state{bonus} = 0;
   }
 }
 
