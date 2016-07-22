@@ -133,7 +133,7 @@ if ($now > $$state{prize_until}) {
 }
 
 if ($score) {
-  if ($now >= $$state{time_next} and $elapsed >= $$state{time_delay}) {
+  if ($now >= $$state{time_next} and $$state{time_for_time} > $remaining) {
     $add_time += win_bonus($$state{time_chance},$score,$points);
     if ($add_time > $$state{lose} * 2) {
       $add_time = $$state{lose} * 2;
@@ -141,8 +141,7 @@ if ($score) {
     $points -= $add_time;
   }
 
-  if ($now >= $$state{lube_next} and $elapsed >= $$state{lube_delay} and
-      $remaining >= $$state{lube_stop}) {
+  if ($now >= $$state{lube_next} and $remaining >= $$state{no_more_lube}) {
     $add_lube += win_bonus($$state{lube_chance},$score,$points);
     if ($add_lube > $$state{win}) {
       $add_lube = $$state{win};
