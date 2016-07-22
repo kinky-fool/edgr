@@ -311,9 +311,6 @@ sub init_session_state {
     "short=f"     => \$$state{time_min},
     "long=f"      => \$$state{time_max},
     "sides=i"     => \$$state{dice_sides},
-    "dice=i"      => \$$state{dice_count},
-    "high=i"      => \$$state{extra_high},
-    "low=i"       => \$$state{extra_low},
     "bonus=i"     => \$$state{bonus_chance},
     "bonus_max=i" => \$$state{bonus_max},
     "low_end=i"   => \$$state{endzone_low},
@@ -359,6 +356,47 @@ sub init_session_state {
     $$state{go_down}  = 0;
     $$state{pace_dir} = 1;
   }
+
+  my $time_min = $$state{time_min} * $$state{time_unit};
+  my $time_max = $$state{time_max} * $$state{time_unit};
+
+  if ($$state{fuzzify}) {
+    $time_min = fuzzy($time_min,$$state{fuzzify});
+    $time_max = fuzzy($time_max,$$state{fuzzify});
+  }
+
+  if ($$state{wrong} and $$state{lose} and $$state{win}) {
+    my @times = ();
+
+    for (1 .. $$state{lose} + $$state{win} * 2) {
+      push @times,int(rand($$state{wrong} * $$state{time_unit}))+1;
+    }
+    @times = sort { $a <=> $b } @times;
+
+    my @lows  = @times[0 .. $$state{lose}-1];
+    my @highs = @times[$#times - $$state{win} + 1 .. $#times];
+
+    my @times = @times[$$state{lose} .. $#times - $$state{win}];
+
+    printf "Time Spread: %s [ %s ] %s\n","@lows","@times","@highs";
+
+    my $time_sum = 0;
+    foreach my $time (@times) {
+      $time_sum += $time;
+    }
+
+    my $time_extra = int($time_sum / scalar(@times));
+
+    if ($$state{fuzzify}) {
+      $time_extra = fuzzy($time_extra,$$state{fuzzify});
+    }
+
+    $time_max += $time_extra;
+  }
+
+  $$state{time_min} = $time_min;
+  $$state{time_max} = $time_max;
+  $$state{time_end} = $time_min;
 
   # Adjust the slideshow composition based on score.
   my $adjust = fuzzy(($$state{wrong} + $$state{lose}*2 - $$state{win}),
