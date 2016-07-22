@@ -120,9 +120,12 @@ my $points = $$state{bonus_rank};
 my $add_time  = 0;
 my $add_lube  = 0;
 
-my $limit = $$state{wrong} * $$state{lose} / $$state{win};
-if (!$$state{lubed} and $limit > $$state{bonus_rank}) {
-  $$state{lube_next} = $now + $$state{lube_delay};
+my $limit = $$state{wrong} + $$state{lose};
+my $delay = ($$state{lube_delay} * $$state{lose}) / $$state{win};
+if (!$$state{lubed} and !$$state{prize_two} and $limit > $$state{bonus_rank}) {
+  if ($$state{lube_next} - $now < $delay) {
+    $$state{lube_next} = $now + $delay;
+  }
 }
 
 if ($now > $$state{prize_until}) {
