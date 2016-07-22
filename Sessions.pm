@@ -311,8 +311,6 @@ sub init_session_state {
     "short=f"     => \$$state{time_min},
     "long=f"      => \$$state{time_max},
     "sides=i"     => \$$state{dice_sides},
-    "bonus=i"     => \$$state{bonus_chance},
-    "bonus_max=i" => \$$state{bonus_max},
     "low_end=i"   => \$$state{endzone_low},
     "high_end=i"  => \$$state{endzone_high},
     "fuzzify=i"   => \$$state{fuzzify},
@@ -339,13 +337,14 @@ sub init_session_state {
   $$state{time_rank}        = 0;
   $$state{time_added}       = 0;
   $$state{end_game}         = 0;
-  $$state{bonus_rank}       = 0;
+  $$state{session_length}   = 0;
   $$state{buffer}           = $$state{buffer_reset};
   $$state{bonus_bump}       = $$state{buffer_reset};
+  $$state{bonus_rank}       = 0;
+  $$state{bonus}            = 0;
   $$state{lubed}            = 0;
   $$state{icy_used}         = 0;
   $$state{prize_until}      = 0;
-  $$state{bonus}            = 0;
 
   $$state{matches_max}      = fuzzy($$state{matches_max},$$state{fuzzify}+2);
   $$state{time_start}       = time();
