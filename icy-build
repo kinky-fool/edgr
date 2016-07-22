@@ -52,8 +52,7 @@ foreach my $special_image (split(/:/,$$state{special_image})) {
   }
 }
 
-if (($$state{last_score} == 1 and $score == 2) or
-      $$state{last_score} == $score) {
+if ($$state{last_score} == $score) {
   $$state{streak}++;
 } else {
   $$state{streak} = 1;
