@@ -562,6 +562,14 @@ sub sexy_slideshow {
   push @playlist, pick_images($$state{image_prize_dirs},$$state{pics_prize});
   push @playlist, pick_images($$state{image_random_dirs},$$state{pics_random});
 
+  foreach (1 .. $$state{lose}) {
+    if (!int(rand($$state{win}))) {
+      foreach my $special (split(/:/,$$state{special_image})) {
+        push @playlist, $special;
+      }
+    }
+  }
+
   fisher_yates_shuffle(\@playlist);
 
   if (open my $playlist_fh,'>',$$state{image_playlist}) {
