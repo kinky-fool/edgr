@@ -141,35 +141,6 @@ if ($score) {
     $points -= $add_time;
   }
 
-  my $thresh = $$state{prize_risk_at} * $$state{win} / (2 * $$state{lose});
-  if ($$state{bonus_rank} >= $thresh) {
-    my $new_max   = 0;
-    foreach (1 .. $$state{lose}) {
-      my $bonus_try = win_bonus($$state{prize_chance},$score,$points);
-      if ($bonus_try > $$state{lose} * 2) {
-        $bonus_try = $$state{lose} * 2;
-      }
-      if ($bonus_try > 0 and $bonus_try >= $$state{bonus}) {
-        if ($bonus_try > $new_max) {
-          $new_max = $bonus_try;
-        }
-      }
-
-      if ($bonus_try >= $$state{win} and $$state{prize_two} > 0) {
-        $$state{lube_next} -= ($bonus_try-$$state{win}+1)*$$state{lube_sooner};
-      }
-    }
-
-    if ($new_max >= $$state{bonus}) {
-      $$state{prize_until} = $now + ($$state{prize_time} * $$state{lose});
-      if ($new_max > $$state{bonus}) {
-        $$state{bonus} = $new_max;
-        $points -= $new_max;
-        $$state{bonus_rank} -= $new_max;
-      }
-    }
-  }
-
   if ($now >= $$state{lube_next} and $elapsed >= $$state{lube_delay} and
       $remaining >= $$state{lube_stop}) {
     $add_lube += win_bonus($$state{lube_chance},$score,$points);
@@ -350,6 +321,54 @@ if (!($$state{countdown} or $$state{green_light} or $$state{go_for_green})) {
 
 if ($message ne '') {
   printf "  Mistress says %s\n", $message;
+}
+
+if ($score) {
+  if ($$state{bonus_rank} >= $$state{win} * 3) {
+    my $new_max   = 0;
+    my $maxxed    = 0;
+
+    foreach (1 .. $$state{lose}) {
+      my $bonus_try = win_bonus($$state{prize_chance},$score,$points);
+      if ($bonus_try > $$state{lose} * 2) {
+        $bonus_try = $$state{lose} * 2;
+      }
+
+      if ($bonus_try > 0 and $bonus_try >= $$state{bonus}) {
+        if ($bonus_try > $new_max) {
+          $new_max = $bonus_try;
+        }
+
+        $maxxed++;
+        $$state{time_next} -= $bonus_try;
+
+        if ($$state{lubed}) {
+          if ($$state{prize_two}) {
+            if ($$state{lube_break} > 30) {
+              $$state{lube_break} -= $bonus_try * $maxxed;
+            }
+          } else {
+            $$state{lube_break} += $bonus_try * $maxxed;
+          }
+        } else {
+          if ($$state{prize_two}) {
+            $$state{lube_next} -= $bonus_try * $maxxed;
+          } else {
+            $$state{lube_delay} += $bonus_try * $maxxed;
+          }
+        }
+      }
+    }
+
+    if ($new_max >= $$state{bonus}) {
+      $$state{prize_until} = $now + ($$state{prize_time} * $$state{lose});
+      if ($new_max > $$state{bonus}) {
+        $$state{bonus} = $new_max;
+        $points -= $new_max;
+        $$state{bonus_rank} -= $new_max;
+      }
+    }
+  }
 }
 
 if ($$state{bonus_rank} < 0) {
