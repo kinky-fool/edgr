@@ -135,7 +135,7 @@ sub extend_session {
       $dir = 1;
     } elsif ($percent*100 <= $low) {
       $dir = -1;
-    } elsif (($$state{session_length} / $$state{time_max}) > rand(1)) {
+    } elsif (($$state{session_length} / $$state{time_min}) > rand(1)) {
       $dir = 1;
     } else {
       $dir = -1;
