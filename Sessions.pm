@@ -562,8 +562,6 @@ sub sec_to_human_precise {
   my $hours;
   my $minutes;
 
-  print "secs: $secs\n";
-
   if ($secs >= 365*24*24*60) {
     $years = int($secs/(365*24*60*60));
     $output .= sprintf('%iy ',$years);
