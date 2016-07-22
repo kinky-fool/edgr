@@ -178,14 +178,12 @@ if ($add_lube) {
 
     if (($$state{bonus} > $$state{win} or $$state{bonus} == $$state{lose}*2) and
         $$state{lubed} and $$state{prize_two}) {
-      $$state{lube_next} = $now + $$state{prize_lube_break};
       $lube_message = 'use some Icy Hot';
       $$state{icy_used}++;
 
       if ($$state{bonus} > ($$state{win} * 2)) {
         $lube_message = 'coat your dick with Icy Hot';
         $$state{icy_used}++;
-        $$state{lube_next} = $now + ($$state{prize_lube_break} * 3);
       }
       $$state{bonus} = 0;
     }
