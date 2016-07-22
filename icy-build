@@ -213,22 +213,6 @@ if ($add_time or $bonus_time) {
 
   $time_points = $add_time + $bonus_time + $$state{lose};
 
-  if ($$state{bonus} > $$state{win}) {
-    $$state{bonus} -= $$state{win};
-
-    $increase_by = fuzzy($time_points*$$state{time_add}*$$state{bonus},
-                                                            $$state{fuzzify});
-    $$state{time_max} += $increase_by;
-    $$state{time_next} = $now + int($increase_by * 1.20);
-
-    my $longer = "risk some more time";
-    if ($message ne '') {
-      $message .= " and...\n  ...$longer";
-    } else {
-      $message = "$longer";
-    }
-  }
-
   if ($$state{time_max} > $$state{session_length}) {
     $added_time = add_time($state, $time_points*$$state{bonus});
     $$state{time_next} = $now + ($added_time  * 2);
