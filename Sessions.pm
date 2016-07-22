@@ -397,6 +397,11 @@ sub init_session_state {
   $$state{time_max} = $time_max;
   $$state{time_end} = $time_min;
 
+  if ($$state{score}) {
+    $$state{prize_chance} = int(($$state{score} / $$state{prize_target}) *
+                                  $$state{prize_chance});
+  }
+
   # Adjust the slideshow composition based on score.
   my $adjust = fuzzy(($$state{wrong} + $$state{lose}*2 - $$state{win}),
                       $$state{fuzzy}) * $$state{pics_add};
