@@ -144,8 +144,10 @@ if ($now > $$state{prize_until}) {
 }
 
 if ($score) {
-  if ($now >= $$state{time_next} and $$state{time_for_time} > $remaining) {
-    $add_time += win_bonus($$state{time_chance},$score,$points);
+  if ($now >= $$state{time_next}) {
+    my $offset = $$state{time_buffer} * $elapsed / $$state{session_length};
+    my $chance = int($$state{time_chance} + $$state{time_buffer} - $offset);
+    $add_time += win_bonus($chance,$points,$score,$$state{lose}*2);
     if ($add_time > $$state{lose} * 2) {
       $add_time = $$state{lose} * 2;
     }
@@ -153,7 +155,7 @@ if ($score) {
   }
 
   if ($now >= $$state{lube_next} and $remaining >= $$state{no_more_lube}) {
-    $add_lube += win_bonus($$state{lube_chance},$score,$points);
+    $add_lube += win_bonus($$state{lube_chance},$points,$score,$$state{win});
     if ($add_lube > $$state{win}) {
       $add_lube = $$state{win};
     }
@@ -175,7 +177,8 @@ if ($add_lube) {
 
   if ($$state{bonus} > $$state{win}) {
     # 'Roll' to save
-    if (win_bonus($$state{lube_chance},$score,$points) > $$state{bonus}) {
+    if (win_bonus($$state{lube_chance},$points,$score,$$state{win}) >
+          $$state{bonus}) {
       $$state{bonus} = 0;
     }
   }
@@ -308,9 +311,11 @@ if ($score) {
   if ($$state{bonus_rank} >= $$state{win} * 3) {
     my $new_max   = 0;
     my $maxxed    = 0;
+    my $offset = $$state{prize_buffer} * $remaining / $$state{session_length};
+    my $chance = $$state{prize_chance} + $offset;
 
     foreach (1 .. $$state{lose}) {
-      my $bonus_try = win_bonus($$state{prize_chance},$score,$points);
+      my $bonus_try = win_bonus($chance,$points,$score,$$state{lose}*2);
       if ($bonus_try > $$state{lose} * 2) {
         $bonus_try = $$state{lose} * 2;
       }
@@ -372,24 +377,25 @@ write_config($$state{state_file},$state);
 
 sub win_bonus {
   my $chance  = shift;
+  my $tries   = shift;
   my $score   = shift;
-  my $rank    = shift;
+  my $max     = shift;
 
   my $bonus   = 0;
+  my $tiers   = 4;
+  my $max_dip = ($score * 30) / 100 * $chance;
 
-  foreach my $spin (1 .. $rank) {
-    if (!int(rand(int($chance)))) {
-      if ($rank - $bonus >= $score) {
-        $bonus += $score;
-      }
-
-      if ($chance >= 5) {
-        $chance = $chance * (100 - $score * 15) / 100;
-      }
+  foreach my $try (1 .. $tries) {
+    if (!int(rand($chance - int($bonus / $max * $tiers) * $max_dip / $tiers))) {
+      $bonus++;
     }
   }
 
-  return $bonus;
+  if ($bonus > $max) {
+    return $max;
+  } else {
+    return $bonus;
+  }
 }
 
 sub add_time {
