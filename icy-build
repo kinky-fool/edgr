@@ -36,18 +36,28 @@ foreach my $special_image (split(/:/,$$state{special_image})) {
   if ($image =~ m|^$special_image|) {
     $score++;
     if ($$state{lubed} and $$state{prize_two}) {
-      if ($$state{prize_armed} and !int(rand($$state{lose}))) {
-        $$state{prize_armed} = 0;
-      } else {
+      if (int(rand($$state{win})) == 0 and int(rand($$state{lose})) > 0) {
+        if ($$state{prize_armed} == 0) {
+          $$state{lube_next} = $now + $$state{special_delay};
+        }
         $$state{prize_armed} = 1;
+      }
+
+      if (int(rand($$state{win})) > 0 and int(rand($$state{lose})) == 0) {
+        $$state{prize_armed} = 0;
       }
     }
 
     if (!$$state{lubed}) {
-      if ($$state{prize_two} and int(rand($$state{win}))) {
-        $$state{prize_two} = 0;
-      } else {
+      if (int(rand($$state{win})) == 0 and int(rand($$state{lose})) > 0) {
+        if ($$state{prize_two} == 0) {
+          $$state{lube_next} = $now + $$state{special_delay};
+        }
         $$state{prize_two} = 1;
+      }
+
+      if (int(rand($$state{win})) > 0 and int(rand($$state{lose})) == 0) {
+        $$state{prize_two} = 0;
       }
     }
   }
