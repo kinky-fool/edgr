@@ -2,8 +2,8 @@ package Sessions;
 
 use strict;
 use Exporter;
-use IPC::SharedMem;
 use Getopt::Long;
+use IPC::SharedMem;
 use Net::Twitter;
 use POSIX qw(strftime floor ceil);
 use Time::Local;
@@ -19,6 +19,7 @@ $DEBUG        = 0;
                     extend_session
                     fisher_yates_shuffle
                     fuzzy
+                    get_sessions_by_date
                     get_today
                     init_session_state
                     pick_images
@@ -292,6 +293,33 @@ sub fuzzy {
     $number = $result;
   }
   return $number;
+}
+
+sub get_sessions_by_date {
+  my $state = shift;
+  my $date  = shift;
+
+  my ($year,$mon,$day) = split(/-/,$date);
+  my ($hour,$min) = split(/_/,$$state{day_start});
+  my $start = timelocal(0,$min,$hour,$day,$mon-1,$year);
+  my $end   = $start + 24 * 60 * 60;
+
+  my %sessions = ();
+  if (open my $log,'<',$$state{session_log}) {
+    while (my $line = <$log>) {
+      my ($time,$length,$added,$done,$undone,$armed,$icy) = split(/:/,$line);
+      if ($time >= $start and $time < $end) {
+        $sessions{$time} = {
+          length    =>  $length,
+          done      =>  $done,
+          undone    =>  $undone,
+          icy_armed =>  $armed,
+          icy_used  =>  $icy
+        };
+      }
+    }
+  }
+  return \%sessions;
 }
 
 sub get_today {
