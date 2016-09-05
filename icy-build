@@ -256,54 +256,48 @@ if ($add_time or $bonus_time) {
   }
 }
 
-if ($$state{go_for_green}) {
-  $$state{green_light}  = 0;
-  $$state{go_for_green} = 0;
-  if ($$state{window_green} > 0) {
-    my $pics = $$state{window_green};
-    if (!int(rand(6))) {
-      $pics++;
-    }
-    if (!int(rand($$state{green_chance})) or ($$state{greens} == 0 and
-        (($pics * $$state{image_delay}) > $remaining))) {
-      $$state{green_light} = $pics;
-    } else {
-      printf "   0\n";
-    }
-  } else {
-    printf "   0\n";
-  }
-}
-
 if ($$state{green_light} > 0) {
-  if ($$state{green_light} > $$state{window_green}) {
-    printf "   0\n";
-  } else {
-    printf "   Green Light\n";
-  }
+  printf "  Green Light\n";
   $$state{green_light}--;
 }
 
-if ($$state{countdown} > 0) {
-  printf "   %i\n", $$state{countdown}--;
-  if ($$state{countdown} == 0) {
-    $$state{go_for_green} = 1;
+if ($$state{greens} > 0 and $$state{countdown} < 0 and !$$state{green_light}) {
+  my $offset = $$state{green_buffer} * $elapsed / $$state{session_length};
+  my $chance = $$state{green_chance} + $$state{green_buffer} - $offset;
+
+  if (!int(rand($chance))) {
+    $$state{countdown} = $$state{yellow_pics};
   }
 }
 
-if (!($$state{countdown} or $$state{green_light} or $$state{go_for_green})) {
-  if ($$state{window_yellow} > 0 or $$state{window_green} > 0) {
-    my $time_needed = ($$state{window_yellow} + $$state{window_green}) *
-                        $$state{image_delay};
-    if ($$state{greens} > 0 and int(rand($$state{countdown_chance}))) {
-      $time_needed = $$state{window_yellow} * $$state{image_delay};
-    }
-    if ($$state{green_zone} > $remaining and
-        (!int(rand($$state{countdown_chance})) or
-        $time_needed > ($remaining + $$state{image_delay}))) {
-      $$state{countdown} = $$state{window_yellow};
+if ($$state{countdown} > -1) {
+  my $offset = $$state{green_buffer} * $elapsed / $$state{session_length};
+  my $chance = $$state{green_chance} + $$state{green_buffer} - $offset;
+
+  printf "  %s\n", $$state{countdown}--;
+
+  if ($$state{countdown} == -1) {
+    for (2 .. $$state{win}) {
+      if (!int(rand($chance))) {
+        $$state{go_for_green} = 1;
+      }
     }
   }
+
+  if ($$state{countdown} == 0 and (int(rand(4)))) {
+    $$state{countdown} = -2;
+    for (2 .. $$state{win}) {
+      if (!int(rand($chance))) {
+        $$state{go_for_green} = 1;
+      }
+    }
+  }
+}
+
+if ($$state{go_for_green} > 0) {
+  $$state{green_light} = $$state{green_pics};
+  $$state{go_for_green} = 0;
+  $$state{greens}--;
 }
 
 if ($message ne '') {
