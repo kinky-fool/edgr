@@ -34,6 +34,7 @@ foreach my $dir (split(/:/,$$state{image_bonus_dirs})) {
 
 foreach my $special_image (split(/:/,$$state{special_image})) {
   if ($image =~ m|^$special_image|) {
+    $score++;
     if ($$state{lubed} and $$state{prize_two}) {
       if ($$state{prize_armed} and !int(rand($$state{lose}))) {
         $$state{prize_armed} = 0;
