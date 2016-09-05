@@ -390,8 +390,9 @@ sub init_session_state {
     "high_end=i"  => \$$state{endzone_high},
     "fuzzify=i"   => \$$state{fuzzify},
     "prizes"      => \$$state{prize_armed},
-    "green=i"     => \$$state{window_green},
-    "yellow=i"    => \$$state{window_yellow},
+    "green=i"     => \$$state{green_pics},
+    "greens=i"    => \$$state{greens},
+    "yellow=i"    => \$$state{yellow_pics},
     "win=i"       => \$$state{win},
     "lose=i"      => \$$state{lose},
     "score=i"     => \$$state{score},
@@ -404,13 +405,14 @@ sub init_session_state {
   $$state{matches_gap}      = 0;
   $$state{streak}           = 0;
   $$state{last_score}       = -1;
-  $$state{countdown}        = 0;
+  $$state{countdown}        = -1;
   $$state{go_for_green}     = 0;
   $$state{green_light}      = 0;
-  $$state{greens}           = 0;
   $$state{prize_rank}       = 0;
   $$state{time_rank}        = 0;
   $$state{time_added}       = 0;
+  $$state{time_next}        = 0;
+  $$state{lube_next}        = 0;
   $$state{end_game}         = 0;
   $$state{session_length}   = 0;
   $$state{buffer}           = $$state{buffer_reset};
