@@ -405,17 +405,23 @@ sub add_time {
   my $time_added  = 0;
   my $time_to_add = 0;
 
-  for (1 .. $count) {
-    $time_to_add += fuzzy($$state{time_add},$$state{fuzzify} + 1);
+  for (0 .. $$state{bonus}) {
+    for (1 .. $count) {
+      $time_to_add += fuzzy($$state{time_add},$$state{fuzzify} + 1);
+    }
   }
+
+  $time_to_add = $time_to_add / $$state{win};
 
   my $allowance = $$state{time_max} - $$state{session_length} + 60;
 
-  if ($time_to_add > $allowance) {
-    if ($allowance > $$state{time_add}) {
-      $time_to_add = $allowance;
-    } else {
-      $time_to_add = 0;
+  if ($allowance > 0) {
+    if ($time_to_add > $allowance) {
+      if ($allowance > $$state{time_add}) {
+        $time_to_add = $allowance;
+      } else {
+        $time_to_add = 0;
+      }
     }
   }
 
