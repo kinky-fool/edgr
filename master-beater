@@ -86,7 +86,7 @@ sub do_cleanup {
 
   my $real_elapsed  = time() - $$state{time_start};
   my $added         = $$state{session_length} - $$state{time_orig};
-  my $remaining     = $$state{session_length} - $real_elapsed;
+  my $remaining     = int($$state{session_length} - $real_elapsed);
 
   printf "Session Length: %s [ %s ] %s\n",
     sec_to_human($$state{time_min}),
@@ -95,7 +95,7 @@ sub do_cleanup {
   printf "Elapsed Time:   %s\n",sec_to_human($real_elapsed);
   printf "Added Time:     %s\n",sec_to_human($added);
 
-  if (int($remaining) > 0) {
+  if ($remaining > 0) {
     printf "Remaining Time: %s\n", sec_to_human($remaining);
   }
 
@@ -125,7 +125,7 @@ sub do_cleanup {
             $$state{session_length},
             $added,
             $real_elapsed,
-            int($remaining),
+            $remaining,
             $$state{prize_armed},
             $$state{icy_used};
     close $log;
