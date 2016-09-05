@@ -19,6 +19,7 @@ $DEBUG        = 0;
                     extend_session
                     fisher_yates_shuffle
                     fuzzy
+                    get_remaining_sessions
                     get_sessions_by_date
                     get_today
                     init_session_state
@@ -293,6 +294,33 @@ sub fuzzy {
     $number = $result;
   }
   return $number;
+}
+
+sub get_remaining_sessions {
+  my $state     = shift;
+  my $date      = shift;
+
+  my $sessions  = get_sessions_by_date($state,$date);
+  my $required  = $$state{daily_required};
+  my $attempted = 0;
+  my $passed    = 0;
+
+  foreach my $session (sort keys %$sessions) {
+    if ($$sessions{$session}{undone} > 0) {
+      if ($required == 0) {
+        $required++;
+      }
+      $required++;
+    } else {
+      if ($required > 0) {
+        $required--;
+      }
+      $passed++;
+    }
+    $attempted++;
+  }
+
+  return $required;
 }
 
 sub get_sessions_by_date {
