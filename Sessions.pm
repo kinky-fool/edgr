@@ -5,6 +5,7 @@ use Exporter;
 use IPC::SharedMem;
 use POSIX; # For floor() / ceil()
 use Getopt::Long;
+use Net::Twitter;
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $DEBUG);
 
 $VERSION      = 0.1;
@@ -26,6 +27,7 @@ $DEBUG        = 0;
                     sec_to_human_precise
                     sexy_slideshow
                     toggle_bool
+                    twitters
                     write_config
                 );
 @EXPORT_OK    = @EXPORT;
@@ -635,6 +637,21 @@ sub toggle_bool {
     return 0;
   }
   return 1;
+}
+
+sub twitters {
+  my $state   = shift;
+  my $message = shift;
+
+  my $twitter = Net::Twitter->new(
+    traits              => [qw/API::RESTv1_1/],
+    consumer_key        => "$$state{twitter_consumer_key}",
+    consumer_secret     => "$$state{twitter_consumer_secret}",
+    access_token        => "$$state{twitter_access_token}",
+    access_token_secret => "$$state{twitter_access_token_secret}",
+  );
+
+  my $result = $twitter->update($message);
 }
 
 sub write_config {
