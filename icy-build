@@ -200,6 +200,8 @@ if ($add_lube) {
         $$state{icy_used}++;
       }
       $$state{bonus} = 0;
+      $$state{prize_armed} = 0;
+      $$state{lube_next} = $$state{prize_lube_break};
     }
   }
 
