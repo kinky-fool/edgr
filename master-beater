@@ -153,6 +153,53 @@ sub do_cleanup {
     printf STDERR "Unable to open %s: %s\n",$$state{session_log},$!;
   }
 
+  # Twitters
+  my $date = get_today($$state{day_start});
+
+  my $sessions  = get_sessions_by_date($state,$date);
+  my $required  = get_remaining_sessions($state,$date);
+  my $attempted = scalar(keys %$sessions);
+
+  my $tweet = sprintf "Session %s", $attempted;
+
+  if ($remaining > 0) {
+    $tweet .= " failed; ";
+    if ($required > 0) {
+      $tweet .= "1 point earned.";
+    } else {
+      $tweet .= "2 points earned.";
+    }
+    $tweet .= sprintf " %s remaining.", sec_to_human_precise($remaining);
+  } else {
+    $tweet .= " passed,";
+  }
+  $tweet .= sprintf " %s completed.", sec_to_human_precise($real_elapsed);
+
+  my $icy_hot = 'None';
+  if ($$state{icy_used} > 0) {
+    $icy_hot = 'A little';
+    if ($$state{icy_used} > 1) {
+      $icy_hot = 'A lot';
+    }
+  }
+  $tweet = sprintf "%s Icy Hot: %s.", $tweet, $icy_hot;
+
+  if ($required) {
+    if ($required == 1) {
+      $tweet = sprintf "%s %s unresolved point remains.", $tweet, $required;
+    } else {
+      $tweet = sprintf "%s %s unresolved points remain.", $tweet, $required;
+    }
+  } else {
+    $tweet = sprintf "%s All points resolved.", $tweet;
+  }
+
+  printf "%s\n", $tweet;
+
+  if ($remaining > 0) {
+    twitters($state,$tweet);
+  }
+
   if (-f $$state{state_file}) {
     unlink $$state{state_file};
   }
