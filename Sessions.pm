@@ -680,7 +680,7 @@ sub sexy_slideshow {
   push @playlist, pick_images($$state{image_random_dirs},$$state{pics_random});
 
   foreach (1 .. $$state{lose}) {
-    if (!int(rand($$state{win}))) {
+    if (2 > int(rand($$state{win}))) {
       foreach my $special (split(/:/,$$state{special_image})) {
         push @playlist, $special;
       }
