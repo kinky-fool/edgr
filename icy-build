@@ -209,6 +209,9 @@ if ($add_lube) {
     $lube_message = 'lube your little dick';
     if ($$state{prize_two}) {
       $lube_message = 'use Liquid Silk on your little dick';
+      if ($$state{icy_used} == 0) {
+        $$state{icy_used} = 1;
+      }
     }
   }
 
