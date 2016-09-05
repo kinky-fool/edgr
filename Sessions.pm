@@ -3,9 +3,10 @@ package Sessions;
 use strict;
 use Exporter;
 use IPC::SharedMem;
-use POSIX; # For floor() / ceil()
 use Getopt::Long;
 use Net::Twitter;
+use POSIX qw(strftime floor ceil);
+use Time::Local;
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $DEBUG);
 
 $VERSION      = 0.1;
@@ -18,6 +19,7 @@ $DEBUG        = 0;
                     extend_session
                     fisher_yates_shuffle
                     fuzzy
+                    get_today
                     init_session_state
                     pick_images
                     play_metronome_script
@@ -290,6 +292,21 @@ sub fuzzy {
     $number = $result;
   }
   return $number;
+}
+
+sub get_today {
+  my $start = shift;
+
+  my $date = strftime "%F", localtime(time);
+  my ($year,$mon,$day) = split(/-/,$date);
+  my ($hour,$min) = split(/_/,$start);
+  my $start_secs = timelocal(0,$min,$hour,$day,$mon-1,$year);
+  # If start is in the future, it's after midnight; need to time travel.
+  if ($start_secs > time) {
+    $start_secs -= 24 * 60 * 60;
+  }
+
+  return strftime "%F", localtime($start_secs);
 }
 
 sub init_session_state {
