@@ -88,7 +88,7 @@ sub change_pace {
     printf $session_fh "# peak_time: %0.2fs (%gs requested)\n",
             $actual_peak_time, $peak_time;
   } else {
-    error_msg("Unable to open $session_file: $!",3);
+    error_msg("Err 6: Unable to open $session_file: $!",3);
   }
   return $actual_peak_time+$actual_build_time;
 }
@@ -531,7 +531,7 @@ sub pick_images {
         closedir $dir_fh;
       } else {
         $errors++;
-        error_msg("Unable to opendir $dir: $!",0);
+        error_msg("Err 1: Unable to opendir $dir: $!",0);
       }
     }
   }
@@ -563,7 +563,7 @@ sub play_metronome_script {
     }
     close $metronome_pipe;
   } else {
-    error_msg("Unable to open pipe: $!",3);
+    error_msg("Err 2: Unable to open pipe: $!",3);
   }
 }
 
@@ -616,7 +616,7 @@ sub read_config {
     }
     close $conf_fh;
   } else {
-    error_msg("Unable to open $conf_file: $!",1);
+    error_msg("Err 3: Unable to open $conf_file: $!",1);
   }
 
   return \%options;
@@ -703,7 +703,7 @@ sub sexy_slideshow {
     }
     close $playlist_fh;
   } else {
-    error_msg("Unable to open image playlist: $!",4);
+    error_msg("Err 4: Unable to open image playlist: $!",4);
   }
 
   my $command  = "$$state{image_viewer} --info '$$state{image_checker} '%f'' ";
@@ -748,7 +748,7 @@ sub write_config {
       }
     }
   } else {
-    error_msg("Unable to open $config_file: $!",2);
+    error_msg("Err 5: Unable to open $config_file: $!",2);
   }
 
   return 1;
