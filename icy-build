@@ -32,6 +32,14 @@ foreach my $dir (split(/:/,$$state{image_bonus_dirs})) {
   }
 }
 
+if ($$state{last_score} == $score) {
+  $$state{streak}++;
+} else {
+  $$state{streak} = 1;
+}
+
+$$state{last_score} = $score;
+
 foreach my $special_image (split(/:/,$$state{special_image})) {
   if ($image =~ m|^$special_image|) {
     $score++;
@@ -62,14 +70,6 @@ foreach my $special_image (split(/:/,$$state{special_image})) {
     }
   }
 }
-
-if ($$state{last_score} == $score) {
-  $$state{streak}++;
-} else {
-  $$state{streak} = 1;
-}
-
-$$state{last_score} = $score;
 
 my $old_rank = $$state{bonus_rank};
 
