@@ -137,37 +137,41 @@ sub extend_session {
   if ($down > 0) {
     $down--;
   } else {
-    if ($percent*100 >= $high) {
+    if ($$state{session_length} > $$state{time_min}) {
       $dir = 1;
-    } elsif ($percent*100 <= $low) {
-      $dir = -1;
-    } elsif (($$state{session_length} / $$state{time_min}) > rand(1)) {
+    } elsif ($$state{session_length} / $$state{time_min} > rand(1)) {
       $dir = 1;
     } else {
       $dir = -1;
       if (int(rand(2))) {
-        $down = 3 + plus_or_minus(2);
+        $down = int(rand(4));
       }
+    }
+
+    if ($percent*100 >= $high) {
+      $dir = 1;
+    }
+
+    if ($percent*100 <= $low) {
+      $dir = -1;
     }
   }
 
   if ($pace == $max or !int(rand($max - $pace))) {
-    # Decrease pace at least once
     $down = 0;
     $dir = -1;
     if (int(rand(2))) {
-      $down = 3 + plus_or_minus(2);
+      $down = int(rand(4));
     }
   }
 
   if ($pace == $min or !int(rand($pace - $min))) {
-    # Increase pace at least once
     $down = 0;
     $dir = 1;
   }
 
   # Lower size of step as pace approaches either end, largest at 50%
-  my @steps = (34, 21, 13, 8, 5, 3, 2, 1);
+  my @steps = (23, 17, 12, 8, 5, 3, 2, 1);
   my $step_tier = 0;
   if ($dir > 0) {
     $step_tier = sprintf "%.0f", $percent * $#steps;
@@ -182,9 +186,13 @@ sub extend_session {
 
   if ($percent*100 >= $high and $dir < 0) {
     $new = $min + int($field * (fuzzy(50,1) / 100));
+
     if (!int(rand(4))) {
       $new = $min + int($field * (fuzzy($low,1) / 100));
-      $down = 3 + plus_or_minus(2);
+    }
+
+    if (!int(rand(4))) {
+      $down = int(rand(3));
     }
   }
 
@@ -200,11 +208,11 @@ sub extend_session {
     $new = $max;
   }
 
-  if ($new >= $max) {
+  if ($new > $max) {
     $new = $max;
   }
 
-  if ($new <= $min) {
+  if ($new < $min) {
     $new = $min;
   }
 
