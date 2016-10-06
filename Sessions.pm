@@ -482,6 +482,11 @@ sub init_session_state {
   $$state{time_max} = $time_max;
   $$state{time_end} = $time_min;
 
+  if ($$state{win} and $$state{lose} and $$state{wrong}) {
+    $$state{lube_next} =
+      time() + ((20 * $$state{wrong} * $$state{lose}) / $$state{win});
+  }
+
   if ($$state{score}) {
     $$state{prize_chance} = int(($$state{score} / $$state{prize_target}) *
                                   $$state{prize_chance});
