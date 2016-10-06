@@ -29,7 +29,7 @@ if (open my $session_fh,'>',"$$state{session_script}") {
   truncate $session_fh,0;
   close $session_fh;
 } else {
-  error_msg("Unable to open session program file: $!",1);
+  error_msg("Err 7: Unable to open session program file: $!",1);
 }
 
 while ($finalized == 0) {
@@ -112,7 +112,7 @@ sub do_cleanup {
     }
     close $script;
   } else {
-    printf STDERR "Unable to open %s: %s\n",$$state{session_script},$!;
+    printf STDERR "Err 8: Unable to open %s: %s\n",$$state{session_script},$!;
   }
 
   printf "Strokes:        %s\n",$strokes;
@@ -130,7 +130,7 @@ sub do_cleanup {
             $$state{icy_used};
     close $log;
   } else {
-    printf STDERR "Unable to open %s: %s\n",$$state{session_log},$!;
+    printf STDERR "Err 9: Unable to open %s: %s\n",$$state{session_log},$!;
   }
 
   if (open my $log,'<',$$state{session_log}) {
@@ -150,7 +150,7 @@ sub do_cleanup {
     printf "  Stroked:      %s\n",sec_to_human($stroked);
     printf "  Unfinished:   %s\n",sec_to_human($unfinished);
   } else {
-    printf STDERR "Unable to open %s: %s\n",$$state{session_log},$!;
+    printf STDERR "Err 10: Unable to open %s: %s\n",$$state{session_log},$!;
   }
 
   # Twitters
