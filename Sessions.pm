@@ -492,23 +492,6 @@ sub init_session_state {
                                   $$state{prize_chance});
   }
 
-  # Adjust the slideshow composition based on score.
-  my $adjust = fuzzy(($$state{wrong} + $$state{lose}*2 - $$state{win}),
-                      $$state{fuzzy}) * $$state{pics_add};
-
-  $$state{pics_random} += $adjust;
-  $$state{pics_bonus}  -= int($adjust / 3);
-  $$state{pics_seed}   += int($adjust / 2);
-  $$state{pics_prize}  -= int($adjust / 2);
-
-  if ($$state{pics_bonus} < 0) {
-    $$state{pics_bonus} = 0;
-  }
-
-  if ($$state{pics_prize} < 0) {
-    $$state{pics_prize} = 0;
-  }
-
   return $state;
 }
 
