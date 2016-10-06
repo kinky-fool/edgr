@@ -60,6 +60,9 @@ foreach my $special_image (split(/:/,$$state{special_image})) {
     }
 
     if (!$$state{lubed}) {
+      if (rand($$state{lose}) > rand($$state{win})) {
+        $toggle = 1;
+      }
       $$state{prize_two} = $toggle;
     }
   }
