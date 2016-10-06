@@ -210,6 +210,7 @@ if ($add_lube) {
 
   if ($$state{prize_two} > 0) {
     if ($$state{prize_armed} > 0) {
+      $$state{prize_armed} = 0;
       $message = 'use Liquid Fire on your teeny baby dick';
 
       if (1 > $$state{icy_used}) {
