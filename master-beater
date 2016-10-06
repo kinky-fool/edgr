@@ -23,8 +23,6 @@ if ($$state{pace_cur} == 0) {
                       int($field * ($$state{endzone_low} / 100)) + 5;
 }
 
-# Initialize the session
-my $finalized   = 0;
 if (open my $session_fh,'>',"$$state{session_script}") {
   truncate $session_fh,0;
   close $session_fh;
@@ -32,16 +30,13 @@ if (open my $session_fh,'>',"$$state{session_script}") {
   error_msg("Err 7: Unable to open session program file: $!",1);
 }
 
+# Initialize the session
+my $finalized = 0;
 while ($finalized == 0) {
   extend_session($state);
 
   if ($$state{session_length} > $$state{time_min}) {
-    if ($$state{session_length} > $$state{time_max}) {
-      $finalized = 1;
-    }
-    if ($$state{session_length} > $$state{time_end}) {
-      $finalized = 1;
-    }
+    $finalized = 1;
   }
 }
 
