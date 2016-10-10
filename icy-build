@@ -217,14 +217,14 @@ if ($add_lube) {
         $$state{icy_used} = 1;
       }
 
-      if (rand($$state{bonus}) > rand($$state{win})) {
+      if ($$state{bonus} > 1 and rand($$state{bonus}) > rand($$state{win})) {
         $message = 'use some Icy Hot';
         if (2 > $$state{icy_used}) {
           $$state{icy_used} = 2;
         }
       }
 
-      if (rand($$state{bonus}) > rand($$state{win}*2)) {
+      if ($$state{bonus} > 3 and rand($$state{bonus}) > rand($$state{win}*2)) {
         $message = 'coat your tiny dick with Icy Hot';
         if (3 > $$state{icy_used}) {
           $$state{icy_used} = 3;
