@@ -18,33 +18,28 @@ my $remaining = $$state{session_length} - $elapsed;
 
 my $score   = 0;
 
-foreach my $dir (split(/:/,$$state{image_prize_dirs})) {
+foreach my $dir (split(/:/,$$state{images_special})) {
   my ($img_dir) = $image =~ m|^(.*/)[^/]+$|;
   if ($img_dir =~ m|^$dir|) {
     $score = 1;
   }
 }
 
-foreach my $dir (split(/:/,$$state{image_bonus_dirs})) {
+foreach my $dir (split(/:/,$$state{images_vs})) {
   my ($img_dir) = $image =~ m|^(.*/)[^/]+$|;
   if ($img_dir =~ m|^$dir|) {
     $score = 2;
   }
 }
 
-if ($$state{last_score} == $score) {
-  $$state{streak}++;
-} else {
-  $$state{streak} = 1;
-}
+my $vip = 0;
+foreach my $dir (split(/:/,$$state{images_vip})) {
+  my ($img_dir) = $image =~ m|^(.*/)[^/]+$|;
+  if ($img_dir =~ m|^$dir|) {
+    $vip   = 1;
+    $score = 3;
 
-$$state{last_score} = $score;
-
-my $special = 0;
-foreach my $special_image (split(/:/,$$state{special_image})) {
-  if ($image =~ m|^$special_image|) {
-    $score++;
-    $special = 1;
+    my $adjustment = abs(($$state{lube_next} - $now) / 5) * 2;
 
     my $toggle = 0;
     if (rand($$state{lose}) > rand($$state{win})) {
@@ -53,17 +48,35 @@ foreach my $special_image (split(/:/,$$state{special_image})) {
 
     if ($$state{prize_two} and $$state{lubed}) {
       $$state{prize_armed} = $toggle;
-      if ($toggle > 0) {
-        # Cut the time to wait in half, if the prize is armed.
-        $$state{lube_next} = $now + (($$state{lube_next} - $now) / 2);
-      }
+      # Cut the time to wait down a bit
+      $$state{lube_next} -= $adjustment;
     }
 
     if (!$$state{lubed}) {
       $$state{prize_two} = $toggle;
+      if ($toggle > 0) {
+        # Cut the time to wait down a bit
+        $$state{lube_next} -= $adjustment;
+      }
+    }
+
+    if ($$state{lubed} and not ($$state{prize_two} or $$state{lubed})) {
+      $$state{lube_next} += $adjustment;
     }
   }
 }
+
+if (60 > $remaining) {
+  $$state{time_next} -= $score * $score;
+}
+
+if ($$state{last_score} == $score or ($$state{last_score} > 1 and $score > 1)) {
+  $$state{streak}++;
+} else {
+  $$state{streak} = 1;
+}
+
+$$state{last_score} = $score;
 
 if ($score > 0) {
   my $new_max   = 0;
