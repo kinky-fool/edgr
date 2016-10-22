@@ -413,7 +413,6 @@ sub init_session_state {
     "pace=i"      => \$$state{pace_cur},
     "short=f"     => \$$state{time_min},
     "long=f"      => \$$state{time_max},
-    "sides=i"     => \$$state{dice_sides},
     "low_end=i"   => \$$state{endzone_low},
     "high_end=i"  => \$$state{endzone_high},
     "fuzzify=i"   => \$$state{fuzzify},
@@ -437,7 +436,6 @@ sub init_session_state {
   $$state{go_for_green}     = 0;
   $$state{green_light}      = 0;
   $$state{prize_rank}       = 0;
-  $$state{time_rank}        = 0;
   $$state{time_added}       = 0;
   $$state{time_next}        = 0;
   $$state{lube_next}        = 0;

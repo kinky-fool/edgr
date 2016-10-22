@@ -9,119 +9,67 @@ ctronome          ~/bin/ctronome
 tick_file         ~/toys/tick.wav
 tock_file         ~/toys/tock.wav
 
-messages_seen     0
+day_start         8_30 # using : as a delimeter fucks config parsing.
 
-image_prize_dirs  ~/Pictures/sessions/prize
-image_prize_dirs  ~/some/other/directory/prize
+daily_required    5
 
-image_bonus_dirs  ~/Pictures/sessions/bonus
-image_bonus_dirs  ~/some/other/directory/bonus
+images_vip        ~/files/images/heather/sexy/gifts
+images_vs         ~/files/images/heather/sexy/edges
+images_special    ~/files/images/heather/sexy/safe
 
-image_random_dirs ~/Pictures/sessions/filler
-image_random_dirs ~/some/other/directory/filler
+images_rand       ~/files/downloads/images
+images_rand       ~/files/downloads/images/captions
+images_rand       ~/files/images/dowload/hardcore/
+images_rand       ~/files/images/hard
 
-special_image     ~/Pictures/sessions/prize/special1.jpg
-special_image     ~/Pictures/sessions/prize/special2.jpg
+images_rand_count 350
+images_seed_count 120
+images_vs_count   30
+images_vip_count  0
 
-pics_min_pct      0.20
-pics_prize        50
-pics_bonus        40
-pics_seed         80
-pics_random       300
-
-pics_add       5
-
-pace_max          185
-pace_min          95
+pace_max          195
+pace_min          80
 pace_cur          0
 
-dice_count        0
-dice_sides        5
-
-extra_low         0
-extra_high        0
-
-time_min          3
-time_max          15
+time_min          5
+time_max          10
 time_unit         60
 
 fuzzify           1
-
-saves             2
 matches_max       10
-
-endzone_low       20
+endzone_low       5
 endzone_high      80
 
-matches_run       0
+greens            0
+green_pics        0
+yellow_pics       0
 
-window_green      0
-window_yellow     0
-
-countdown_fromend 180
-countdown_chance  12
 green_chance      8
-end_game_start    180
+green_buffer      88
 
-time_for_time     150
 no_more_lube      45
 
-# spins / chance = chance%; 20/80 = 25%, 10/75 = 13%...
-prize_chance      100
+prize_chance      30
+prize_buffer      120
+
 prize_target      80
-prize_on          0
-prize_timeout     10
-prize_break       6
-prize_risk_at     23
 prize_two         0
-prize_lube_break  90
 prize_time        15
 
-time_next         0
-time_delay        0
+time_chance       12
+time_buffer       128
+time_add          30
 
-time_rank         8
-time_chance       23
-time_timeout      0
-time_break        6
-time_add          10
-time_at_rank      6
-
-lube_chance       24
-lube_timeout      12
-
-lube_next         0
-lube_delay        90
-lube_stop         45
-lube_break        240
-lube_sooner       15
-lube_or_time      55
-
-noop_break        10
-
-bonus_max         100
-bonus_chance      0
-bonus_bonus       3
+lube_chance       32
+lube_break        120
 
 bonus_chance      100
-bonus_target      65
 
 buffer_reset      3
 
-show_status       0
-show_matches      0
-show_buffer       0
-show_gauge        0
 show_rank         1
 
-time_delta_max    15
-
-time_delta_win    15
-time_delta_lose   30
-
-green_zone        420
-
-twitter_consumer_secret       for_something_else
-twitter_consumer_key          coming_at_a_later_time
-twitter_access_token          so_you_can_post_things_to_twitters!
-twitter_access_token_secret   because_why_not?
+twitter_consumer_secret <consumer_secret>
+twitter_consumer_key <consumer_key>
+twitter_access_token <access_token>
+twitter_access_token_secret <token_secret>
