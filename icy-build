@@ -39,6 +39,9 @@ foreach my $dir (split(/:/,$$state{images_vip})) {
     $vip   = 1;
     $score = 3;
 
+    # Update the multiplier, for adding / subtracting time and things
+    $$state{multiplier} = int(rand($$state{lose}));
+
     my $adjustment = abs(($$state{lube_next} - $now) / 5) * 2;
 
     my $toggle = 0;
@@ -137,6 +140,20 @@ if ($score > 0) {
       $$state{bonus_bump} = $$state{buffer};
     }
   }
+
+  my $time_mod = $score * $$state{bonus} * $$state{multiplier};
+
+  if ($$state{lubed}) {
+    if ($$state{prize_two} or $$state{prize_armed}) {
+      $$state{lube_next} -= $time_mod;
+    } else {
+      $$state{lube_next} += $time_mod;
+    }
+  } else {
+    $$state{lube_next} += $time_mod;
+  }
+
+  $$state{time_next} -= $time_mod;
 }
 
 my $old_rank = $$state{bonus_rank};

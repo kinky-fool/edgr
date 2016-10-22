@@ -448,6 +448,7 @@ sub init_session_state {
   $$state{lubed}            = 0;
   $$state{icy_used}         = 0;
   $$state{prize_until}      = 0;
+  $$state{multiplier}       = int(rand($$state{lose}))+1;
 
   $$state{matches_max}      = fuzzy($$state{matches_max},$$state{fuzzify}+2);
   $$state{matches_max}      = 15;
