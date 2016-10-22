@@ -191,7 +191,7 @@ sub do_cleanup {
 
   printf "%s\n", $tweet;
 
-  if ($remaining > 0) {
+  if ($remaining > 0 || $required == 0) {
     twitters($state,$tweet);
   }
 
