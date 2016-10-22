@@ -124,11 +124,6 @@ if ($score > 0) {
       $$state{bonus_bump} = $$state{buffer};
     }
   }
-
-  if ($special and ($$state{prize_armed} or $$state{prize_two}) and
-      rand($$state{bonus}) > rand($$state{win})) {
-    $$state{lube_next} = $now;
-  }
 }
 
 my $old_rank = $$state{bonus_rank};
