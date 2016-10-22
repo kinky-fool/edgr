@@ -304,6 +304,26 @@ sub fuzzy {
   return $number;
 }
 
+sub get_images_from_dirs {
+  my $dirs = shift;
+
+  my @images = ();
+  foreach my $glob (split/:/,$dirs) {
+    foreach my $dir (glob $glob) {
+      if (opendir my $dir_fh,"$dir") {
+        my @files = grep { /.(jpe?g|gif|bmp|nef|cr2|png)$/i } readdir $dir_fh;
+        closedir $dir_fh;
+        @files = map { "$dir/" . $_ } @files;
+        push @images, @files;
+      } else {
+        error_msg("get_images_from_dirs: Unable to opendir $dir: $!",0);
+      }
+    }
+  }
+
+  return @images;
+}
+
 sub get_remaining_sessions {
   my $state     = shift;
   my $date      = shift;
@@ -432,6 +452,7 @@ sub init_session_state {
   $$state{prize_until}      = 0;
 
   $$state{matches_max}      = fuzzy($$state{matches_max},$$state{fuzzify}+2);
+  $$state{matches_max}      = 15;
   $$state{time_start}       = time();
   $$state{go_down}          = 3 + plus_or_minus(2);
   $$state{pace_dir}         = -1;
@@ -503,33 +524,13 @@ sub pick_images {
   my $errors = 0;
 
   my @pool = ();
-  foreach my $glob (split(/:/,$dirs)) {
-    foreach my $dir (glob $glob) {
-      if (opendir my $dir_fh,"$dir") {
-        my @files = grep { /.(jpe?g|gif|bmp|nef|cr2|png)$/i } readdir $dir_fh;
-        @files = map { "$dir/" . $_ } @files;
-        my $end = $count - 1;
-        if ($end > $#files) {
-          $end = $#files;
-        }
-        for my $loop (1 .. $multiplier) {
-          fisher_yates_shuffle(\@files);
-          push @pool,@files[0 .. $end];
-        }
-        closedir $dir_fh;
-      } else {
-        $errors++;
-        error_msg("Err 1: Unable to opendir $dir: $!",0);
-      }
-    }
+  my @images = get_images_from_dirs($dirs);
+  while ($count*$multiplier > $#images) {
+    push @images,@images;
   }
 
-  if ($errors == 0) {
-    fisher_yates_shuffle(\@pool);
-    return @pool[1 .. $count];
-  } else {
-    return;
-  }
+  fisher_yates_shuffle(\@images);
+  return @images[1 .. $count];
 }
 
 sub play_metronome_script {
@@ -663,25 +664,27 @@ sub sec_to_human_precise {
 
   return $output;
 }
-
 sub sexy_slideshow {
   my $state = shift;
 
-  my @playlist  = pick_images(
-                      "$$state{image_prize_dirs}:$$state{image_bonus_dirs}",
-                      $$state{pics_seed}
-                    );
-  push @playlist, pick_images($$state{image_bonus_dirs},$$state{pics_bonus});
-  push @playlist, pick_images($$state{image_prize_dirs},$$state{pics_prize});
-  push @playlist, pick_images($$state{image_random_dirs},$$state{pics_random});
+  my @playlist = pick_images("$$state{images_special}:$$state{images_vs}",
+                              $$state{images_seed_count});
+  push @playlist, pick_images($$state{images_vs},$$state{images_vs_count});
+  push @playlist, pick_images($$state{images_rand},$$state{images_rand_count});
 
-  foreach (1 .. $$state{lose}) {
-    if (2 > int(rand($$state{win}))) {
-      foreach my $special (split(/:/,$$state{special_image})) {
-        push @playlist, $special;
+  my $images_vip_count = 0;
+
+  if ($$state{lose} and $$state{win} and $$state{wrong}) {
+    my @vips = get_images_from_dirs($$state{images_vip});
+    my $max = ($#vips + 1) * ($$state{lose} + $$state{wrong} % 5);
+    foreach (1 .. $max) {
+      if (rand($$state{lose}) > rand($$state{win})) {
+        $images_vip_count++;
       }
     }
   }
+
+  push @playlist, pick_images($$state{images_vip},$images_vip_count);
 
   fisher_yates_shuffle(\@playlist);
 
