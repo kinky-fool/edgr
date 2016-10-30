@@ -1,0 +1,78 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Sessions;
+
+use Getopt::Long;
+
+my $safe    = 0;
+my $green   = 0;
+
+# Value of 0 will use config file
+my $greens  = 0;
+my $yellows = 0;
+
+GetOptions(
+  "safe"      => \$safe,
+  "green"     => \$green,
+  "greens=i"  => \$greens,
+  "yellows=i" => \$yellows,
+) or die("Error in args");
+
+
+main();
+
+sub main {
+  my $playable = 0;
+
+  my $wrong = 0;
+  my $win   = 0;
+  my $lose  = 0;
+  my $score = 0;
+
+  while ($playable == 0) {
+    $playable = 1;
+
+    $wrong = prompt("Answered wrong");
+    $win   = prompt("Win streak");
+    $lose  = prompt("Lose streak");
+    $score = prompt("Score");
+
+    if (10 > $wrong and !int(rand($wrong))) {
+      $playable = 0;
+    }
+
+    if ($wrong > 20 and int(rand($wrong))) {
+      $playable = 0;
+    }
+
+    if (5 > $wrong) {
+      $playable = 0;
+    }
+
+    if ($playable == 0) {
+      printf "\nPlay again.\n\n";
+    }
+  }
+
+  my $args = sprintf('-win %i -lose %i -score %i -wrong %i',
+                      $win, $lose, $score, $wrong);
+
+  if ($safe > 0) {
+    $args .= ' -safe';
+  }
+
+  exec "$ENV{HOME}/toys/master-beater $args";
+}
+
+sub prompt {
+  my $prompt = shift;
+
+  printf "%s: ", $prompt;
+  my $response = <STDIN>;
+  chomp $response;
+
+  return $response;
+}
