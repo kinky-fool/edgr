@@ -148,18 +148,12 @@ sub do_cleanup {
   my $date = get_today($$state{day_start});
 
   my $sessions  = get_sessions_by_date($state,$date);
-  my $required  = get_remaining_sessions($state,$date);
   my $attempted = scalar(keys %$sessions);
-
+  my ($owed,$failed,$greed) = get_remaining_sessions($state,$date);
   my $tweet = sprintf "Session %s", $attempted;
 
   if ($remaining > 0) {
-    $tweet .= " failed; ";
-    if ($required > 0) {
-      $tweet .= "1 point earned.";
-    } else {
-      $tweet .= "2 points earned.";
-    }
+    $tweet .= " failed; 1 point earned.";
     $tweet .= sprintf " %s remaining.", sec_to_human_precise($remaining);
   } else {
     $tweet .= " passed,";
@@ -173,13 +167,18 @@ sub do_cleanup {
       $icy_hot = 'A lot';
     }
   }
+
+  if ($$state{prize_disabled} > 0) {
+    $icy_hot = 'Disabled';
+  }
+
   $tweet = sprintf "%s Icy Hot: %s.", $tweet, $icy_hot;
 
-  if ($required) {
-    if ($required == 1) {
-      $tweet = sprintf "%s %s unresolved point remains.", $tweet, $required;
+  if ($owed) {
+    if ($owed == 1) {
+      $tweet = sprintf "%s %s unresolved point remains.", $tweet, $owed;
     } else {
-      $tweet = sprintf "%s %s unresolved points remain.", $tweet, $required;
+      $tweet = sprintf "%s %s unresolved points remain.", $tweet, $owed;
     }
   } else {
     $tweet = sprintf "%s All points resolved.", $tweet;
@@ -187,7 +186,7 @@ sub do_cleanup {
 
   printf "%s\n", $tweet;
 
-  if ($remaining > 0 || $required == 0) {
+  if ($remaining > 0 || $owed == 0) {
     twitters($state,$tweet);
   }
 

@@ -329,26 +329,25 @@ sub get_remaining_sessions {
   my $date      = shift;
 
   my $sessions  = get_sessions_by_date($state,$date);
-  my $required  = $$state{daily_required};
-  my $attempted = 0;
-  my $passed    = 0;
+  my $attempted = scalar(keys %$sessions);
+  my $owed      = $$state{daily_required};
+  my $failed    = 0;
+  my $greed     = 0;
 
   foreach my $session (sort keys %$sessions) {
-    if ($$sessions{$session}{undone} > 0) {
-      if ($required == 0) {
-        $required++;
-      }
-      $required++;
-    } else {
-      if ($required > 0) {
-        $required--;
-      }
-      $passed++;
+    if ($owed == 0) {
+      $owed++;
+      $greed++;
     }
-    $attempted++;
+    if ($$sessions{$session}{undone} > 0) {
+      $owed++;
+      $failed++;
+    } else {
+      $owed--;
+    }
   }
 
-  return $required;
+  return $owed,$failed,$greed;
 }
 
 sub get_sessions_by_date {
