@@ -42,35 +42,23 @@ foreach my $dir (split(/:/,$$state{images_vip})) {
     # Update the multiplier, for adding / subtracting time and things
     $$state{multiplier} = int(rand($$state{lose}));
 
-    my $adjustment = abs(($$state{lube_next} - $now) / 5) * 2;
-
     my $toggle = 0;
     if (rand($$state{lose}) > rand($$state{win})) {
       $toggle = 1;
     }
 
+    if ($$state{prize_disabled} > 0) {
+      $toggle = 0;
+    }
+
     if ($$state{prize_two} and $$state{lubed}) {
       $$state{prize_armed} = $toggle;
-      # Cut the time to wait down a bit
-      $$state{lube_next} -= $adjustment;
     }
 
     if (!$$state{lubed}) {
       $$state{prize_two} = $toggle;
-      if ($toggle > 0) {
-        # Cut the time to wait down a bit
-        $$state{lube_next} -= $adjustment;
-      }
-    }
-
-    if ($$state{lubed} and not ($$state{prize_two} or $$state{lubed})) {
-      $$state{lube_next} += $adjustment;
     }
   }
-}
-
-if (60 > $remaining) {
-  $$state{time_next} -= $score * $score;
 }
 
 if ($$state{last_score} == $score or ($$state{last_score} > 1 and $score > 1)) {
@@ -80,6 +68,7 @@ if ($$state{last_score} == $score or ($$state{last_score} > 1 and $score > 1)) {
 }
 
 $$state{last_score} = $score;
+my $bonus_time = 0;
 
 if ($score > 0) {
   my $new_max   = 0;
@@ -101,18 +90,10 @@ if ($score > 0) {
         $new_max = $bonus_try;
       }
 
-      if ($$state{time_next} >= 20) {
-        $$state{time_next} -= $bonus_try * $maxxed;
-      }
+      $$state{time_next} -= $bonus_try * $maxxed;
 
       if ($$state{lubed}) {
-        if ($$state{prize_two}) {
-          $$state{lube_next} -= $bonus_try * $maxxed;
-        } else {
-          $$state{lube_next} += $bonus_try * $maxxed;
-        }
-      } else {
-        if ($$state{prize_two}) {
+        if ($$state{prize_two} or $$state{prize_armed}) {
           $$state{lube_next} -= $bonus_try * $maxxed;
         } else {
           $$state{lube_next} += $bonus_try * $maxxed;
@@ -130,6 +111,14 @@ if ($score > 0) {
 
   if ($score > 1) {
     $$state{matches}++;
+
+    if ($$state{matches} >= $$state{matches_max}) {
+      $$state{matches}    = 0;
+      $bonus_time         = $$state{buffer};
+      $$state{buffer}     = $$state{buffer_reset};
+      $$state{bonus_bump} = $$state{buffer_reset};
+    }
+
     $$state{buffer} += $$state{streak} * $score;
 
     if ($$state{buffer} < $$state{buffer_reset}) {
@@ -141,7 +130,9 @@ if ($score > 0) {
     }
   }
 
-  my $time_mod = $score * $$state{bonus} * $$state{multiplier};
+  my $time_mod = $score * $$state{multiplier};
+
+  $$state{time_next} -= $time_mod;
 
   if ($$state{lubed}) {
     if ($$state{prize_two} or $$state{prize_armed}) {
@@ -149,32 +140,18 @@ if ($score > 0) {
     } else {
       $$state{lube_next} += $time_mod;
     }
-  } else {
-    $$state{lube_next} += $time_mod;
   }
-
-  $$state{time_next} -= $time_mod;
+} else {
+  if (!int(rand(6))) {
+    $$state{lube_next} -= int($$state{streak} * rand($$state{win}));
+  }
 }
 
 my $old_rank = $$state{bonus_rank};
 
-my $bonus_time = 0;
 my $prize_enabled = 0;
 my $time_enabled = 0;
 my $lube_enabled = 0;
-
-if ($$state{matches} >= $$state{matches_max}) {
-  if ($score) {
-    $$state{matches} = $$state{matches_max};
-    if ($score > 1) {
-      $bonus_time = $$state{buffer};
-    }
-  } else {
-    $$state{matches} = 0;
-    $$state{buffer}     = $$state{buffer_reset};
-    $$state{bonus_bump} = $$state{buffer_reset};
-  }
-}
 
 if ($score <= 1) {
   $$state{buffer}--;
@@ -232,9 +209,11 @@ if ($add_lube) {
   }
 
   $message = 'lube your little baby dick';
+  my $prized = 0;
 
   if ($$state{prize_two} > 0) {
     if ($$state{prize_armed} > 0) {
+      $prized = 1;
       $$state{prize_armed} = 0;
       $message = 'use Liquid Fire on your teeny baby dick';
 
@@ -260,47 +239,58 @@ if ($add_lube) {
     }
   }
 
-  $$state{bonus_rank} -= $add_lube + $$state{bonus};
+  if ($prized > 0) {
+    $$state{bonus_rank} -= $add_lube * $$state{bonus};
+  } else {
+    $$state{bonus_rank}--;
+  }
+
   $$state{lubed}++;
   $$state{lube_next} = $now + $$state{lube_break};
   $$state{bonus} = 0;
 }
 
-if ($add_time or $bonus_time) {
-  my $time_points = 0;
-  my $added_time = 0;
-  my $increase_by = 0;
+my $time_score = $add_time * ($$state{bonus} + 1);
+if ($$state{time_maxscore} > $time_score) {
+  $time_score = $bonus_time * ($$state{bonus} + 1);
+} else {
+  $$state{time_maxscore} = $time_score;
+  $time_score = ($add_time + $bonus_time) * ($$state{bonus} + 1);
+}
 
-  if ($$state{time_max} > $$state{session_length}) {
-    $added_time = add_time($state, ($add_time + $bonus_time));
-    $$state{time_next} = $now + int($added_time * 1.8);
+if ($time_score > $$state{bonus_rank}) {
+  $time_score = $$state{bonus_rank};
+}
 
-    if ($added_time > 0) {
-      $$state{bonus_rank} -= ($add_time + $bonus_time) * ($$state{bonus} + 1);
-      $$state{bonus} = 0;
-      my $add_time_msg = 'stroke just a bit more for me';
+if ($time_score > 0 and $$state{time_max} > $$state{session_length}) {
+  my $added_time = add_time($state,$time_score);
+  $$state{time_next} = $now + int($added_time * 1.2);
 
-      if ($added_time > 20) {
-        $add_time_msg = 'stroke a little longer for me';
-      }
+  if ($added_time > 0) {
+    $$state{bonus_rank} -= $time_score;
+    $$state{bonus} = 0;
+    my $add_time_msg = 'stroke just a bit more for me';
 
-      if ($added_time > 40) {
-        $add_time_msg = 'stroke longer for me';
-      }
+    if ($added_time > 20) {
+      $add_time_msg = 'stroke a little longer for me';
+    }
 
-      if ($added_time > 80) {
-        $add_time_msg = 'stroke a bit longer for me';
-      }
+    if ($added_time > 40) {
+      $add_time_msg = 'stroke longer for me';
+    }
 
-      if ($added_time > 120) {
-        $add_time_msg = 'stroke quite a bit more for me';
-      }
+    if ($added_time > 80) {
+      $add_time_msg = 'stroke a bit longer for me';
+    }
 
-      if ($message ne '') {
-        $message .= " and...\n  ...$add_time_msg";
-      } else {
-        $message = "$add_time_msg";
-      }
+    if ($added_time > 120) {
+      $add_time_msg = 'stroke quite a bit more for me';
+    }
+
+    if ($message ne '') {
+      $message .= " and...\n  ...$add_time_msg";
+    } else {
+      $message = "$add_time_msg";
     }
   }
 }
@@ -401,13 +391,11 @@ sub add_time {
   my $time_added  = 0;
   my $time_to_add = 0;
 
-  for (0 .. $$state{bonus}) {
-    for (1 .. $count) {
-      $time_to_add += fuzzy($$state{time_add},$$state{fuzzify} + 1);
-    }
+  for (0 .. $count) {
+    $time_to_add += fuzzy($$state{time_add},$$state{fuzzify} + 1);
   }
 
-  $time_to_add = $time_to_add / $$state{win};
+  $time_to_add = $time_to_add;
 
   my $allowance = $$state{time_max} - $$state{session_length};
 

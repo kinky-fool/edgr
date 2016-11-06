@@ -423,6 +423,7 @@ sub init_session_state {
     "lose=i"      => \$$state{lose},
     "score=i"     => \$$state{score},
     "wrong=i"     => \$$state{wrong},
+    "safe"        => \$$state{prize_disabled},
   ) or die("Error in args.\n");
 
   # Initialize counters and defaults
@@ -462,54 +463,37 @@ sub init_session_state {
 
   my $time_min = $$state{time_min} * $$state{time_unit};
   my $time_max = $$state{time_max} * $$state{time_unit};
+  my $time_extra = $$state{lose} * $$state{time_unit};
 
   if ($$state{fuzzify}) {
     $time_min = fuzzy($time_min,$$state{fuzzify});
     $time_max = fuzzy($time_max,$$state{fuzzify});
   }
 
-  if ($$state{wrong} and $$state{lose} and $$state{win}) {
-    my @times = ();
-
-    for (1 .. $$state{lose} + $$state{win} * 2) {
-      push @times,int(rand($$state{wrong} * $$state{time_unit}))+1;
-    }
-    @times = sort { $a <=> $b } @times;
-
-    my @lows  = @times[0 .. $$state{lose}-1];
-    my @highs = @times[$#times - $$state{win} + 1 .. $#times];
-
-    my @times = @times[$$state{lose} .. $#times - $$state{win}];
-
-    printf "Time Spread: %s [ %s ] %s\n","@lows","@times","@highs";
-
-    my $time_sum = 0;
-    foreach my $time (@times) {
-      $time_sum += $time;
-    }
-
-    my $time_extra = int($time_sum / scalar(@times));
-
-    if ($$state{fuzzify}) {
-      $time_extra = fuzzy($time_extra,$$state{fuzzify});
-    }
-
-    $time_max += $time_extra;
+  if ($time_min > $time_max) {
+    $$state{time_min} = $time_max;
+    $$state{time_max} = $time_min;
+  } else {
+    $$state{time_min} = $time_min;
+    $$state{time_max} = $time_max;
   }
 
-  $$state{time_min} = $time_min;
-  $$state{time_max} = $time_max;
-  $$state{time_end} = $time_min;
+  $$state{time_orig} = $$state{time_min} + $time_extra;
 
   if ($$state{win} and $$state{lose} and $$state{wrong}) {
-    $$state{lube_next} =
-      time() + ((20 * $$state{wrong} * $$state{lose}) / $$state{win});
+    my $delay = $$state{wrong} * $$state{lose} / $$state{win} * 15;
+    $$state{lube_next} = time() + int($delay);
   }
 
   if ($$state{score}) {
     $$state{prize_chance} = int(($$state{score} / $$state{prize_target}) *
                                   $$state{prize_chance});
   }
+
+  $$state{images_rand_count} += $$state{images_rand_add} * $$state{win};
+  $$state{images_seed_count} += $$state{images_seed_add} * $$state{wrong};
+  $$state{images_vs_count} += $$state{images_vs_add} * $$state{lose};
+  $$state{images_vip_count} += $$state{images_vip_add} * $$state{lose};
 
   return $state;
 }
@@ -662,6 +646,7 @@ sub sec_to_human_precise {
 
   return $output;
 }
+
 sub sexy_slideshow {
   my $state = shift;
 

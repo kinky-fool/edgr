@@ -35,7 +35,7 @@ my $finalized = 0;
 while ($finalized == 0) {
   extend_session($state);
 
-  if ($$state{session_length} > $$state{time_min}) {
+  if ($$state{session_length} > $$state{time_orig}) {
     $finalized = 1;
   }
 }
