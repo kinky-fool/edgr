@@ -189,7 +189,7 @@ sub do_cleanup {
   printf "%s\n", $tweet;
 
   if ($remaining > 0 || $owed == 0) {
-    twitters($state,$tweet);
+    #twitters($state,$tweet);
   }
 
   if (-f $$state{state_file}) {

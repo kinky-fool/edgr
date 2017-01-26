@@ -7,22 +7,49 @@ use Sessions;
 
 use Getopt::Long;
 
-my $safe    = 0;
-my $green   = 0;
-
-# Value of 0 will use config file
-my $greens  = 0;
-my $yellows = 0;
+my $conf_file = "$ENV{HOME}/.config/sessions";
+my $green     = 0;  # Provide 'Green Light!' prompts
+my $prompts   = 0;  # Prompt for values for pace, length, etc
+my $safe_mode = 0;  # Eliminate chance for Icy Hot lube
+my $tg_mode   = 0;  # Thong Game mode; prompt for scores from Thong Game
 
 GetOptions(
-  "safe"      => \$safe,
   "green"     => \$green,
-  "greens=i"  => \$greens,
-  "yellows=i" => \$yellows,
+  "prompt"    => \$prompts,
+  "safe"      => \$safe_mode,
+  "tg"        => \$tg_mode,
 ) or die("Error in args");
 
+print "green: $green\n";
 
-main();
+# Read in configuration
+my $config  = read_config($conf_file);
+
+# Initialize session state
+my $state   = init_session_state($config);
+
+# Prompts
+if ($tg_mode > 0) {
+  $$state{wrong}    = prompt("Answered wrong");
+  $$state{win}      = prompt("Win streak");
+  $$state{lose}     = prompt("Lose streak");
+  $$state{score}    = prompt("Score");
+}
+
+if ($prompts > 0) {
+  $$state{time_min} = prompt("Min length",$$state{time_min});
+  $$state{time_max} = prompt("Max length",$$state{time_max});
+
+  $$state{pace_min} = prompt("Min BPM",$$state{pace_min});
+  $$state{pace_max} = prompt("Max BPM",$$state{pace_max});
+}
+
+if ($green > 0) {
+  $$state{greens}     = prompt("Green Lights",$$state{greens});
+  $$state{countdown}  = prompt("Countdwon",$$state{countdown});
+}
+
+main($state);
 
 sub main {
   my $playable = 0;
@@ -34,11 +61,6 @@ sub main {
 
   while ($playable == 0) {
     $playable = 1;
-
-    $wrong = prompt("Answered wrong");
-    $win   = prompt("Win streak");
-    $lose  = prompt("Lose streak");
-    $score = prompt("Score");
 
     if (10 > $wrong and !int(rand($wrong))) {
       $playable = 0;
@@ -60,19 +82,8 @@ sub main {
   my $args = sprintf('-win %i -lose %i -score %i -wrong %i',
                       $win, $lose, $score, $wrong);
 
-  if ($safe > 0) {
-    $args .= ' -safe';
-  }
+
+  #$args .= ' -green 2 -greens 2 -yellow 3';
 
   exec "$ENV{HOME}/toys/master-beater $args";
-}
-
-sub prompt {
-  my $prompt = shift;
-
-  printf "%s: ", $prompt;
-  my $response = <STDIN>;
-  chomp $response;
-
-  return $response;
 }

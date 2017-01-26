@@ -1,0 +1,63 @@
+while max > length
+  step=fuzzy(15 * int(rand(4) + 2))
+  start=pace
+  end = start + step
+  direction = int(rand(2));
+  if (direction) {
+    end = start - step
+  }
+
+  changes=(3,6,12)
+  delays=(2,6,10)
+  change  = $changes[rand(#$changes)];
+  delay   = $delays[rand(#$delays)];
+  change_tempo(start,end,change,delay)
+
+  if (end >= max or min >= end) {
+    # sit at the max for 10-30s
+    make_beats($end,($end/60) * int(rand(11) + rand(11) + 10));
+    change_tempo(end,end,int(rand(11)+5),int(rand(11)+5));
+    start = end
+    if (end >= max) {
+      end = min + (1/5 * (max - min))
+    } elsif (min >= end) {
+      end = max - (1/5 * (max - min))
+    }
+    change_tempo(start,end,3,2)
+  }
+}
+
+sub change_tempo {
+  my ($start,$end,$change,$delay) = @_;
+
+  my $pace = $start;
+  my $step_size = 15;
+  my $steps = int(abs($end - $start) / $step_size) + 1;
+
+  if ($start > $end) {
+    $step_size *= -1;
+  }
+
+  while ($steps > 0) {
+    $steps--;
+    my $new_pace = $pace + $step_size;
+
+    
+
+    if ($new_pace > $end and $step_size > 0) {
+      $new_pace = $end;
+    }
+
+    if ($new_pace < $end and $step_size < 0) {
+      $new_pace = $end;
+    }
+
+
+}
+
+
+
+sub make_beats {
+  my ($bpm,$count) = @_;
+
+  printf "%g %g/4 2/8\n",$beats,$bpm; 

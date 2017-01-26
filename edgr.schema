@@ -1,0 +1,23 @@
+create table sessions (
+  session_id    integer primary key autoincrement,
+  user_id       integer,
+  ttl           integer,
+  length        real,
+  goal          real,
+  mean          real,
+  fails         integer,
+  prize_enabled bool
+);
+
+create table users (
+  user_id       integer primary key autoincrement,
+  min_tempo     integer,
+  max_tempo     integer,
+  std_ttl       integer,
+  goal_offset   real,
+  lube_delay    real,
+  lube_break    real,
+  prize_enabled bool,
+  prize_delay   real,
+  prize_break   real 
+);

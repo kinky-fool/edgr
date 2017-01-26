@@ -27,6 +27,7 @@ $DEBUG        = 0;
                     pick_images
                     play_metronome_script
                     plus_or_minus
+                    prompt
                     read_config
                     sec_to_human
                     sec_to_human_precise
@@ -419,38 +420,13 @@ sub get_today {
 }
 
 sub init_session_state {
-  # Provide config file name to initialize state or
-  # the current state file name to modify state
-  my $config_file = shift;
-
-  my $config      = read_config("$config_file");
-  my $state       = $config;
+  my $state = shift;
 
   $$state{win}          = 0;
   $$state{lose}         = 0;
   $$state{wrong}        = 0;
   $$state{percent}      = 100;
   $$state{prize_armed}  = 0;
-
-  GetOptions(
-    "max=i"       => \$$state{pace_max},
-    "min=i"       => \$$state{pace_min},
-    "pace=i"      => \$$state{pace_cur},
-    "short=f"     => \$$state{time_min},
-    "long=f"      => \$$state{time_max},
-    "low_end=i"   => \$$state{endzone_low},
-    "high_end=i"  => \$$state{endzone_high},
-    "fuzzify=i"   => \$$state{fuzzify},
-    "prizes"      => \$$state{prize_armed},
-    "green=i"     => \$$state{green_pics},
-    "greens=i"    => \$$state{greens},
-    "yellow=i"    => \$$state{yellow_pics},
-    "win=i"       => \$$state{win},
-    "lose=i"      => \$$state{lose},
-    "score=i"     => \$$state{percent},
-    "wrong=i"     => \$$state{wrong},
-    "safe"        => \$$state{prize_disabled},
-  ) or die("Error in args.\n");
 
   # Initialize counters and defaults
   $$state{matches_cur}      = 0;
@@ -583,6 +559,30 @@ sub plus_or_minus {
   }
 
   return $result;
+}
+
+sub prompt {
+  my $prompt  = shift;
+  my $default = shift;
+
+  my $response;
+
+  if (defined $default) {
+    printf "%s [%s]: ", $prompt, $default;
+    my $input = <STDIN>;
+    chomp $input;
+    if ($input != '') {
+      $response = $input;
+    } else {
+      $response = $default;
+    }
+  } else {
+    printf "%s: ", $prompt;
+    $response = <STDIN>;
+    chomp $response;
+  }
+
+  return $response;
 }
 
 sub read_config {
