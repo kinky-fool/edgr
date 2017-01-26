@@ -9,6 +9,8 @@ use Sessions;
 my $conf_file   = "$ENV{HOME}/.config/sessions";
 # Read config file and command line args and populate %$state
 my $state       = init_session_state($conf_file);
+# Initialize the master_beater specific stuff
+   $state       = master_beater_init($state);
 
 my $field = $$state{pace_max} - $$state{pace_min};
 
