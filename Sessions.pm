@@ -23,6 +23,7 @@ $DEBUG        = 0;
                     get_sessions_by_date
                     get_today
                     init_session_state
+                    master_beater_init
                     pick_images
                     play_metronome_script
                     plus_or_minus
@@ -130,6 +131,28 @@ sub extend_session {
   my $down    = $$state{go_down};
   my $low     = $$state{endzone_low};
   my $high    = $$state{endzone_high};
+
+  if ($$state{session_length} > $$state{time_min}) {
+    my $max_mod = ($$state{session_length} - $$state{time_min}) /
+                  ($$state{time_orig} - $$state{time_min}) *
+                  $$state{pace_offset};
+
+    if ($max_mod > $$state{pace_offset}) {
+      $max_mod = $$state{pace_offset};
+    }
+
+    my $min_mod = ($$state{session_length} - $$state{time_min}) /
+                  ($$state{time_max} - $$state{time_min}) *
+                  $$state{pace_offset};
+
+    if ($min_mod > $$state{pace_offset}) {
+      $min_mod = $$state{pace_offset};
+    }
+
+    $max += $max_mod;
+    $min += $min_mod;
+  }
+
   my $field   = $max - $min;
   my $percent = ($pace - $min) / $field;
 
@@ -400,11 +423,11 @@ sub init_session_state {
   my $config      = read_config("$config_file");
   my $state       = $config;
 
-  $$state{win}    = 0;
-  $$state{lose}   = 0;
-  $$state{wrong}  = 0;
-  $$state{score}  = 100;
-  $$state{prize_armed} = 0;
+  $$state{win}          = 0;
+  $$state{lose}         = 0;
+  $$state{wrong}        = 0;
+  $$state{percent}      = 100;
+  $$state{prize_armed}  = 0;
 
   GetOptions(
     "max=i"       => \$$state{pace_max},
@@ -421,7 +444,7 @@ sub init_session_state {
     "yellow=i"    => \$$state{yellow_pics},
     "win=i"       => \$$state{win},
     "lose=i"      => \$$state{lose},
-    "score=i"     => \$$state{score},
+    "score=i"     => \$$state{percent},
     "wrong=i"     => \$$state{wrong},
     "safe"        => \$$state{prize_disabled},
   ) or die("Error in args.\n");
@@ -431,14 +454,13 @@ sub init_session_state {
   $$state{matches}          = 0;
   $$state{matches_gap}      = 0;
   $$state{streak}           = 0;
-  $$state{last_score}       = -1;
+  $$state{score}            = -1;
   $$state{countdown}        = -1;
   $$state{go_for_green}     = 0;
   $$state{green_light}      = 0;
   $$state{prize_rank}       = 0;
   $$state{time_added}       = 0;
   $$state{time_next}        = 0;
-  $$state{lube_next}        = 0;
   $$state{end_game}         = 0;
   $$state{session_length}   = 0;
   $$state{buffer}           = $$state{buffer_reset};
@@ -448,8 +470,15 @@ sub init_session_state {
   $$state{lubed}            = 0;
   $$state{icy_used}         = 0;
   $$state{prize_until}      = 0;
-  $$state{multiplier}       = int(rand($$state{lose}))+1;
 
+  return $state;
+}
+
+sub master_beater_init {
+  my $state = shift;
+
+  # Some of this probably needs to be in init_session_state
+  $$state{multiplier}       = int(rand($$state{lose}))+1;
   $$state{matches_max}      = fuzzy($$state{matches_max},$$state{fuzzify}+2);
   $$state{matches_max}      = 15;
   $$state{time_start}       = time();
@@ -463,7 +492,7 @@ sub init_session_state {
 
   my $time_min = $$state{time_min} * $$state{time_unit};
   my $time_max = $$state{time_max} * $$state{time_unit};
-  my $time_extra = $$state{lose} * $$state{time_unit};
+  my $time_extra = fuzzy($$state{lose}*$$state{time_add}*3,$$state{fuzzify});
 
   if ($$state{fuzzify}) {
     $time_min = fuzzy($time_min,$$state{fuzzify});
@@ -479,14 +508,10 @@ sub init_session_state {
   }
 
   $$state{time_orig} = $$state{time_min} + $time_extra;
+  $$state{lube_next} = time() + $$state{time_orig};
 
-  if ($$state{win} and $$state{lose} and $$state{wrong}) {
-    my $delay = $$state{wrong} * $$state{lose} / $$state{win} * 15;
-    $$state{lube_next} = time() + int($delay);
-  }
-
-  if ($$state{score}) {
-    $$state{prize_chance} = int(($$state{score} / $$state{prize_target}) *
+  if ($$state{percent}) {
+    $$state{prize_chance} = int(($$state{percent} / $$state{prize_target}) *
                                   $$state{prize_chance});
   }
 
@@ -494,6 +519,9 @@ sub init_session_state {
   $$state{images_seed_count} += $$state{images_seed_add} * $$state{wrong};
   $$state{images_vs_count} += $$state{images_vs_add} * $$state{lose};
   $$state{images_vip_count} += $$state{images_vip_add} * $$state{lose};
+
+  $$state{pace_min} += int($$state{wrong} * 1.5);
+  $$state{pace_max} -= $$state{pace_offset} + int($$state{wrong} * 1.5);
 
   return $state;
 }
@@ -526,7 +554,7 @@ sub play_metronome_script {
       chomp $line;
       if ($line =~ /^# start/) {
         $state = read_config($$state{state_file});
-        if ($$state{wrong} > int(rand($$state{score}))) {
+        if ($$state{wrong} > int(rand($$state{percent}))) {
           $$state{bonus_rank} += int(rand($$state{lose}));
           write_config($$state{state_file},$state);
         }
@@ -681,7 +709,8 @@ sub sexy_slideshow {
   }
 
   my $command  = "$$state{image_viewer} --info '$$state{image_checker} '%f'' ";
-     $command .= "--scale-down -Y -F --fontpath '$ENV{HOME}/.fonts/' ";
+     $command .= "--scale-down --auto-rotate -Y -F ";
+     $command .= "--fontpath '$ENV{HOME}/.fonts/' ";
      $command .= "-D $$state{image_delay} --font 'FiraMono-Medium/32' ";
      $command .= "-Z -f $$state{image_playlist}";
 
