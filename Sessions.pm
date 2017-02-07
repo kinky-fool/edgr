@@ -60,7 +60,10 @@ sub change_pace {
   if ($diff_bpm > 0) {
     $beat_per_step = floor($build_beats/$diff_bpm);
     if ($build_beats % $diff_bpm != 0) {
-      $beat_nth_step = floor($diff_bpm / ($build_beats % $diff_bpm));
+      my $modulus = $build_beats % $diff_bpm;
+      if ($modulus > 0) {
+        $beat_nth_step = floor($diff_bpm / $modulus);
+      }
     }
   }
 
