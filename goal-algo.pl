@@ -21,29 +21,24 @@ main();
 
 exit;
 
+sub play_session {
+  my $user_id = shift;
+
+  
+
 sub main {
-  my $fails = prompt("Failed coin flips");
-
-  if ($fails =~ /[^0-9]/) {
-    printf STDERR "Not a number: %s\n",$fails;
-    exit 1;
-  }
-
+  play_session($user_id);
   my ($mean,$std_dev) = get_user_stats($user_id);
   if ($std_dev < 0.5) {
     $std_dev = 0.5;
   }
-  printf "mean: %0.2f\nstd dev: %0.2f\n",$mean,$std_dev;
 
-  my $goal      = $mean - $std_dev * $goal_offset;
-  for (0 .. $fails+$goal_offset) {
-    $goal += rand($std_dev);
-  }
+  my $goal = $mean - (2 * $std_dev) + rand(4*$std_dev);
+
   printf "goal: %0.2f\n",$goal;
 
-  #my $session_script = make_script($goal,$user_id,$fails);
+  my $session_script = make_script($goal,$user_id);
   my $length = prompt("How long");
-
 
   my $ttl = int($std_ttl - (abs($mean - $length) / $std_dev));
 

@@ -33,14 +33,34 @@ sub age_sessions {
 
 sub db_connect {
   my $dbh = DBI->connect("dbi:SQLite:dbname=$dbf","","") ||
-    error("could not connect to database: $!");
+    error("could not connect to database: $!",1);
   return $dbh;
 }
 
 sub error {
   my $message = shift;
+  my $rv      = shift;
+
   printf STDERR "Error: %s\n",$message;
-  exit;
+  if ($rv >= 0) {
+    exit $rv
+  }
+}
+
+sub get_user_options {
+  my $user_id = shift;
+
+  my $dbh = db_connect();
+  my $sql = 'select * from users where userid = ?';
+  my $sth = $dbh->prepare($sql);
+  $sth->execute($user_id);
+
+  my $options = $sth->fetchrow_hashref;
+
+  $sth->finish;
+  $dbh->disconnect;
+
+  return $options;
 }
 
 sub get_user_stats {
@@ -71,6 +91,40 @@ sub get_user_times {
   $dbh->disconnect;
 
   return @times;
+}
+
+sub play_session {
+  my $session = shift;
+
+  my $command  = "aoss $$session{ctronome} -c 1 -w1 $$session{tick_file} ";
+     $command .= "-w2 $$session{tock_file} -p $$session{session_script}";
+  if (open my $metronome_pipe,'-|',"$command 2>/dev/null") {
+    local $SIG{HUP} = sub { close $metronome_pipe; exit 0 };
+    while (my $line = <$metronome_pipe>) {
+      chomp $line;
+      if ($line =~ /^# cmd:(.*)$/) {
+        printf "%s\n" "$1";
+      }
+    }
+    close $metronome_pipe;
+  } else {
+    error("Unable to open pipe: $!",3);
+  }
+}
+
+sub make_session {
+  my $user_id = shift;
+
+  my $session = get_user_settings($user_id);
+  ($$session{mean},$$session{std_dev}) = get_user_stats($user_id);
+
+  $$session{goal} = $$session{mean}
+      - $$session{deviations} * $$session{std_dev}
+      + rand($$session{deviations} * 2 * $$session{std_dev});
+
+  make_instructions($session)
+  my $session = make_session($user_id,$goal);
+  my $pass = play_session($session);
 }
 
 sub prompt {
