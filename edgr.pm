@@ -112,6 +112,102 @@ sub play_session {
   }
 }
 
+# mod_tempo(start_bpm,end_bpm,dtime,stime)
+sub standard_segment {
+  my $session   = shift;
+  my $ttime     = shift;
+  my $direction = shift;
+
+  my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
+  my $bpm_mid   = $$session{bpm_min} + $$session{bpm_range} / 2;
+  my $bpm_pct   = abs($$session{bpm_cur} - $bpm_mid) /
+                        ($$session{bpm_range} / 2);
+
+  my $dtime = (1 - $bpm_pct) * $ttime;
+  my $stime = $bpm_pct * $ttime;
+
+  # change bpm by ($ttime / 2) to ($ttime * 2)
+  my $bpm_delta = int(rand(($ttime * 2) - ($ttime / 2)) + ($ttime / 2));
+  my $bpm_new   = $$session{bpm_cur} + $bpm_delta;
+  if ($direction < 0) {
+    $bpm_new = $$session{bpm_cur} - $bpm_delta;
+  }
+
+  if ($bpm_new > $$session{bpm_max}) {
+    $bpm_new = $$session{bpm_max};
+  }
+
+  if ($bpm_new < $$session{bpm_min}) {
+    $bpm_new = $$session{bpm_min};
+  }
+
+  extend_session($session,$bpm_new,$dtime,$stime);
+}
+
+sub tempo_jump {
+  my $session = shift;
+  my $percent = shift;
+
+  my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
+  my $bpm_new   = $$session{bpm_min} + ($bpm_range * ($percent / 100));
+  my $bpm_delta = abs($$state{bpm_cur} - $bpm_new);
+
+  extend_session($session,$bpm_new,$bpm_delta/3,1);
+}
+
+sub speed_mid {
+  my $session = shift;
+
+  my $half = $$session{bpm_max} - $$session{bpm_min} / 2;
+
+  my $delta = abs($$session{bpm_cur} - $$session{bpm_min} + $half);
+
+  while ($$session{bpm_cur} > $$session{bpm_
+
+sub pattern_segment {
+  my $session = shift;
+
+  if (!int(rand(50))) {
+    for (0 .. int(rand(3)) + 1) {
+      tempo_jump($session,rand(20) + 40);
+      tempo_jump($session,rand(20) + 80);
+    }
+  } elsif (!int(rand(50))) {
+    for (0 .. int(rand(3)) + 1) {
+      tempo_jump($session,rand(20) + 40);
+      tempo_jump($session,rand(20));
+    }
+  } else {
+    my $direction = 1;
+    if (int(rand(2))) {
+      $direction = -1;
+    }
+    for (0 .. int(rand(3)) + 3) {
+      standard_segment($session,rand(11) + 5,$direction);
+    }
+  }
+}
+
+sub build_session {
+  my $session = shift;
+
+  while ($$session{time_cur} < $$session{time_end}) {
+    my $time_std = rand(10) + rand(10) + 5;
+    if (int(rand(2)) == 0) {
+      standard_segment($session,$time_std,1);
+    } else {
+      standard_segment($session,$time_std,-1);
+    }
+
+    if (int(rand($$session{pattern_chance})) == 0) {
+      $$session{pattern_chance} = $$session{pattern_freq};
+      pattern_segment($session);
+    } else {
+      $$session{pattern_chance}--;
+    }
+  }
+}
+
 sub make_session {
   my $user_id = shift;
 
