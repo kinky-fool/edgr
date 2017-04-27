@@ -112,22 +112,56 @@ sub play_session {
   }
 }
 
+sub tempo_mod {
+  my $session   = shift;
+  my $bpm_end   = shift;
+  my $bpbpm     = shift;
+  my $beats_end = shift;
+
+  my $bpm_cur   = $$session{bpm_cur};
+
+  # Carry-over beats, to support 0.5 beats per bpm, etc.
+  my $beats = 0;
+  for (0 .. abs($bpm_cur - $bpm_end)) {
+    $beats += $bpbpm;
+    if ($beats >= 1) {
+      push @$session{script},int($beats) . ":$bpm_cur";
+      $$session{run_time} += int($beats) / ($bpm_cur / 60);
+      $beats -= int($beats);
+    }
+    $bpm_cur += $$session{direction};
+  }
+
+  push @$session{script},"$beats_end:$bpm_end";
+  $$session{run_time} += $beats_end / ($bpm_end / 60);
+  $$session{bpm_cur} = $bpm_end;
+}
+
 # mod_tempo(start_bpm,end_bpm,dtime,stime)
 sub standard_segment {
   my $session   = shift;
-  my $ttime     = shift;
-  my $direction = shift;
 
   my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
   my $bpm_mid   = $$session{bpm_min} + $$session{bpm_range} / 2;
   my $bpm_pct   = abs($$session{bpm_cur} - $bpm_mid) /
                         ($$session{bpm_range} / 2);
 
-  my $dtime = (1 - $bpm_pct) * $ttime;
+  my $bpm_delta  = (1 - $bpm_pct) * 20;
+  my $bpm_end = $$session{bpm_cur} + $bpm_delta * $$session{direction};
+  my $bpm_avg = ($bpm_cur + $bpm_end) / 2;
+  my $beats_delta = $time_delta * ($bpm_avg / 60);
+  my $bpbpm = $beats_delta / $bpm_delta;
+
+  my $time_end    = $bpm_pct * 20;
+  my $beats_end   = int($time_end * ($bpm_end / 60));
+
+  tempo_mod($session,$bpm_end,$bpbpm,$beats_end);
+}
+
+
   my $stime = $bpm_pct * $ttime;
 
   # change bpm by ($ttime / 2) to ($ttime * 2)
-  my $bpm_delta = int(rand(($ttime * 2) - ($ttime / 2)) + ($ttime / 2));
   my $bpm_new   = $$session{bpm_cur} + $bpm_delta;
   if ($direction < 0) {
     $bpm_new = $$session{bpm_cur} - $bpm_delta;
@@ -154,15 +188,6 @@ sub tempo_jump {
 
   extend_session($session,$bpm_new,$bpm_delta/3,1);
 }
-
-sub speed_mid {
-  my $session = shift;
-
-  my $half = $$session{bpm_max} - $$session{bpm_min} / 2;
-
-  my $delta = abs($$session{bpm_cur} - $$session{bpm_min} + $half);
-
-  while ($$session{bpm_cur} > $$session{bpm_
 
 sub pattern_segment {
   my $session = shift;
