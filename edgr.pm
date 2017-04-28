@@ -19,19 +19,18 @@ $DEBUG        = 0;
                 );
 @EXPORT_OK    = @EXPORT;
 
-my $dbf = "$ENV{HOME}/.config/edgr.sqlite";
-
 sub age_sessions {
-  my $user_id = shift;
+  my $user  = shift;
   my $dbh = db_connect();
-  my $sql = 'update sessions set ttl=ttl-1 where ttl > 0 and user_id = ?';
+  my $sql = 'update sessions set ttl=ttl-1 where ttl > 0 and user = ?';
   my $sth = $dbh->prepare($sql);
-  $sth->execute($user_id);
+  $sth->execute($user);
   $sth->finish;
   $dbh->disconnect;
 }
 
 sub db_connect {
+  my $dbf = shift;
   my $dbh = DBI->connect("dbi:SQLite:dbname=$dbf","","") ||
     error("could not connect to database: $!",1);
   return $dbh;
@@ -47,50 +46,76 @@ sub error {
   }
 }
 
-sub get_user_options {
-  my $user_id = shift;
-
-  my $dbh = db_connect();
-  my $sql = 'select * from users where userid = ?';
-  my $sth = $dbh->prepare($sql);
-  $sth->execute($user_id);
-
-  my $options = $sth->fetchrow_hashref;
-
-  $sth->finish;
-  $dbh->disconnect;
-
-  return $options;
-}
-
-sub get_user_stats {
-  my $user_id = shift;
-
-  my @times = get_user_times($user_id);
-  if (scalar(@times)) {
-    return mean(@times), stddev(@times);
-  } else {
-    return 0, 0;
-  }
-}
-
-sub get_user_times {
+sub get_times {
   # Get an array of session durations for $user_id
-  my $user_id = shift;
+  my $user = shift;
 
   my $dbh = db_connect();
-  my $sql = 'select length from sessions where ttl > 0 and user_id = ?';
+  my $sql = 'select length from sessions where ttl > 0 and user = ?';
   my $sth = $dbh->prepare($sql);
-  $sth->execute($user_id);
+  $sth->execute($user);
   my @times = ();
   while (my ($time) = $sth->fetchrow_array) {
-    printf "%0.2f\n",$time;
     push @times, $time;
   }
   $sth->finish;
   $dbh->disconnect;
 
   return @times;
+}
+
+sub init_session {
+  my $conf = shift;
+
+  my $session = $conf;
+
+  update_settings($session);
+
+  my @times = get_times($session);
+  if (scalar(@times) >= $$session{min_sessions}) {
+    $$session{mean} = mean(@times);
+    $$session{stddev} = stddev(@times);
+  } else {
+    $$session{mean} = $$session{default_mean};
+    $$session{stddev} = $$session{default_stddev};
+  }
+
+  $$session{goal} = $$session{mean} - ($$session{bonus} * $$session{stddev}) +
+              rand(($$session{malus} + $$session{bonus}) * $$session{stddev});
+
+  return $session;
+}
+
+sub make_script {
+  my $session = shift;
+
+  my $end_time = $$session{goal} * 2;
+  my $run_time = 0;
+
+  while ($end_time > $run_time) {
+    $run_time += make_beats($session);
+  }
+}
+
+sub play {
+  my $session = shift;
+
+  my $script = make_script($session);
+  
+
+sub update_settings {
+  my $session = shift;
+
+  my $dbh = db_connect($$session{database});
+
+  my $sql = 'select * from users where user = ?';
+  my $sth = $dbh->prepare($sql);
+  $sth->execute($$session{user});
+  my $options = $sth->fetchrow_hashref;
+
+  foreach my $key (keys %$options) {
+    $$session{$key} = $$options{$key};
+  }
 }
 
 sub play_session {
@@ -119,22 +144,26 @@ sub tempo_mod {
   my $beats_end = shift;
 
   my $bpm_cur   = $$session{bpm_cur};
+  my $duration  = $beats_end / ($bpm_end / 60);
 
   # Carry-over beats, to support 0.5 beats per bpm, etc.
   my $beats = 0;
   for (0 .. abs($bpm_cur - $bpm_end)) {
     $beats += $bpbpm;
     if ($beats >= 1) {
-      push @$session{script},int($beats) . ":$bpm_cur";
-      $$session{run_time} += int($beats) / ($bpm_cur / 60);
+      $$session{beats} = join('#',(split(/#/,$$session{beats}),
+                          sprintf('%g:%g', int($beats), $bpm_cur)));
+      $duration += int($beats) / ($bpm_cur / 60);
       $beats -= int($beats);
     }
     $bpm_cur += $$session{direction};
   }
 
-  push @$session{script},"$beats_end:$bpm_end";
-  $$session{run_time} += $beats_end / ($bpm_end / 60);
+  $$session{beats} = join('#',(split(/#/,$$session{beats}),
+                                    "$beats_end:$bpm_end"));
   $$session{bpm_cur} = $bpm_end;
+
+  return $duration;
 }
 
 # mod_tempo(start_bpm,end_bpm,dtime,stime)
@@ -142,7 +171,7 @@ sub standard_segment {
   my $session   = shift;
 
   my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
-  my $bpm_mid   = $$session{bpm_min} + $$session{bpm_range} / 2;
+  my $bpm_mid   = $$session{bpm_min} + $bpm_range / 2;
   my $bpm_pct   = abs($$session{bpm_cur} - $bpm_mid) /
                         ($$session{bpm_range} / 2);
 
@@ -155,27 +184,7 @@ sub standard_segment {
   my $time_end    = $bpm_pct * 20;
   my $beats_end   = int($time_end * ($bpm_end / 60));
 
-  tempo_mod($session,$bpm_end,$bpbpm,$beats_end);
-}
-
-
-  my $stime = $bpm_pct * $ttime;
-
-  # change bpm by ($ttime / 2) to ($ttime * 2)
-  my $bpm_new   = $$session{bpm_cur} + $bpm_delta;
-  if ($direction < 0) {
-    $bpm_new = $$session{bpm_cur} - $bpm_delta;
-  }
-
-  if ($bpm_new > $$session{bpm_max}) {
-    $bpm_new = $$session{bpm_max};
-  }
-
-  if ($bpm_new < $$session{bpm_min}) {
-    $bpm_new = $$session{bpm_min};
-  }
-
-  extend_session($session,$bpm_new,$dtime,$stime);
+  return tempo_mod($session,$bpm_end,$bpbpm,$beats_end);
 }
 
 sub tempo_jump {
@@ -183,54 +192,72 @@ sub tempo_jump {
   my $percent = shift;
 
   my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
-  my $bpm_new   = $$session{bpm_min} + ($bpm_range * ($percent / 100));
-  my $bpm_delta = abs($$state{bpm_cur} - $bpm_new);
+  my $bpm_end   = $$session{bpm_min} + ($bpm_range * ($percent / 100));
+  my $bpm_delta = abs($$state{bpm_cur} - $bpm_end);
 
-  extend_session($session,$bpm_new,$bpm_delta/3,1);
+  return tempo_mod($session,$bpm_end,rand(2),int(rand(20))+5);
 }
 
 sub pattern_segment {
   my $session = shift;
 
+  my $duration = 0;
+
   if (!int(rand(50))) {
     for (0 .. int(rand(3)) + 1) {
-      tempo_jump($session,rand(20) + 40);
-      tempo_jump($session,rand(20) + 80);
+      $duration += tempo_jump($session, 40 + rand(20));
+      $duration += tempo_jump($session, 80 + rand(20));
     }
   } elsif (!int(rand(50))) {
     for (0 .. int(rand(3)) + 1) {
-      tempo_jump($session,rand(20) + 40);
-      tempo_jump($session,rand(20));
+      $duration += tempo_jump($session, 40 + rand(20));
+      $duration += tempo_jump($session,  0 + rand(20));
     }
   } else {
-    my $direction = 1;
-    if (int(rand(2))) {
-      $direction = -1;
-    }
     for (0 .. int(rand(3)) + 3) {
-      standard_segment($session,rand(11) + 5,$direction);
+      $duration += standard_segment($session);
     }
   }
+
+  return $duration;
 }
 
-sub build_session {
+sub make_beats {
   my $session = shift;
 
-  while ($$session{time_cur} < $$session{time_end}) {
-    my $time_std = rand(10) + rand(10) + 5;
-    if (int(rand(2)) == 0) {
-      standard_segment($session,$time_std,1);
-    } else {
-      standard_segment($session,$time_std,-1);
-    }
+  my $duration = 0;
 
-    if (int(rand($$session{pattern_chance})) == 0) {
-      $$session{pattern_chance} = $$session{pattern_freq};
-      pattern_segment($session);
-    } else {
-      $$session{pattern_chance}--;
+  my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
+  my $percent = ($$session{bpm_cur} - $$session{bpm_min}) / $bpm_range;
+
+  if ($percent > 0.3 and $percent < 0.7) {
+    if (int(rand(2))) {
+      $$session{direction} *= -1;
     }
   }
+
+  if (($percent < 0.05 and $$session{direction} == -1) or
+     ($percent > 0.95 and $$session{direction} == 1)) {
+    $duration += tempo_jump($session, 40 + rand(20));
+  }
+
+  if (($percent > 0.7 and $$session{direction} == -1) or
+     ($percent < 0.3 and $$session{direction} == 1)) {
+    if (int(rand(3))) {
+      $$session{direction} *= -1;
+    }
+  }
+
+  $duration += standard_segment($session);
+
+  if (!int(rand($$session{pattern_chance}))) {
+    $$session{pattern_chance} = $$session{pattern_reset};
+    $duration += pattern_segment($session);
+  } else {
+    $$session{pattern_chance}--;
+  }
+
+  return $duration;
 }
 
 sub make_session {
