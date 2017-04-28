@@ -1,19 +1,16 @@
---- ctronome.c	2014-09-29 13:48:56.000000000 -0500
-+++ ../../ctronome-0.5.6/ctronome.c	2015-08-06 21:22:55.626438164 -0500
-@@ -48,8 +48,11 @@
+--- ../ctronome-orig/ctronome-0.5.6/ctronome.c	2014-09-29 13:48:56.000000000 -0500
++++ ctronome.c	2017-04-27 23:14:14.354537389 -0500
+@@ -48,8 +48,8 @@
     next_program(program);
    }
  
-+  printf("BPM: %d\n",bpm[0]);
-+  fflush(stdout);
++  //fflush(stdout);
    if (pcount > 0){
 -   if (is_program) printf("count: %d, bpm: %d/%d, bpt: %d/%d\n",count,bpm[0],bpm[1],bpt[0],bpt[1]);
-+   //if (is_program) printf("count: %d, bpm: %d/%d, bpt: %d/%d\n",count,bpm[0],bpm[1],bpt[0],bpt[1]);
-+   printf("count: %d, bpm: %d/%d, bpt: %d/%d\n",count,bpm[0],bpm[1],bpt[0],bpt[1]);
  
     /* lets calculate the appropriate pattern length for our bpm and bpt */
     bpm_base_length = dsp_speed * dsp_depth * dsp_channels * 60 / bpm[0];
-@@ -91,6 +94,9 @@
+@@ -91,6 +91,9 @@
      if (pcount) printf("repeat\n");
     }
    }
@@ -23,7 +20,7 @@
    lo2 = str_search(temp,hashmark);
   }
   count = atoi(temp);
-@@ -141,7 +147,7 @@
+@@ -141,7 +144,7 @@
   if (bpt[0] < 1) bpt[0] = 1; if (bpt[0] > 50) bpt[0] = 50;
   if (bpt[1] < 1) bpt[1] = 1; if (bpt[1] > 50) bpt[1] = 50;
  
@@ -32,7 +29,7 @@
   if (bpm[1] > 20) bpm[1] = 20; if (bpm[1] < 1) bpm[1] = 1;
  }
  
-@@ -254,7 +260,7 @@
+@@ -254,7 +257,7 @@
    }
   }
  
@@ -41,3 +38,14 @@
   if (bpm[1] > 20) bpm[1] = 20; if (bpm[1] < 1) bpm[1] = 1;
  
   if (bpt[0] < 1) bpt[0] = 1; if (bpt[0] > 50) bpt[0] = 50;
+@@ -344,10 +347,5 @@
+ 
+  /* open wav file 2 */
+  if (is_program) program = openread(programfile);
+-
+- printf ("bpm: %d/%d, bpt: %d/%d",bpm[0],bpm[1],bpt[0],bpt[1]);
+- if (pdecrease) printf ("repeat count: %d",pcount);
+- if (is_program) printf ("\nprogram file: %s",programfile);
+- printf ("\n");
+ }
+ 
