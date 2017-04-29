@@ -71,6 +71,8 @@ sub init_session {
 
   update_settings($session);
 
+  $$session{duration} = 0;
+
   my @times = get_times($session);
   if (scalar(@times) >= $$session{min_sessions}) {
     $$session{mean} = mean(@times);
@@ -89,19 +91,20 @@ sub init_session {
 sub make_script {
   my $session = shift;
 
-  my $end_time = $$session{goal} * 2;
-  my $run_time = 0;
+  my $time_max = $$session{goal} * 2;
 
-  while ($end_time > $run_time) {
-    $run_time += make_beats($session);
+  while ($time_max > $$session{duration}) {
+    make_beats($session);
+    # Update sessions between generation, in case it's been changed
+    update_settings($session);
   }
 }
 
 sub play {
   my $session = shift;
 
-  my $script = make_script($session);
-  
+  make_script($session);
+}
 
 sub update_settings {
   my $session = shift;
@@ -144,7 +147,7 @@ sub tempo_mod {
   my $beats_end = shift;
 
   my $bpm_cur   = $$session{bpm_cur};
-  my $duration  = $beats_end / ($bpm_end / 60);
+  $$session{duration} += $beats_end / ($bpm_end / 60);
 
   # Carry-over beats, to support 0.5 beats per bpm, etc.
   my $beats = 0;
@@ -153,7 +156,7 @@ sub tempo_mod {
     if ($beats >= 1) {
       $$session{beats} = join('#',(split(/#/,$$session{beats}),
                           sprintf('%g:%g', int($beats), $bpm_cur)));
-      $duration += int($beats) / ($bpm_cur / 60);
+      $$session{duration} += int($beats) / ($bpm_cur / 60);
       $beats -= int($beats);
     }
     $bpm_cur += $$session{direction};
@@ -162,13 +165,20 @@ sub tempo_mod {
   $$session{beats} = join('#',(split(/#/,$$session{beats}),
                                     "$beats_end:$bpm_end"));
   $$session{bpm_cur} = $bpm_end;
+}
 
-  return $duration;
+sub update_tempo_limits {
+  my $session = shift;
+
+  
+
 }
 
 # mod_tempo(start_bpm,end_bpm,dtime,stime)
 sub standard_segment {
   my $session   = shift;
+
+  update_tempo_limits($session);
 
   my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
   my $bpm_mid   = $$session{bpm_min} + $bpm_range / 2;
@@ -184,48 +194,44 @@ sub standard_segment {
   my $time_end    = $bpm_pct * 20;
   my $beats_end   = int($time_end * ($bpm_end / 60));
 
-  return tempo_mod($session,$bpm_end,$bpbpm,$beats_end);
+  tempo_mod($session,$bpm_end,$bpbpm,$beats_end);
 }
 
 sub tempo_jump {
   my $session = shift;
   my $percent = shift;
 
+  update_tempo_limits($session);
+
   my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
   my $bpm_end   = $$session{bpm_min} + ($bpm_range * ($percent / 100));
   my $bpm_delta = abs($$state{bpm_cur} - $bpm_end);
 
-  return tempo_mod($session,$bpm_end,rand(2),int(rand(20))+5);
+  tempo_mod($session,$bpm_end,rand(2),int(rand(20))+5);
 }
 
 sub pattern_segment {
   my $session = shift;
 
-  my $duration = 0;
-
   if (!int(rand(50))) {
     for (0 .. int(rand(3)) + 1) {
-      $duration += tempo_jump($session, 40 + rand(20));
-      $duration += tempo_jump($session, 80 + rand(20));
+      tempo_jump($session, 40 + rand(20));
+      tempo_jump($session, 80 + rand(20));
     }
   } elsif (!int(rand(50))) {
     for (0 .. int(rand(3)) + 1) {
-      $duration += tempo_jump($session, 40 + rand(20));
-      $duration += tempo_jump($session,  0 + rand(20));
+      tempo_jump($session, 40 + rand(20));
+      tempo_jump($session,  0 + rand(20));
     }
   } else {
     for (0 .. int(rand(3)) + 3) {
-      $duration += standard_segment($session);
+      standard_segment($session);
     }
   }
-
-  return $duration;
 }
 
 sub make_beats {
   my $session = shift;
-
-  my $duration = 0;
 
   my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
   my $percent = ($$session{bpm_cur} - $$session{bpm_min}) / $bpm_range;
@@ -238,7 +244,7 @@ sub make_beats {
 
   if (($percent < 0.05 and $$session{direction} == -1) or
      ($percent > 0.95 and $$session{direction} == 1)) {
-    $duration += tempo_jump($session, 40 + rand(20));
+    tempo_jump($session, 40 + rand(20));
   }
 
   if (($percent > 0.7 and $$session{direction} == -1) or
@@ -248,16 +254,16 @@ sub make_beats {
     }
   }
 
-  $duration += standard_segment($session);
+  standard_segment($session);
 
   if (!int(rand($$session{pattern_chance}))) {
     $$session{pattern_chance} = $$session{pattern_reset};
-    $duration += pattern_segment($session);
+    pattern_segment($session);
   } else {
     $$session{pattern_chance}--;
   }
 
-  return $duration;
+  return $$session{duration};
 }
 
 sub make_session {
