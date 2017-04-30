@@ -1,23 +1,24 @@
 create table sessions (
   session_id    integer primary key autoincrement,
-  user_id       integer,
-  ttl           integer,
+  user          integer,
+  date          datetime default (datetime('now','localtime')),
   length        real,
   goal          real,
   mean          real,
-  fails         integer,
   prize_enabled bool
 );
 
 create table users (
-  user_id       integer primary key autoincrement,
-  min_tempo     integer,
-  max_tempo     integer,
-  std_ttl       integer,
-  goal_offset   real,
-  lube_delay    real,
-  lube_break    real,
-  prize_enabled bool,
-  prize_delay   real,
-  prize_break   real 
+  user            text primary key,
+  bpm_min_min     integer,
+  bpm_min_max     integer,
+  bpm_max_min     integer,
+  bpm_max_max     integer,
+  default_mean    real,
+  default_stddev  real,
+  lube_delay      real,
+  lube_break      real,
+  prize_delay     real,
+  prize_break     real,
+  prize_enabled   bool
 );
