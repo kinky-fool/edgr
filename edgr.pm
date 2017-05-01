@@ -292,7 +292,7 @@ sub standard_segment {
   my $bpm_mid   = $$session{bpm_min} + $bpm_range / 2;
   my $bpm_pct   = abs($$session{bpm_cur} - $bpm_mid) / ($bpm_range / 2);
 
-  my $bpm_delta = (((1 - $bpm_pct) * 28) + 2);
+  my $bpm_delta = (((1 - $bpm_pct) * 16) + 2);
 
   my $bpm_end = $$session{bpm_cur} + ($bpm_delta * $$session{direction});
 
@@ -305,10 +305,10 @@ sub standard_segment {
 
   my $bpm_avg = ($$session{bpm_cur} + $bpm_end) / 2;
 
-  my $time_end    = ($bpm_pct * 18) + 2;
+  my $time_end    = ($bpm_pct * 6) + 2;
   my $beats_end   = int(($time_end * $bpm_end) / 60);
 
-  my $time_delta  = ((1 - $bpm_pct) * 18) + 2;
+  my $time_delta  = ((1 - $bpm_pct) * 8) + 2;
   my $beats_delta = int(($time_delta * $bpm_avg) / 60);
 
   my $bpbpm = $beats_delta / $bpm_delta;
@@ -333,18 +333,18 @@ sub tempo_jump {
     $bpm_end = $$session{bpm_min};
   }
 
-  tempo_mod($session,int($bpm_end),rand(2),int(rand(20))+5);
+  tempo_mod($session,int($bpm_end),rand(2)+0.5,int(rand(15))+5);
 }
 
 sub pattern_segment {
   my $session = shift;
 
-  if (!int(rand(50))) {
+  if (!int(rand(20))) {
     for (0 .. int(rand(3)) + 1) {
       tempo_jump($session, 40 + rand(20));
       tempo_jump($session, 80 + rand(20));
     }
-  } elsif (!int(rand(50))) {
+  } elsif (!int(rand(20))) {
     for (0 .. int(rand(3)) + 1) {
       tempo_jump($session, 40 + rand(20));
       tempo_jump($session,  0 + rand(20));
