@@ -1,0 +1,37 @@
+#!/usr/bin/perl
+
+# todo:
+# finish algorithm to calculate goal
+# use more functions
+# test goals
+# add considerations for distance from mean / std dev
+# add considerations for coin flips
+# determine how failure and success should affect things
+
+use strict;
+use warnings;
+
+use edgr;
+
+my $conf_file   = "$ENV{HOME}/.config/edgr";
+
+main();
+exit;
+
+sub main {
+  my $conf = read_config($conf_file);
+  my $session = init_session($conf);
+  while ($$session{time_max} > $$session{duration}) {
+    make_beats($session);
+  }
+  # Reset for interleaving commands in script
+  $$session{duration} = 0;
+  write_script($session);
+  play_script($session);
+  save_session($session);
+  if ($$session{endured} > $$session{goal}) {
+    printf "\n\n  Passed\n\n";
+  } else {
+    printf "\n\n  Failed\n\n";
+  }
+}
