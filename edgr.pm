@@ -41,7 +41,7 @@ sub get_times {
 
   my $dbh = db_connect($$session{database});
   my $sql = qq{select length from sessions where user = ? and date between
-    datetime('now', '-6 days') and datetime('now', 'localtime')};
+    datetime('now', '-23 days') and datetime('now', 'localtime')};
   my $sth = $dbh->prepare($sql);
   $sth->execute($$session{user});
   my @times = ();
@@ -128,15 +128,24 @@ sub init_session {
 
   update_tempo_limits($session);
   $$session{bpm_cur} = $$session{bpm_min} +
-            int(rand($$session{bpm_max} - $$session{bpm_min}));
+            int(rand(($$session{bpm_max} - $$session{bpm_min}) / 5));
+  printf "init bpm_cur: %s\n",$$session{bpm_cur};
 
   $$session{direction} = 1;
-  if (int(rand(2))) {
-    $$session{direction} *= -1;
-  }
 
   $$session{lube_next} = $$session{lube_break};
-  $$session{pattern_chance} = $$session{pattern_reset};
+
+  $$session{prize_armed} = $$session{prize_enabled};
+  $$session{liquid_silk} = 0;
+  $$session{lubed} = 0;
+  $$session{prized} = 0;
+
+  if ($$session{prize_armed} and $$session{prize_chance} > rand(100)) {
+    $$session{liquid_silk} = 1;
+    if ($$session{disarm_chance} > rand(100)) {
+      $$session{prize_armed} = 0;
+    }
+  }
 
   return $session;
 }
@@ -146,10 +155,37 @@ sub maybe_add_command {
 
   my $command = undef;
 
+  my $prize_on = 0;
+
   if ($$session{duration} > $$session{lube_next}) {
-    if (!int(rand($$session{lube_chance}))) {
-      $command = "Use lube";
+
+    if ($$session{lube_chance} > rand(100)) {
+      $command = 'Use lube';
       $$session{lube_next} = $$session{duration} + $$session{lube_break};
+
+      if ($$session{liquid_silk}) {
+        $command = 'Use Liquid Silk';
+        $$session{lube_next} = $$session{duration} + $$session{prize_break};
+        if ($$session{prize_armed} and $$session{lubed}) {
+          if ($$session{prize_chance} > rand(100)) {
+            $$session{prized}++;
+          }
+
+          if ($$session{prized} > 0) {
+            if ($$session{prize_chance} * 2 > rand(100)) {
+              $command = 'Use Liquid Fire';
+            }
+          }
+
+          if ($$session{prized} > 1) {
+            if ($$session{prize_chance} > rand(100)) {
+              $command = 'Use Icy Hot';
+            }
+          }
+        }
+      }
+
+      $$session{lubed}++;
     }
   }
 
@@ -212,38 +248,15 @@ sub play_script {
   $$session{endured} = abs($start - time());
 }
 
-sub tempo_mod {
-  my $session   = shift;
-  my $bpm_end   = shift;
-  my $bpbpm     = shift;
-  my $beats_end = shift;
+sub steady_beats {
+  my $session = shift;
+  my $seconds = shift;
 
-  my $bpm_cur = $$session{bpm_cur};
-
-  # Carry-over beats, to support 0.5 beats per bpm, etc.
-  my $beats = 0;
-
-  # Fix direction if it is broken
-  $$session{direction} = 1;
-  if ($bpm_cur > $bpm_end) {
-    $$session{direction} = -1;
-  }
-
-  while (int($bpm_cur) != int($bpm_end)) {
-    $beats += $bpbpm;
-    if (int($beats) > 0) {
-      $$session{beats} = join('#',(split(/#/,$$session{beats}),
-                          sprintf('%g:%g', int($beats), $bpm_cur)));
-      $$session{duration} += int($beats) * 60 / $bpm_cur;
-      $beats -= int($beats);
-    }
-    $bpm_cur += $$session{direction};
-  }
+  my $beats = int($$session{bpm_cur} * ($seconds / 60));
 
   $$session{beats} = join('#',(split(/#/,$$session{beats}),
-                                    "$beats_end:$bpm_end"));
-  $$session{duration} += $beats_end * 60 / $bpm_end;
-  $$session{bpm_cur} = $bpm_end;
+                                  "$beats:$$session{bpm_cur}"));
+  $$session{duration} += $seconds;
 }
 
 sub update_tempo_limits {
@@ -252,73 +265,38 @@ sub update_tempo_limits {
   my $min_range = $$session{bpm_min_max} - $$session{bpm_min_min};
   my $max_range = $$session{bpm_max_max} - $$session{bpm_max_min};
 
-  # duration from 0 to 1/4 maximum time
-  my $time = $$session{duration};
-  my $percent = $time / ($$session{time_max} / 4);
-  my $min_add = (3/8) * $min_range * $percent;
-  my $max_add = (1/8) * $max_range * $percent;
-
-  if ($$session{duration} >= $$session{time_max} / 4) {
-    $time = $$session{duration} - ($$session{time_max} / 4);
-    $percent = $time / ($$session{time_max} / 4);
-    $min_add = (3/8) * $min_range + ((1/8) * $min_range * $percent);
-    $max_add = (1/8) * $max_range + ((3/8) * $max_range * $percent);
+  my $min_add = 0;
+  my $max_add = 0;
+  if ($$session{duration} > $$session{time_max} / 2) {
+    my $time = $$session{duration} - $$session{time_max} / 2;
+    my $percent = $time / ($$session{time_max} / 2);
+    $min_add = $percent * ($min_range * 4 / 7) + ($min_range * 3 / 7);
+    $max_add = $percent * ($max_range * 1 / 8) + ($max_range * 7 / 8);
+  } elsif ($$session{duration} > $$session{time_max} / 3) {
+    my $time = $$session{duration} - $$session{time_max} / 3;
+    my $percent = $time / ($$session{time_max} / 6);
+    $min_add = $percent * ($min_range * 2 / 7) + ($min_range * 1 / 7);
+    $max_add = $percent * ($max_range * 4 / 8) + ($max_range * 3 / 8);
+  } elsif ($$session{duration} > $$session{time_max} / 4) {
+    my $time = $$session{duration} - $$session{time_max} / 4;
+    my $percent = $time / ($$session{time_max} / 6);
+    $min_add = $percent * ($min_range * 1 / 7);
+    $max_add = $percent * ($max_range * 2 / 8) + ($max_range * 1 / 8);
+  } else {
+    my $time = $$session{duration};
+    my $percent = $time / ($$session{time_max} / 6);
+    $min_add = 0;
+    $max_add = $percent * ($max_range * 1 / 8);
   }
 
-  if ($$session{duration} >= $$session{time_max} / 2) {
-    $time = $$session{duration} - ($$session{time_max} / 2);
-    $percent = $time / ($$session{time_max} / 4);
-    $min_add = ($min_range / 2) + ((1/8) * $min_range * $percent);
-    $max_add = ($max_range / 2) + ((3/8) * $max_range * $percent);
-  }
-
-  if ($$session{duration} >= $$session{time_max} * 3 / 4) {
-    $time = $$session{duration} - ($$session{time_max} * 3 / 4);
-    $percent = $time / ($$session{time_max} / 4);
-    $min_add = (5/8) * $min_range + ((3/8) * $min_range * $percent);
-    $max_add = (7/8) * $max_range + ((1/8) * $max_range * $percent);
-  }
-
-  $$session{bpm_min} = $$session{bpm_min_min} + $min_add;
-  $$session{bpm_max} = $$session{bpm_max_min} + $max_add;
+  $$session{bpm_min} = $$session{bpm_min_min} + int($min_add);
+  $$session{bpm_max} = $$session{bpm_max_min} + int($max_add);
 }
 
-sub standard_segment {
-  my $session   = shift;
-
-  update_tempo_limits($session);
-
-  my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
-  my $bpm_mid   = $$session{bpm_min} + $bpm_range / 2;
-  my $bpm_pct   = abs($$session{bpm_cur} - $bpm_mid) / ($bpm_range / 2);
-
-  my $bpm_delta = (((1 - $bpm_pct) * 16) + 2);
-
-  my $bpm_end = $$session{bpm_cur} + ($bpm_delta * $$session{direction});
-
-  if ($bpm_end > $$session{bpm_max}) {
-    $bpm_end = $$session{bpm_max};
-  }
-  if ($bpm_end < $$session{bpm_min}) {
-    $bpm_end = $$session{bpm_min};
-  }
-
-  my $bpm_avg = ($$session{bpm_cur} + $bpm_end) / 2;
-
-  my $time_end    = ($bpm_pct * 6) + 2;
-  my $beats_end   = int(($time_end * $bpm_end) / 60);
-
-  my $time_delta  = ((1 - $bpm_pct) * 8) + 2;
-  my $beats_delta = int(($time_delta * $bpm_avg) / 60);
-
-  my $bpbpm = $beats_delta / $bpm_delta;
-
-  tempo_mod($session,int($bpm_end),$bpbpm,$beats_end);
-}
-
-sub tempo_jump {
+sub change_tempo {
   my $session = shift;
   my $percent = shift;
+  my $bpbpm   = shift;
 
   update_tempo_limits($session);
 
@@ -333,60 +311,71 @@ sub tempo_jump {
     $bpm_end = $$session{bpm_min};
   }
 
-  tempo_mod($session,int($bpm_end),rand(2)+0.5,int(rand(15))+5);
-}
+  # Carry-over beats, to support 0.5 beats per bpm, etc.
+  my $beats = 0;
+  my $bpm_delta = abs($bpm_end - $$session{bpm_cur});
 
-sub pattern_segment {
-  my $session = shift;
-
-  if (!int(rand(20))) {
-    for (0 .. int(rand(3)) + 1) {
-      tempo_jump($session, 40 + rand(20));
-      tempo_jump($session, 80 + rand(20));
+  while ($bpm_delta > 0) {
+    $beats += $bpbpm;
+    if (int($beats) > 0) {
+      $$session{beats} = join('#',(split(/#/,$$session{beats}),
+                          sprintf('%g:%g', int($beats), $$session{bpm_cur})));
+      $$session{duration} += int($beats) * 60 / $$session{bpm_cur};
+      $beats -= int($beats);
     }
-  } elsif (!int(rand(20))) {
-    for (0 .. int(rand(3)) + 1) {
-      tempo_jump($session, 40 + rand(20));
-      tempo_jump($session,  0 + rand(20));
-    }
-  } else {
-    for (0 .. int(rand(3)) + 2) {
-      standard_segment($session);
-    }
+    $$session{bpm_cur} += $$session{direction};
+    $bpm_delta--;
   }
 }
 
 sub make_beats {
   my $session = shift;
 
+  update_tempo_limits($session);
+
   my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
-  my $percent = ($$session{bpm_cur} - $$session{bpm_min}) / $bpm_range;
+  my $percent = (($$session{bpm_cur} - $$session{bpm_min}) / $bpm_range) * 100;
 
-  if ($percent > 0.3 and $percent < 0.7) {
-    if (int(rand(2))) {
-      $$session{direction} *= -1;
+  if (($percent < 10 and $$session{direction} == -1) or
+      ($percent > 90 and $$session{direction} == 1)) {
+    my $bpbpm = rand(2) + 0.5;
+
+    # Chance to peak
+    if (!int(rand(3))) {
+      if ($percent > 90) {
+        change_tempo($session,100,$bpbpm);
+      } else {
+        change_tempo($session,0,$bpbpm);
+      }
+      steady_beats($session,rand(25) + 5);
     }
-  }
 
-  if (($percent < 0.05 and $$session{direction} == -1) or
-     ($percent > 0.95 and $$session{direction} == 1)) {
-    tempo_jump($session, 40 + rand(20));
-  }
+    # Reverse direction
+    $$session{direction} *= -1;
 
-  if (($percent > 0.7 and $$session{direction} == -1) or
-     ($percent < 0.3 and $$session{direction} == 1)) {
-    if (int(rand(3))) {
-      $$session{direction} *= -1;
+    # Chance to go to the other end
+    if (!int(rand(4))) {
+      if ($percent > 90) {
+        change_tempo($session, 10 + rand(10), $bpbpm);
+      } else {
+        change_tempo($session, 90 - rand(10), $bpbpm);
+      }
+    } else {
+      change_tempo($session, 40 + rand(20), $bpbpm);
     }
-  }
-
-  standard_segment($session);
-
-  if (!int(rand($$session{pattern_chance}))) {
-    $$session{pattern_chance} = $$session{pattern_reset};
-    pattern_segment($session);
+    steady_beats($session,rand(10)+10);
   } else {
-    $$session{pattern_chance}--;
+    if ($percent > 40 and $percent < 60) {
+      if (!int(rand(3))) {
+        # Reverse direction
+        $$session{direction} *= -1;
+      }
+    }
+
+    my $new_pct = ((rand(8) + 2) * $$session{duration}) + $percent;
+
+    change_tempo($session,$new_pct,0.75 + rand(2.5));
+    steady_beats($session,rand(15)+5);
   }
 }
 
