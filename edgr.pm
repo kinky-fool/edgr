@@ -125,14 +125,13 @@ sub init_session {
     $$session{stddev} = $$session{default_stddev};
   }
 
-  $$session{goal} = $$session{mean} - ($$session{bonus} * $$session{stddev}) +
-              rand(($$session{malus} + $$session{bonus}) * $$session{stddev});
-  $$session{time_max} = $$session{goal} * 2;
+  $$session{goal} = int(($$session{mean} - $$session{stddev}) +
+                        (rand($$session{stddev}) * 2));
+  $$session{time_max} = $$session{goal} * 3;
 
   update_tempo_limits($session);
   $$session{bpm_cur} = $$session{bpm_min} +
-            int(rand(($$session{bpm_max} - $$session{bpm_min}) / 5));
-  printf "init bpm_cur: %s\n",$$session{bpm_cur};
+            int(rand(($$session{bpm_max} - $$session{bpm_min}) * 3 / 5));
 
   $$session{direction} = 1;
 
