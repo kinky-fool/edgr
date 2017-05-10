@@ -285,7 +285,7 @@ sub change_tempo {
   update_tempo_limits($session);
 
   my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
-  my $bpm_end   = $$session{bpm_min} + ($bpm_range * ($percent / 100));
+  my $bpm_end   = $$session{bpm_min} + int($bpm_range * ($percent / 100));
 
   if ($bpm_end > $$session{bpm_max}) {
     $bpm_end = $$session{bpm_max};
@@ -297,7 +297,7 @@ sub change_tempo {
 
   # Carry-over beats, to support 0.5 beats per bpm, etc.
   my $beats = 0;
-  my $bpm_delta = abs($bpm_end - $$session{bpm_cur});
+  my $bpm_delta = int(abs($bpm_end - $$session{bpm_cur}));
 
   while ($bpm_delta > 0) {
     $beats += $bpbpm;
@@ -308,6 +308,12 @@ sub change_tempo {
       $beats -= int($beats);
     }
     $$session{bpm_cur} += $$session{direction};
+    if ($$session{bpm_cur} > $$session{bpm_max}) {
+      $$session{bpm_cur} = $$session{bpm_max};
+    }
+    if ($$session{bpm_cur} < $$session{bpm_min}) {
+      $$session{bpm_cur} = $$session{bpm_min};
+    }
     $bpm_delta--;
   }
 }
@@ -318,7 +324,9 @@ sub make_beats {
   update_tempo_limits($session);
 
   my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
-  my $percent = (($$session{bpm_cur} - $$session{bpm_min}) / $bpm_range) * 100;
+  # abs() is meant to handle situation where bpm_cur < bpm_min due to recalc
+  my $percent = (abs($$session{bpm_cur} - $$session{bpm_min})
+                    / $bpm_range) * 100;
 
   if (($percent < 10 and $$session{direction} == -1) or
       ($percent > 90 and $$session{direction} == 1)) {
