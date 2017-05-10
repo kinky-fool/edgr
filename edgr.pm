@@ -210,11 +210,9 @@ sub write_script {
             printf $script_fh "# |\n";
           }
           printf $script_fh "# %s\n", $command;
-          #printf "# %s\n", $command;
         }
         $$session{duration} += 60  / $bpm;
         printf $script_fh "1 %g/4 2/8\n", $bpm;
-        #printf "1 %g/4 2/8\n", $bpm;
         $count--;
       }
     }
@@ -223,25 +221,6 @@ sub write_script {
     error("Unable to open script ($$session{script_file}): $!",1);
   }
 }
-
-#sub play_script {
-#  my $session = shift;
-#
-#  my $command  = "aoss $$session{ctronome} -c 1 -w1 $$session{tick_file} ";
-#     $command .= "-w2 $$session{tock_file} -p $$session{script_file}";
-#  if (open my $metronome_pipe,'-|',"$command 2>/dev/null") {
-#    local $SIG{HUP} = sub { close $metronome_pipe; exit 0 };
-#    while (my $line = <$metronome_pipe>) {
-#      chomp $line;
-#      if ($line =~ /^# (.*)$/) {
-#        printf "%s\n", "$1";
-#      }
-#    }
-#    close $metronome_pipe;
-#  } else {
-#    error("Unable to open pipe: $!",3);
-#  }
-#}
 
 sub play_script {
   my $session = shift;
