@@ -169,18 +169,18 @@ sub maybe_add_command {
         $command = 'Use Liquid Silk';
         $$session{lube_next} = $$session{duration} + $$session{prize_break};
         if ($$session{prize_armed} and $$session{lubed}) {
-          if ($$session{prize_chance} > rand(100)) {
+          if ($$session{prize_apply_chance} > rand(100)) {
             $$session{prized}++;
           }
 
           if ($$session{prized} > 0) {
-            if ($$session{prize_chance} * 2 > rand(100)) {
+            if ($$session{prize_apply_chance} * 2 > rand(100)) {
               $command = 'Use Liquid Fire';
             }
           }
 
           if ($$session{prized} > 1) {
-            if ($$session{prize_chance} > rand(100)) {
+            if ($$session{prize_apply_chance} > rand(100)) {
               $command = 'Use Icy Hot';
             }
           }
