@@ -206,6 +206,9 @@ sub write_script {
       my ($count,$bpm) = split(/:/,$beat);
       while ($count > 0) {
         if (my $command = maybe_add_command($session)) {
+          for (0 .. int(rand(4))+2) {
+            printf $script_fh "# |\n";
+          }
           printf $script_fh "# %s\n", $command;
           #printf "# %s\n", $command;
         }
