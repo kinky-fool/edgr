@@ -11,7 +11,7 @@
 use strict;
 use warnings;
 
-use edgr;
+use Edgr;
 
 my $conf_file   = "$ENV{HOME}/.config/edgr";
 
