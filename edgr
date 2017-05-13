@@ -28,10 +28,13 @@ sub main {
   $$session{duration} = 0;
   write_script($session);
   play_script($session);
-  save_session($session);
+  if ($$session{endured} > $$session{goal} * 3 / 4) {
+    save_session($session);
+  }
+
   if ($$session{endured} > $$session{goal}) {
-    printf "\n\n  Passed\n\n";
+    printf "\n\n Pass\n\n";
   } else {
-    printf "\n\n  Failed\n\n";
+    printf "\n\n Fail\n\n";
   }
 }
