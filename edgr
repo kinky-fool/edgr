@@ -28,9 +28,7 @@ sub main {
   $$session{duration} = 0;
   write_script($session);
   play_script($session);
-  if ($$session{endured} > $$session{goal} * 3 / 4) {
-    save_session($session);
-  }
+  save_session($session);
 
   if ($$session{endured} > $$session{goal} &&
       $$session{endured} < $$session{goal} * 1.5) {

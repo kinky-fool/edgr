@@ -42,11 +42,12 @@ sub get_times {
   my $dbh = db_connect($$session{database});
   my $sql = qq{
 select length from sessions where user = ? and
+length / goal > ? / 100 and
 date between datetime('now', '-14 days') and datetime('now', 'localtime')
 order by date desc limit ?
   };
   my $sth = $dbh->prepare($sql);
-  $sth->execute($$session{user},$$session{past_sessions});
+  $sth->execute($$session{user},$$session{min_pct},$$session{past_sessions});
   my @times = ();
   while (my ($time) = $sth->fetchrow_array) {
     push @times, $time;
