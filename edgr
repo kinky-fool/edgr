@@ -32,7 +32,8 @@ sub main {
     save_session($session);
   }
 
-  if ($$session{endured} > $$session{goal}) {
+  if ($$session{endured} > $$session{goal} &&
+      $$session{endured} < $$session{goal} * 1.5) {
     printf "\n\n Pass\n\n";
   } else {
     printf "\n\n Fail\n\n";
