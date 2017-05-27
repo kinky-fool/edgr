@@ -36,4 +36,7 @@ sub main {
   } else {
     printf "\n\n Fail\n\n";
   }
+
+  printf "Hit <enter>";
+  my $input = <STDIN>;
 }
