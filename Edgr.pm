@@ -157,12 +157,11 @@ sub init_session {
     $$session{stddev} = $$session{default_stddev};
   }
 
-  $$session{goal} = int(($$session{mean} - $$session{stddev}) +
-                        (rand($$session{stddev}) * 2));
+  $$session{goal} = $$session{mean};
   $$session{time_max} = $$session{goal} * 3;
 
-  $$session{bpm_cur} = $$session{bpm_min} +
-            int(rand(($$session{bpm_max} - $$session{bpm_min}) * 2 / 5));
+  my ($min,$max) = tempo_limits($session);
+  $$session{bpm_cur} = $min + int(rand(($max - $min) * 2 / 5));
 
   $$session{direction} = 1;
 
