@@ -259,9 +259,10 @@ sub play_script {
   my $session = shift;
 
   my $start = time();
-  my @args = ("aoss","$$session{ctronome}","-c1", "-w1", "$$session{tick_file}",
-              "-w2", "$$session{tock_file}", "-p", "$$session{script_file}");
-  system(@args);
+
+  my $command  = "aoss $$session{ctronome} -c 1 -w1 $$session{tick_file} ";
+     $command .= "-w2 $$session{tock_file} -p $$session{script_file}";
+  system($command);
   $$session{endured} = abs($start - time());
 }
 
