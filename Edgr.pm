@@ -172,6 +172,9 @@ sub init_session {
   $$session{lubed} = 0;
   $$session{prized} = 0;
 
+  my $fail_ratio = get_long_fail_ratio($session);
+  $$session{prize_chance} += $$session{prize_boost} * $fail_ratio;
+
   if ($$session{prize_armed} and $$session{prize_chance} > rand(100)) {
     $$session{liquid_silk} = 1;
     if ($$session{disarm_chance} > rand(100)) {
