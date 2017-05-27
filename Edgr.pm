@@ -36,6 +36,36 @@ sub error {
   }
 }
 
+sub get_long_fail_ratio {
+  my $session = shift;
+
+  my $dbh = db_connect($$session{database});
+  my $sql = qq{
+select count(*) from sessions where user = ? and
+length / goal > ? / 100 and
+date between datetime('now', ?) and datetime('now', 'localtime')
+order by date desc limit ?
+};
+  my $sth = $dbh->prepare($sql);
+  $sth->execute($$session{user}, $$session{max_pct},
+                $$session{past_time}, $$session{past_sessions});
+  my ($fails) = $sth->fetchrow_array;
+  $sth->finish;
+
+  $sql = qq{
+select count(*) from sessions where user = ? and
+date between datetime('now', ?) and datetime('now', 'localtime')
+order by date desc limit ?
+};
+  $sth = $dbh->prepare($sql);
+  $sth->execute($$session{user},$$session{past_time},$$session{past_sessions});
+  my ($total) = $sth->fetchrow_array;
+  $sth->finish;
+  $dbh->disconnect;
+
+  return $fails / $total;
+}
+
 sub get_times {
   my $session = shift;
 
