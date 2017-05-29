@@ -285,16 +285,11 @@ sub change_tempo {
   my $beats = 0;
   my $bpm_delta = int(abs($bpm_end - $$session{bpm_cur}));
 
-  my $direction = 1;
-  if ($$session{bpm_cur} > $bpm_end) {
-    $direction = -1;
-  }
-
   my $bpm_range = $$session{bpm_max} - $$session{bpm_min};
 
   while ($bpm_delta > 0) {
     my $percent = ($$session{bpm_cur} - $$session{bpm_min}) / $bpm_range;
-    if ($direction < 0) {
+    if ($$session{direction} < 0) {
       $percent = 1 - $percent;
     }
     my $spb = ($$session{max_spb} - $$session{min_spb}) * $percent +
@@ -307,7 +302,7 @@ sub change_tempo {
       $$session{duration} += int($beats) * 60 / $$session{bpm_cur};
       $beats -= int($beats);
     }
-    $$session{bpm_cur} += $direction;
+    $$session{bpm_cur} += $$session{direction};
     $bpm_delta--;
   }
 }
@@ -352,6 +347,7 @@ sub make_beats {
     $the_flow = 1;
   }
 
+  my $old_dir = $$session{direction};
   # Go with the flow, man.
   if (!int(rand(4))) {
     $$session{direction} = $the_flow;
@@ -407,8 +403,14 @@ sub make_beats {
   if ($new_pace < $min) {
     $new_pace = $min;
   }
+  # Pause for a bit when changing direction
+  if ($old_dir != $$session{direction}) {
+    my $percent = (abs($$session{bpm_cur} - $min) / $bpm_range) * 100;
+    my $from_half = abs($percent - 50);
+    my $steady_secs = 13 * ($from_half / 50);
+    steady_beats($session, $steady_secs + 1);
+  }
   change_tempo($session, $new_pace);
-  steady_beats($session, rand(8) + 2);
 }
 
 sub save_session {
