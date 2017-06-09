@@ -30,8 +30,8 @@ sub main {
   play_script($session);
   save_session($session);
 
-  if ($$session{endured} > $$session{goal} &&
-      $$session{endured} < $$session{goal} * 1.5) {
+  if ($$session{endured} >= $$session{goal} - $$session{under} and
+      $$session{endured} <= $$session{goal} + $$session{over}) {
     printf "\n\n Pass\n\n";
   } else {
     printf "\n\n Fail\n\n";
