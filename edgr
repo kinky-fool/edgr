@@ -41,20 +41,20 @@ sub main {
   #play_script($session);
   #save_session($session);
 
-  my $sql = "select count(*) from sessions where user = ?";
-  my $sth = $dbh->prepare($sql);
-  $sth->execute($$session{user});
-  my ($session_count) = $sth->fetchrow_array;
+  #my $sql = "select count(*) from sessions where user = ?";
+  #my $sth = $dbh->prepare($sql);
+  #$sth->execute($$session{user});
+  #my ($session_count) = $sth->fetchrow_array;
 
-  if ($$session{endured} >= $$session{goal} - $$session{under} and
-      $$session{endured} <= $$session{goal} + $$session{over}) {
-    printf "\n\nPass\n\n";
-    #twitters($session,"Session #$session_count: Pass");
-  } else {
-    printf "\n\n Fail\n\n";
-    #twitters($session,"Session #$session_count: Fail");
-  }
+  #if ($$session{endured} >= $$session{goal} - $$session{under} and
+  #    $$session{endured} <= $$session{goal} + $$session{over}) {
+  #  printf "\n\nPass\n\n";
+  #  #twitters($session,"Session #$session_count: Pass");
+  #} else {
+  #  printf "\n\n Fail\n\n";
+  #  #twitters($session,"Session #$session_count: Fail");
+  #}
 
-  printf "Hit <enter>";
-  my $input = <STDIN>;
+  #printf "Hit <enter>";
+  #my $input = <STDIN>;
 }

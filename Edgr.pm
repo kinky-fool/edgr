@@ -129,7 +129,7 @@ sub read_config {
     }
     close $conf_fh;
   } else {
-    error_msg("Err 3: Unable to open $conf_file: $!",1);
+    error("Err 3: Unable to open $conf_file: $!",1);
   }
 
   return \%options;
@@ -166,14 +166,20 @@ sub init_session {
 
   $$session{goal} = $$session{mean};
 
-  if ($$session{under} > $$session{goal}) {
-    $$session{goal} = $$session{under};
+  if ($$session{goal} > $$session{goal_max}) {
+    $$session{goal} = $$session{goal_max};
   }
 
-  $$session{time_max} = $$session{goal} + ($$session{over} * 2);
+  if ($$session{goal} < $$session{goal_min}) {
+    $$session{goal} = $$session{goal_min};
+  }
 
-  my ($min,$max) = tempo_limits($session);
-  $$session{bpm_cur} = $min + int(rand(($max - $min) * 2 / 5));
+  $$session{goal_radius} = int($$session{goal} / 10) + 1;
+  $$session{time_max} = $$session{goal} * 1.5;
+
+  my $range = abs($$session{bpm_max} - $$session{bpm_min});
+
+  $$session{bpm_cur} = int(rand($range * 2 / 5)) + $$session{bpm_min};
 
   $$session{direction} = 1;
 
@@ -282,11 +288,28 @@ sub steady_beats {
   my $session = shift;
   my $seconds = shift;
 
-  my $beats = int($$session{bpm_cur} * ($seconds / 60));
+  my $beats = $$session{bpm_cur} * $seconds / 60;
 
   $$session{beats} = join('#',(split(/#/,$$session{beats}),
                                   "$beats:$$session{bpm_cur}"));
-  $$session{duration} += $seconds;
+  $$session{duration} += int($beats) * 60 / $$session{bpm_cur};
+}
+
+sub seconds_per_bpm {
+  # Calculate the number of seconds a specific BPM should be used
+  my ($session,$direction) = @_;
+
+  my ($min,$max) = tempo_limits($session);
+
+  my $percent = abs($$session{bpm_cur} - $min) / abs($max - $min);
+
+  # Reverse percent pace is decreasing
+  if ($direction < 0) {
+    $percent = 1 - $percent;
+  }
+
+  return (($$session{max_spb} - $$session{min_spb}) * $percent)
+          + $$session{min_spb};
 }
 
 sub change_tempo {
@@ -294,30 +317,23 @@ sub change_tempo {
   my $pct_new = shift;
 
   my ($min,$max) = tempo_limits($session);
-  my $bpm_target = $min + int(abs($max - $min) * $pct_new);
+  my $bpm_new = int(abs($max - $min) * $pct_new) + $min;
 
   my $direction = 1;
-  if ($$session{bpm_cur} > $bpm_target) {
+  if ($$session{bpm_cur} > $bpm_new) {
     $direction = -1;
   }
+
+  my $bpm_delta = abs($$session{bpm_cur} - $bpm_new);
 
   # Carry-over beats, to support 0.5 beats per bpm, etc.
   my $beats = 0;
 
-  print "$$session{bpm_cur} -> $bpm_target\n";
-  while ($$session{bpm_cur} != $bpm_target) {
-    my $percent = abs($$session{bpm_cur} - $$session{bpm_min}) /
-                  abs($$session{bpm_max} - $$session{bpm_min});
+  while ($bpm_delta > 0) {
+    my $seconds = seconds_per_bpm($session,$direction);
 
-    if ($direction < 0) {
-      $percent = 1 - $percent;
-    }
+    $beats += $$session{bpm_cur} * $seconds / 60;
 
-    # Seconds per beat
-    my $spb = ($$session{max_spb} - $$session{min_spb}) * $percent +
-              $$session{min_spb};
-
-    $beats += $spb * ($$session{bpm_cur} / 60);
     if (int($beats) > 0) {
       $$session{beats} = join('#',(split(/#/,$$session{beats}),
                           sprintf('%g:%g', int($beats), $$session{bpm_cur})));
@@ -325,39 +341,45 @@ sub change_tempo {
       $beats -= int($beats);
     }
 
-    ($min,$max) = tempo_limits($session);
-    $bpm_target = $min + int(abs($max - $min) * $pct_new);
-
-    $direction = 1;
-    if ($$session{bpm_cur} > $bpm_target) {
-      $direction = -1;
-    }
-
+    # Change pace
     $$session{bpm_cur} += $direction;
-    print "$$session{bpm_cur} -> $bpm_target\n";
+    $bpm_delta--;
   }
 }
 
 sub tempo_limits {
   my $session = shift;
 
-  if ($$session{duration} > ($$session{goal} - $$session{under})) {
-    return ($$session{bpm_min}, $$session{bpm_max});
+  my $min = $$session{bpm_min};
+  my $max = $$session{bpm_max};
+
+  # Handle maximum pace increases
+  if ($$session{duration} > ($$session{goal} / 2)) {
+    $max += $$session{bpm_max_inc};
   }
 
-  # percent of session completed; can go above 1.0
-  my $pct = $$session{duration} / ($$session{goal} - $$session{under});
-
-  my $range = $$session{bpm_max} - $$session{bpm_min};
-  if ($range < 0) {
-    $range = abs($range); # The show must go on, eh?
-    printf "bpm_max less than bpm_min? config issue?\n";
+  if ($$session{duration} > ($$session{goal} - $$session{goal_radius})) {
+    $max += $$session{bpm_max_inc};
   }
 
-  my $min_buffer = int((0.20 - (0.20 * $pct)) * $range);
-  my $max_buffer = int((0.60 - (0.60 * $pct)) * $range);
+  # Handle minimum pace increases
+  if ($$session{duration} > ($$session{goal} / 4)) {
+    $min += $$session{bpm_min_inc};
+  }
 
-  return ($$session{bpm_min} + $min_buffer, $$session{bpm_max} - $max_buffer);
+  if ($$session{duration} > ($$session{goal} * 3 / 4)) {
+    $min += $$session{bpm_min_inc};
+  }
+
+  if ($$session{duration} > ($$session{goal} + $$session{goal_radius})) {
+    $min += $$session{bpm_min_inc};
+  }
+
+  if ($$session{bpm_cur} > $min and $$session{bpm_cur} > $$session{bpm_min}) {
+    $min = $$session{bpm_cur};
+  }
+
+  return ($min,$max);
 }
 
 sub tempo_stats {
@@ -368,7 +390,6 @@ sub tempo_stats {
   my $range       = abs($max - $min);
   # abs() is meant to handle situation where bpm_cur < min due to recalc
   my $pct         = abs($$session{bpm_cur} - $min) / $range;
-  print "pct: $pct bpm: $$session{bpm_cur} min_bpm: $min range: $range\n";
 
   my $from_half   = abs($pct - 0.5);
 
@@ -447,10 +468,7 @@ sub make_beats {
   }
 
   my $jump = (abs($max_jump - $min_jump) * $from_half / 0.5) + $min_jump;
-  print "jump: $jump\n";
-  print "percent: $pct -> ";
   my $pct_new = abs($pct + ($jump * $$session{direction}));
-  print "$pct_new\n";
   change_tempo($session, $pct_new);
 }
 
