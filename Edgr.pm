@@ -3,6 +3,7 @@ package Edgr;
 use strict;
 use DBI;
 use Statistics::Basic qw(:all);
+use Net::Twitter;
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS $DEBUG);
 
 $VERSION      = 0.0.1;
@@ -10,12 +11,14 @@ $DEBUG        = 0;
 @ISA          = qw(Exporter);
 # Functions used in scripts
 @EXPORT       = qw(
+                    db_connect
                     read_config
                     init_session
                     make_beats
                     write_script
                     play_script
                     save_session
+                    twitters
                 );
 @EXPORT_OK    = @EXPORT;
 
@@ -63,7 +66,11 @@ order by date desc limit ?
   $sth->finish;
   $dbh->disconnect;
 
-  return $fails / $total;
+  if ($total > 0) {
+    return $fails / $total;
+  } else {
+    return 0;
+  }
 }
 
 sub get_times {
@@ -163,7 +170,7 @@ sub init_session {
     $$session{goal} = $$session{under};
   }
 
-  $$session{time_max} = $$session{goal} + $$session{over};
+  $$session{time_max} = $$session{goal} + ($$session{over} * 2);
 
   my ($min,$max) = tempo_limits($session);
   $$session{bpm_cur} = $min + int(rand(($max - $min) * 2 / 5));
@@ -284,37 +291,28 @@ sub steady_beats {
 
 sub change_tempo {
   my $session = shift;
-  my $new_pct = shift;
+  my $pct_new = shift;
 
   my ($min,$max) = tempo_limits($session);
-  my ($range,$pct,$from_half) = tempo_stats($session);
-
-  my $bpm_new = $min + ($range * $new_pct);
-
-  my $bpm_delta = int(abs($bpm_new - $$session{bpm_cur}));
+  my $bpm_target = $min + int(abs($max - $min) * $pct_new);
 
   my $direction = 1;
-  if ($$session{bpm_cur} > $bpm_new) {
+  if ($$session{bpm_cur} > $bpm_target) {
     $direction = -1;
-  }
-
-  if ($bpm_new >= $max) {
-    $$session{direction} = -1;
-  }
-
-  if ($bpm_new <= $min) {
-    $$session{direction} = 1;
   }
 
   # Carry-over beats, to support 0.5 beats per bpm, etc.
   my $beats = 0;
 
-  while ($bpm_delta > 0) {
+  print "$$session{bpm_cur} -> $bpm_target\n";
+  while ($$session{bpm_cur} != $bpm_target) {
     my $percent = abs($$session{bpm_cur} - $$session{bpm_min}) /
                   abs($$session{bpm_max} - $$session{bpm_min});
+
     if ($direction < 0) {
       $percent = 1 - $percent;
     }
+
     # Seconds per beat
     my $spb = ($$session{max_spb} - $$session{min_spb}) * $percent +
               $$session{min_spb};
@@ -326,18 +324,28 @@ sub change_tempo {
       $$session{duration} += int($beats) * 60 / $$session{bpm_cur};
       $beats -= int($beats);
     }
-    $$session{bpm_cur} += $direction;
-    $bpm_delta--;
-  }
 
+    ($min,$max) = tempo_limits($session);
+    $bpm_target = $min + int(abs($max - $min) * $pct_new);
+
+    $direction = 1;
+    if ($$session{bpm_cur} > $bpm_target) {
+      $direction = -1;
+    }
+
+    $$session{bpm_cur} += $direction;
+    print "$$session{bpm_cur} -> $bpm_target\n";
+  }
 }
 
 sub tempo_limits {
   my $session = shift;
 
-  if ($$session{duration} > $$session{goal} - $$session{under}) {
+  if ($$session{duration} > ($$session{goal} - $$session{under})) {
     return ($$session{bpm_min}, $$session{bpm_max});
   }
+
+  # percent of session completed; can go above 1.0
   my $pct = $$session{duration} / ($$session{goal} - $$session{under});
 
   my $range = $$session{bpm_max} - $$session{bpm_min};
@@ -346,7 +354,7 @@ sub tempo_limits {
     printf "bpm_max less than bpm_min? config issue?\n";
   }
 
-  my $min_buffer = int((0.15 - (0.15 * $pct)) * $range);
+  my $min_buffer = int((0.20 - (0.20 * $pct)) * $range);
   my $max_buffer = int((0.60 - (0.60 * $pct)) * $range);
 
   return ($$session{bpm_min} + $min_buffer, $$session{bpm_max} - $max_buffer);
@@ -356,12 +364,30 @@ sub tempo_stats {
   my $session = shift;
 
   my ($min,$max)  = tempo_limits($session);
+
   my $range       = abs($max - $min);
   # abs() is meant to handle situation where bpm_cur < min due to recalc
   my $pct         = abs($$session{bpm_cur} - $min) / $range;
+  print "pct: $pct bpm: $$session{bpm_cur} min_bpm: $min range: $range\n";
+
   my $from_half   = abs($pct - 0.5);
 
   return ($range,$pct,$from_half);
+}
+
+sub twitters {
+  my $state   = shift;
+  my $message = shift;
+
+  my $twitter = Net::Twitter->new(
+    traits              => [qw/API::RESTv1_1/],
+    consumer_key        => "$$state{twitter_consumer_key}",
+    consumer_secret     => "$$state{twitter_consumer_secret}",
+    access_token        => "$$state{twitter_access_token}",
+    access_token_secret => "$$state{twitter_access_token_secret}",
+  );
+
+  my $result = $twitter->update($message);
 }
 
 sub make_beats {
@@ -377,6 +403,7 @@ sub make_beats {
 
   my $direction = $$session{direction};
 
+  # Go against the flow more often (but not 100%) as tempo approaches limits
   if ($from_half / 0.5 > rand(1.5)) {
     $$session{direction} = $flow * -1;
   }
@@ -386,7 +413,7 @@ sub make_beats {
     steady_beats($session, rand(15) + 5);
     for (0 .. int(rand(4)) + 1) {
       # Down
-      my $pct_new = rand(0.3) + 0.4;
+      my $pct_new = rand(0.3) + 0.4; 
       change_tempo($session, $pct_new);
       steady_beats($session, rand(3) + 1);
 
@@ -411,7 +438,6 @@ sub make_beats {
 
   my $min_jump = 0.05;
   my $max_jump = $pct;
-
   if ($$session{direction} > 0) {
     $max_jump = 1 - $pct;
   }
@@ -420,10 +446,11 @@ sub make_beats {
     $max_jump = $max_jump / 2;
   }
 
-  my $jump = (($max_jump - $min_jump) * $from_half / 0.5) + $min_jump;
-
-  my $pct_new = $pct + ($jump * $$session{direction});
-
+  my $jump = (abs($max_jump - $min_jump) * $from_half / 0.5) + $min_jump;
+  print "jump: $jump\n";
+  print "percent: $pct -> ";
+  my $pct_new = abs($pct + ($jump * $$session{direction}));
+  print "$pct_new\n";
   change_tempo($session, $pct_new);
 }
 

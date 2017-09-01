@@ -12,6 +12,7 @@ use strict;
 use warnings;
 
 use Edgr;
+use Getopt::Long;
 
 my $conf_file   = "$ENV{HOME}/.config/edgr";
 
@@ -21,20 +22,37 @@ exit;
 sub main {
   my $conf = read_config($conf_file);
   my $session = init_session($conf);
+
+  GetOptions(
+    "random"    => \$$session{random},
+  );
+
+  my $dbh = db_connect($$session{database});
+  # Add "next_session_in" check; restrict sessions, and consequecences for
+  # trying again too soon. Have a chance of allowing it, and adding punishment
+  # to next session for not passing
   while ($$session{time_max} > $$session{duration}) {
     make_beats($session);
+    #print "$$session{time_max} > $$session{duration}\n";
   }
   # Reset for interleaving commands in script
   $$session{duration} = 0;
   write_script($session);
-  play_script($session);
-  save_session($session);
+  #play_script($session);
+  #save_session($session);
+
+  my $sql = "select count(*) from sessions where user = ?";
+  my $sth = $dbh->prepare($sql);
+  $sth->execute($$session{user});
+  my ($session_count) = $sth->fetchrow_array;
 
   if ($$session{endured} >= $$session{goal} - $$session{under} and
       $$session{endured} <= $$session{goal} + $$session{over}) {
-    printf "\n\n Pass\n\n";
+    printf "\n\nPass\n\n";
+    #twitters($session,"Session #$session_count: Pass");
   } else {
     printf "\n\n Fail\n\n";
+    #twitters($session,"Session #$session_count: Fail");
   }
 
   printf "Hit <enter>";
