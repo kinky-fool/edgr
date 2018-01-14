@@ -39,38 +39,32 @@ sub error {
   }
 }
 
-sub get_long_fail_ratio {
+sub get_history {
   my $session = shift;
 
   my $dbh = db_connect($$session{database});
   my $sql = qq{
-select count(*) from sessions where user = ? and
-length / goal > ? / 100 and
+select * from sessions where user = ? and
 date between datetime('now', ?) and datetime('now', 'localtime')
 order by date desc limit ?
 };
-  my $sth = $dbh->prepare($sql);
-  $sth->execute($$session{user}, $$session{max_pct},
-                $$session{past_time}, $$session{past_sessions});
-  my ($fails) = $sth->fetchrow_array;
-  $sth->finish;
 
-  $sql = qq{
-select count(*) from sessions where user = ? and
-date between datetime('now', ?) and datetime('now', 'localtime')
-order by date desc limit ?
-};
-  $sth = $dbh->prepare($sql);
-  $sth->execute($$session{user},$$session{past_time},$$session{past_sessions});
-  my ($total) = $sth->fetchrow_array;
+  # Prepare the SQL statement
+  my $sth = $dbh->prepare($sql);
+
+  # Execute the SQL statement
+  $sth->execute($$session{user},
+                $$session{past_time},
+                $$session{past_sessions});
+
+  # Fetch any results into a hashref
+  my $history = $sth->fetchall_hashref('session_id');
+
+  # Clean up
   $sth->finish;
   $dbh->disconnect;
 
-  if ($total > 0) {
-    return $fails / $total;
-  } else {
-    return 0;
-  }
+  return $history;
 }
 
 sub get_times {
@@ -164,6 +158,11 @@ sub init_session {
     $$session{stddev} = $$session{default_stddev};
   }
 
+  #printf "Resetting to default_mean code in place\n";
+  # Reset things
+  #$$session{mean} = fuzzy($$session{default_mean},1);
+  #$$session{stddev} = $$session{default_stddev};
+
   $$session{goal} = $$session{mean};
 
   if ($$session{goal} > $$session{goal_max}) {
@@ -174,33 +173,83 @@ sub init_session {
     $$session{goal} = $$session{goal_min};
   }
 
-  $$session{goal_radius} = int($$session{goal} / 10) + 1;
-  $$session{time_max} = $$session{goal} * 1.5;
+  $$session{goal_radius} = int($$session{stddev} / 2);
+  $$session{goal_radius} = 150;
 
-  my $range = abs($$session{bpm_max} - $$session{bpm_min});
+  $$session{time_max} = $$session{goal} + fuzzy(8*60,1);
 
-  $$session{bpm_cur} = int(rand($range * 2 / 5)) + $$session{bpm_min};
+  $$session{bpm_cur} = $$session{bpm_min};
 
   $$session{direction} = 1;
 
-  $$session{lube_next} = $$session{lube_break};
+  $$session{lube_break} = ($$session{goal} - $$session{goal_radius}) / 3;
 
-  $$session{prize_armed} = $$session{prize_enabled};
+  $$session{lube_next} = fuzzy($$session{lube_break},1);
+
   $$session{liquid_silk} = 0;
   $$session{lubed} = 0;
   $$session{prized} = 0;
 
-  my $fail_ratio = get_long_fail_ratio($session);
-  $$session{prize_chance} += $$session{prize_boost} * $fail_ratio;
+  # What ratio of recent past failures were due to being over-long
+  # determines the chance for a "prize"
+  #$$session{prize_chance} *= get_long_fail_ratio($session);
 
-  if ($$session{prize_armed} and $$session{prize_chance} > rand(100)) {
-    $$session{liquid_silk} = 1;
-    if ($$session{disarm_chance} > rand(100)) {
-      $$session{prize_armed} = 0;
-    }
-  }
+  # What ratio of recent sessions were successful determines a saving throw
+  #$$session{disarm_chance} *= get_success_ratio($session);
+
+  #if ($$session{prize_armed} and $$session{prize_chance} > rand(100)) {
+  #  $$session{liquid_silk} = 1;
+  #  if ($$session{disarm_chance} > rand(100)) {
+  #    # Disable the 'prize' but keep up appearances by leaving liquid silk
+  #    $$session{prize_armed} = 0;
+  #    if (80 > int(100)) {
+  #      $$session{liquid_silk} = 0;
+  #    }
+  #  }
+
+  #  if ($$session{liquid_silk} > 0 and $$session{prize_aware}) {
+  #    printf "You won the prize! Get the appropriate lubes handy.\n";
+  #    printf "< Press Enter to Resume >";
+  #    my $input = <STDIN>;
+  #  }
+  #}
 
   return $session;
+}
+
+sub fuzzy {
+  my $number  = shift;
+  my $degree  = shift;
+
+  return $number if ($degree <= 0);
+
+  for (1 .. int(rand($degree))) {
+    # Control how far to deviate from $num
+    my $skew = int(rand(3))+2;
+    # Lean toward 0 or 2 * $num
+    my $lean = int(rand(4))+2;
+    # This is not superflous; the rand($lean) below will favor this direction
+    my $point = 1;
+    # "Flip a coin" to determine the direction of the lean
+    if (int(rand(2))) {
+      $point = -1;
+    }
+
+    my $result = $number;
+
+    for (1 .. int($number)) {
+      if (!int(rand($skew))) {
+        if (int(rand($lean))) {
+          $result += $point;
+        } else {
+          $result += ($point * -1);
+        }
+      }
+    }
+
+    $number = $result;
+  }
+  return $number;
 }
 
 sub maybe_add_command {
@@ -210,15 +259,23 @@ sub maybe_add_command {
 
   my $prize_on = 0;
 
+  if (defined $$session{max_lubes} and $$session{max_lubes} >= 0) {
+    if ($$session{lubed} >= $$session{max_lubes}) {
+      return undef;
+    }
+  }
+
   if ($$session{duration} > $$session{lube_next}) {
 
     if ($$session{lube_chance} > rand(100)) {
       $command = 'Use lube';
-      $$session{lube_next} = $$session{duration} + $$session{lube_break};
+      $$session{lube_next} = $$session{duration} +
+                          fuzzy($$session{lube_break},1);
 
       if ($$session{liquid_silk}) {
         $command = 'Use Liquid Silk';
-        $$session{lube_next} = $$session{duration} + $$session{prize_break};
+        $$session{lube_next} = $$session{duration} +
+                          fuzzy($$session{prize_break},1);
         if ($$session{prize_armed} and $$session{lubed}) {
           if ($$session{prize_apply_chance} > rand(100)) {
             $$session{prized}++;
@@ -257,7 +314,7 @@ sub write_script {
       my ($count,$bpm) = split(/:/,$beat);
       while ($count > 0) {
         if (my $command = maybe_add_command($session)) {
-          for (0 .. (int(rand(3)) * 3) + 3) {
+          for (1 .. (int(rand(3)+1))) {
             printf $script_fh "# ...\n";
           }
           printf $script_fh "# %s\n", $command;
@@ -301,7 +358,10 @@ sub seconds_per_bpm {
 
   my ($min,$max) = tempo_limits($session);
 
-  my $percent = abs($$session{bpm_cur} - $min) / abs($max - $min);
+  my $percent = 1;
+  if ($max != $min) {
+    $percent = abs($$session{bpm_cur} - $min) / abs($max - $min);
+  }
 
   # Reverse percent pace is decreasing
   if ($direction < 0) {
@@ -314,10 +374,7 @@ sub seconds_per_bpm {
 
 sub change_tempo {
   my $session = shift;
-  my $pct_new = shift;
-
-  my ($min,$max) = tempo_limits($session);
-  my $bpm_new = int(abs($max - $min) * $pct_new) + $min;
+  my $bpm_new = shift;
 
   my $direction = 1;
   if ($$session{bpm_cur} > $bpm_new) {
@@ -341,8 +398,17 @@ sub change_tempo {
       $beats -= int($beats);
     }
 
+    my ($min,$max) = tempo_limits($session);
     # Change pace
     $$session{bpm_cur} += $direction;
+
+    if ($$session{bpm_cur} < $min) {
+      $$session{bpm_cur} = $min;
+    }
+
+    if ($$session{bpm_cur} > $max) {
+      $$session{bpm_cur} = $max;
+    }
     $bpm_delta--;
   }
 }
@@ -354,7 +420,7 @@ sub tempo_limits {
   my $max = $$session{bpm_max};
 
   # Handle maximum pace increases
-  if ($$session{duration} > ($$session{goal} / 2)) {
+  if ($$session{duration} > ($$session{time_max} / 4)) {
     $max += $$session{bpm_max_inc};
   }
 
@@ -363,19 +429,19 @@ sub tempo_limits {
   }
 
   # Handle minimum pace increases
-  if ($$session{duration} > ($$session{goal} / 4)) {
+  if ($$session{duration} > ($$session{time_max} / 3)) {
     $min += $$session{bpm_min_inc};
   }
 
-  if ($$session{duration} > ($$session{goal} * 3 / 4)) {
+  if ($$session{duration} > ($$session{time_max} * 2 / 3)) {
     $min += $$session{bpm_min_inc};
   }
 
-  if ($$session{duration} > ($$session{goal} + $$session{goal_radius})) {
+  if ($$session{duration} > ($$session{time_max} + $$session{goal_radius})) {
     $min += $$session{bpm_min_inc};
   }
 
-  if ($$session{bpm_cur} > $min and $$session{bpm_cur} > $$session{bpm_min}) {
+  if ($$session{bpm_cur} < $min and $$session{bpm_cur} > $$session{bpm_min}) {
     $min = $$session{bpm_cur};
   }
 
@@ -387,11 +453,14 @@ sub tempo_stats {
 
   my ($min,$max)  = tempo_limits($session);
 
-  my $range       = abs($max - $min);
-  # abs() is meant to handle situation where bpm_cur < min due to recalc
-  my $pct         = abs($$session{bpm_cur} - $min) / $range;
+  my $range = abs($max - $min);
+  my $pct = 0;
+  if ($range > 0) {
+    # abs() is meant to handle situation where bpm_cur < min
+   $pct = abs($$session{bpm_cur} - $min) / $range;
+  }
 
-  my $from_half   = abs($pct - 0.5);
+  my $from_half = abs($pct - 0.5);
 
   return ($range,$pct,$from_half);
 }
@@ -414,7 +483,7 @@ sub twitters {
 sub make_beats {
   my $session = shift;
 
-  my ($max,$min) = tempo_limits($session);
+  my ($min,$max) = tempo_limits($session);
   my ($range,$pct,$from_half) = tempo_stats($session);
 
   my $flow = -1;
@@ -434,13 +503,13 @@ sub make_beats {
     steady_beats($session, rand(15) + 5);
     for (0 .. int(rand(4)) + 1) {
       # Down
-      my $pct_new = rand(0.3) + 0.4; 
-      change_tempo($session, $pct_new);
+      my ($min,$max) = tempo_limits($session);
+      change_tempo($session, $min + int(rand(abs($max-$min) / 5)));
       steady_beats($session, rand(3) + 1);
 
       # Up
-      my $pct_new = 1 - rand(0.15);
-      change_tempo($session, $pct_new);
+      ($min,$max) = tempo_limits($session);
+      change_tempo($session, $max - int(rand(abs($max-$min) / 5)));
       steady_beats($session, rand(15) + 5);
     }
 
@@ -457,19 +526,23 @@ sub make_beats {
     steady_beats($session, $steady_secs + 1);
   }
 
-  my $min_jump = 0.05;
-  my $max_jump = $pct;
-  if ($$session{direction} > 0) {
-    $max_jump = 1 - $pct;
+  my ($min,$max) = tempo_limits($session);
+
+  if ($max == $min) {
+    steady_beats($session, 5);
   }
 
-  if (int(rand(6))) {
-    $max_jump = $max_jump / 2;
-  }
+  my $range = abs($max - $min);
+  my $bpm_rel = abs($$session{bpm_cur} - $min);
 
-  my $jump = (abs($max_jump - $min_jump) * $from_half / 0.5) + $min_jump;
-  my $pct_new = abs($pct + ($jump * $$session{direction}));
-  change_tempo($session, $pct_new);
+  my $max_jump = abs($range - $bpm_rel);
+  if ($direction > 0) {
+    $max_jump = $range - $max_jump;
+  }
+  my $jump = int(rand(($max_jump - 5)) * $from_half / 0.5) + 5;
+  my $bpm_new = $$session{bpm_cur} + ($jump * $direction);
+
+  change_tempo($session, $bpm_new);
 }
 
 sub save_session {

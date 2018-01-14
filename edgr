@@ -38,23 +38,24 @@ sub main {
   # Reset for interleaving commands in script
   $$session{duration} = 0;
   write_script($session);
-  #play_script($session);
-  #save_session($session);
+  play_script($session);
+  save_session($session);
 
-  #my $sql = "select count(*) from sessions where user = ?";
-  #my $sth = $dbh->prepare($sql);
-  #$sth->execute($$session{user});
-  #my ($session_count) = $sth->fetchrow_array;
+  my $sql = "select count(*) from sessions where user = ?";
+  my $sth = $dbh->prepare($sql);
+  $sth->execute($$session{user});
+  my ($session_count) = $sth->fetchrow_array;
 
-  #if ($$session{endured} >= $$session{goal} - $$session{under} and
-  #    $$session{endured} <= $$session{goal} + $$session{over}) {
-  #  printf "\n\nPass\n\n";
-  #  #twitters($session,"Session #$session_count: Pass");
-  #} else {
-  #  printf "\n\n Fail\n\n";
-  #  #twitters($session,"Session #$session_count: Fail");
-  #}
+  my $message = `/usr/games/fortune -n80 -a zippy`;
+  if ($$session{endured} >= $$session{goal} - $$session{goal_radius} and
+      $$session{endured} <= $$session{goal} + $$session{goal_radius}) {
+    printf "\n\nPass\n\n";
+    #twitters($session,"$message: Session passed! :D");
+  } else {
+    printf "\n\n Fail\n\n";
+    #twitters($session,"$message: Session failed. :(");
+  }
 
-  #printf "Hit <enter>";
-  #my $input = <STDIN>;
+  printf "Hit <enter>";
+  my $input = <STDIN>;
 }
