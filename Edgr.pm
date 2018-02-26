@@ -383,6 +383,7 @@ sub seconds_per_bpm {
 sub change_tempo {
   my $session = shift;
   my $bpm_new = shift;
+  my $rate    = shift || 1;
 
   my $direction = 1;
   if ($$session{bpm_cur} > $bpm_new) {
@@ -395,7 +396,7 @@ sub change_tempo {
   my $beats = 0;
 
   while ($bpm_delta > 0) {
-    my $seconds = seconds_per_bpm($session,$direction);
+    my $seconds = seconds_per_bpm($session,$direction) * $rate;
 
     $beats += $$session{bpm_cur} * $seconds / 60;
 
@@ -406,17 +407,8 @@ sub change_tempo {
       $beats -= int($beats);
     }
 
-    my ($min,$max) = tempo_limits($session);
-    # Change pace
     $$session{bpm_cur} += $direction;
 
-    if ($$session{bpm_cur} < $min) {
-      $$session{bpm_cur} = $min;
-    }
-
-    if ($$session{bpm_cur} > $max) {
-      $$session{bpm_cur} = $max;
-    }
     $bpm_delta--;
   }
 }
@@ -491,67 +483,100 @@ sub twitters {
 sub make_beats {
   my $session = shift;
 
-  my ($min,$max) = tempo_limits($session);
-  my ($range,$pct,$from_half) = tempo_stats($session);
+  my $range = abs($$session{bpm_max} - $$session{bpm_min});
+  my $percent = $$session{duration} /
+                  ($$session{goal} - $$session{goal_under}) * 100;
 
-  my $flow = -1;
-  if ($pct > 0.5) {
-    $flow = 1;
+  my $max_bpm = $range / 5;
+
+  if ($percent > 30) {
+    $max_bpm = $range * 2 / 5;
   }
 
-  my $direction = $$session{direction};
-
-  # Go against the flow more often (but not 100%) as tempo approaches limits
-  if ($from_half / 0.5 > rand(1.5)) {
-    $$session{direction} = $flow * -1;
+  if ($percent > 60) {
+    $max_bpm = $range * 3 / 5;
   }
 
-  if ($pct > 0.8 and $pct <= 0.9 and $$session{direction} > 0 and
-      !int(rand(6))) {
-    steady_beats($session, rand(15) + 5);
-    for (0 .. int(rand(4)) + 1) {
-      # Down
-      my ($min,$max) = tempo_limits($session);
-      change_tempo($session, $min + int(rand(abs($max-$min) / 5)));
-      steady_beats($session, rand(3) + 1);
+  if ($percent > 90) {
+    $max_bpm = $range * 4 / 5;
+  }
 
-      # Up
-      ($min,$max) = tempo_limits($session);
-      change_tempo($session, $max - int(rand(abs($max-$min) / 5)));
-      steady_beats($session, rand(15) + 5);
+  if ($percent > 100) {
+    $max_bpm = $range;
+  }
+
+  if ($$session{duration} > $$session{goal} + $$session{goal_over}) {
+    $max_bpm = $range / 5;
+  }
+
+  $max_bpm += $$session{bpm_min};
+  my $save_bpm = $$session{bpm_cur};
+
+  if (int(rand(6)) == 0) {
+    to_the_top($session,$max_bpm);
+  } else {
+    my $up = int(rand(10)) + 3;
+
+    change_tempo($session, $$session{bpm_cur} + $up, 1);
+    if (int(rand(5) == 0)) {
+      steady_beats($session, rand(20) + 10);
     }
 
-    # Prevent doing steady_beats() again
-    $$session{direction}  = -1;
-    $direction            = -1;
+    if ($$session{bpm_cur} > $max_bpm) {
+      half_down($session);
+
+      if (int(rand(3)) > 0) {
+        change_tempo($session, $$session{bpm_min}, 1.5);
+        steady_beats($session, rand(30) + 5);
+      } else {
+        change_tempo($session, $save_bpm, rand(2) + 0.5);
+        steady_beats($session, rand(20) + 10);
+      }
+    }
   }
-
-  ($range,$pct,$from_half) = tempo_stats($session);
-
-  # Pause for a bit when changing direction
-  if ($direction != $$session{direction}) {
-    my $steady_secs = 15 * ($from_half / 0.5);
-    steady_beats($session, $steady_secs + 1);
-  }
-
-  my ($min,$max) = tempo_limits($session);
-
-  if ($max == $min) {
-    steady_beats($session, 5);
-  }
-
-  my $range = abs($max - $min);
-  my $bpm_rel = abs($$session{bpm_cur} - $min);
-
-  my $max_jump = abs($range - $bpm_rel);
-  if ($direction > 0) {
-    $max_jump = $range - $max_jump;
-  }
-  my $jump = int(rand(($max_jump - 5)) * $from_half / 0.5) + 5;
-  my $bpm_new = $$session{bpm_cur} + ($jump * $direction);
-
-  change_tempo($session, $bpm_new);
 }
+
+sub to_the_top {
+  my $session = shift;
+  my $max_bpm = shift;
+
+  my $steps = int(rand(4)) + 2;
+  my $step_steady = rand(10) + 5;
+
+  for my $i (1 .. $steps) {
+    my $new_bpm = int(abs($max_bpm - $$session{bpm_cur}) / 2) +
+                          + $$session{bpm_cur};
+    my $rate = rand(1.5) + 0.25;
+
+    change_tempo($session, $new_bpm, $rate);
+    steady_beats($session, rand(3)+1);
+
+    # Back down
+    $rate = rand(0.5) + 0.25;
+    change_tempo($session, $$session{bpm_min}, $rate);
+    steady_beats($session, rand(3)+1);
+  }
+
+  change_tempo($session, $max_bpm, 1.5);
+  steady_beats($session, rand(45) + 2);
+}
+
+sub half_down {
+  my $session = shift;
+
+  my $steps = int(rand(5)) + 1;
+  my $step_steady = rand(20) + 10;
+
+  for my $i (1 .. $steps) {
+    my $new_bpm = int(abs($$session{bpm_cur} - $$session{bpm_min}) / 2)
+                            + $$session{bpm_min};
+    my $rate = rand(0.5) + 0.25;
+
+    change_tempo($session, $new_bpm, $rate);
+    steady_beats($session, $step_steady * ($i / $steps));
+  }
+}
+
 
 sub save_session {
   my $session = shift;
