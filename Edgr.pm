@@ -179,9 +179,7 @@ sub init_session {
 
   $$session{direction} = 1;
 
-  $$session{lube_break} = ($$session{goal} - $$session{goal_radius}) / 3;
-
-  $$session{lube_next} = fuzzy($$session{lube_break},1);
+  $$session{lube_next} = next_lube($session);
 
   $$session{liquid_silk} = 0;
   $$session{lubed} = 0;
@@ -212,6 +210,21 @@ sub init_session {
   #}
 
   return $session;
+}
+
+sub next_lube {
+  my $session = shift;
+
+  my $safe = $$session{goal} - $$session{goal_under};
+  my $roll = int(rand(6));
+  $$session{lube_break} = $safe / 3;
+  if ($roll == 0) {
+    $$session{lube_break} = $safe / 2;
+  } elsif ($roll > 3) {
+    $$session{lube_break} = $safe / 4;
+  }
+
+  return $$session{duration} + fuzzy($$session{lube_break},1);
 }
 
 sub fuzzy {
@@ -266,13 +279,10 @@ sub maybe_add_command {
 
     if ($$session{lube_chance} > rand(100)) {
       $command = 'Use lube';
-      $$session{lube_next} = $$session{duration} +
-                          fuzzy($$session{lube_break},1);
+      $$session{lube_next} = next_lube($session);
 
       if ($$session{liquid_silk}) {
         $command = 'Use Liquid Silk';
-        $$session{lube_next} = $$session{duration} +
-                          fuzzy($$session{prize_break},1);
         if ($$session{prize_armed} and $$session{lubed}) {
           if ($$session{prize_apply_chance} > rand(100)) {
             $$session{prized}++;
@@ -311,7 +321,8 @@ sub write_script {
       my ($count,$bpm) = split(/:/,$beat);
       while ($count > 0) {
         if (my $command = maybe_add_command($session)) {
-          for (1 .. (int(rand(3)+1))) {
+          printf $script_fh "# ...\n";
+          if (int(rand(5)) < 3) {
             printf $script_fh "# ...\n";
           }
           printf $script_fh "# %s\n", $command;
