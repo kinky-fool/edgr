@@ -173,9 +173,6 @@ sub init_session {
     $$session{goal} = $$session{goal_min};
   }
 
-  $$session{goal_radius} = int($$session{stddev} / 2);
-  $$session{goal_radius} = 150;
-
   $$session{time_max} = $$session{goal} + fuzzy(8*60,1);
 
   $$session{bpm_cur} = $$session{bpm_min};
@@ -424,7 +421,7 @@ sub tempo_limits {
     $max += $$session{bpm_max_inc};
   }
 
-  if ($$session{duration} > ($$session{goal} - $$session{goal_radius})) {
+  if ($$session{duration} > ($$session{goal} - $$session{goal_under})) {
     $max += $$session{bpm_max_inc};
   }
 
@@ -437,7 +434,7 @@ sub tempo_limits {
     $min += $$session{bpm_min_inc};
   }
 
-  if ($$session{duration} > ($$session{time_max} + $$session{goal_radius})) {
+  if ($$session{duration} > ($$session{time_max} + $$session{goal_over})) {
     $min += $$session{bpm_min_inc};
   }
 

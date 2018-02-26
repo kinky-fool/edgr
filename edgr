@@ -47,15 +47,27 @@ sub main {
   my ($session_count) = $sth->fetchrow_array;
 
   my $message = `/usr/games/fortune -n80 -a zippy`;
-  if ($$session{endured} >= $$session{goal} - $$session{goal_radius} and
-      $$session{endured} <= $$session{goal} + $$session{goal_radius}) {
-    printf "\n\nPass\n\n";
+  if ($$session{endured} >= $$session{goal} - $$session{goal_under} and
+      $$session{endured} <= $$session{goal} + $$session{goal_over}) {
+    printf "\n\nPass - Draw a bead\n\n";
     #twitters($session,"$message: Session passed! :D");
   } else {
-    printf "\n\n Fail\n\n";
+    my $missed_by = $$session{goal} - $$session{goal_under}
+                      - $$session{endured};
+    if ($$session{endured} > $$session{goal} + $$session{goal_over}) {
+      $missed_by = $$session{endured} - $$session{goal} + $$session{goal_over};
+    }
+    my $beads = 1;
+    if ($missed_by > 45) {
+      $beads += 1;
+    } elsif ($missed_by > 90) {
+      $beads += 1;
+    }
+    my $string = 'bead';
+    if ($beads > 1) {
+      $string = 'beads';
+    }
+    printf "\n\n Fail - Add %i %s\n\n", $beads, $string;
     #twitters($session,"$message: Session failed. :(");
   }
-
-  printf "Hit <enter>";
-  my $input = <STDIN>;
 }
