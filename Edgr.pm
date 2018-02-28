@@ -512,28 +512,39 @@ sub make_beats {
   $max_bpm += $$session{bpm_min};
   my $save_bpm = $$session{bpm_cur};
 
-  if (int(rand(6)) == 0) {
-    to_the_top($session,$max_bpm);
+  to_the_top($session,$max_bpm);
+  half_down($session);
+
+  if (int(rand(3)) > 0) {
+    change_tempo($session, $$session{bpm_min}, 1.5);
+    steady_beats($session, rand(30) + 5);
   } else {
-    my $up = int(rand(10)) + 3;
-
-    change_tempo($session, $$session{bpm_cur} + $up, 1);
-    if (int(rand(5) == 0)) {
-      steady_beats($session, rand(20) + 10);
-    }
-
-    if ($$session{bpm_cur} > $max_bpm) {
-      half_down($session);
-
-      if (int(rand(3)) > 0) {
-        change_tempo($session, $$session{bpm_min}, 1.5);
-        steady_beats($session, rand(30) + 5);
-      } else {
-        change_tempo($session, $save_bpm, rand(2) + 0.5);
-        steady_beats($session, rand(20) + 10);
-      }
-    }
+    change_tempo($session, $save_bpm, rand(2) + 0.5);
+    steady_beats($session, rand(20) + 10);
   }
+
+  #if (int(rand(6)) == 0) {
+  #  to_the_top($session,$max_bpm);
+  #} else {
+  #  my $up = int(rand(10)) + 3;
+
+  #  change_tempo($session, $$session{bpm_cur} + $up, 1);
+  #  if (int(rand(5) == 0)) {
+  #    steady_beats($session, rand(20) + 10);
+  #  }
+
+  #  if ($$session{bpm_cur} > $max_bpm) {
+  #    half_down($session);
+
+  #    if (int(rand(3)) > 0) {
+  #      change_tempo($session, $$session{bpm_min}, 1.5);
+  #      steady_beats($session, rand(30) + 5);
+  #    } else {
+  #      change_tempo($session, $save_bpm, rand(2) + 0.5);
+  #      steady_beats($session, rand(20) + 10);
+  #    }
+  #  }
+  #}
 }
 
 sub to_the_top {
