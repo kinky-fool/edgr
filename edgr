@@ -33,7 +33,6 @@ sub main {
   # to next session for not passing
   while ($$session{time_max} > $$session{duration}) {
     make_beats($session);
-    #print "$$session{time_max} > $$session{duration}\n";
   }
   # Reset for interleaving commands in script
   $$session{duration} = 0;
@@ -41,33 +40,28 @@ sub main {
   play_script($session);
   save_session($session);
 
-  my $sql = "select count(*) from sessions where user = ?";
-  my $sth = $dbh->prepare($sql);
-  $sth->execute($$session{user});
-  my ($session_count) = $sth->fetchrow_array;
+  my $extra_beads = 0;
 
-  my $message = `/usr/games/fortune -n80 -a zippy`;
+  my $sql = qq{ select * from sessions where user = ?
+              and date >= datetime('now',?) order by date };
+  my $sth = $dbh->prepare($sql);
+  $sth->execute($$session{user},$$session{past_hours});
+
+  while (my $sesh = $sth->fetchrow_hashref) {
+    $extra_beads++;
+    if ($$sesh{length} > $$sesh{goal} + $$session{goal_over}) {
+      $extra_beads = 0;
+    }
+    if ($$sesh{length} < $$sesh{goal} - $$session{goal_under}) {
+      $extra_beads = 0;
+    }
+  }
+
   if ($$session{endured} >= $$session{goal} - $$session{goal_under} and
       $$session{endured} <= $$session{goal} + $$session{goal_over}) {
     printf "\n\nPass - Draw a bead\n\n";
-    #twitters($session,"$message: Session passed! :D");
   } else {
-    my $missed_by = $$session{goal} - $$session{goal_under}
-                      - $$session{endured};
-    if ($$session{endured} > $$session{goal} + $$session{goal_over}) {
-      $missed_by = $$session{endured} - $$session{goal} + $$session{goal_over};
-    }
-    my $beads = 1;
-    if ($missed_by > 45) {
-      $beads += 1;
-    } elsif ($missed_by > 90) {
-      $beads += 1;
-    }
-    my $string = 'bead';
-    if ($beads > 1) {
-      $string = 'beads';
-    }
-    printf "\n\n Fail - Add %i %s\n\n", $beads, $string;
-    #twitters($session,"$message: Session failed. :(");
+    printf "\n\n Fail - Add %s\n\n",
+                ($extra_beads + 1> 1)?"$beads beads":"a bead";
   }
 }
