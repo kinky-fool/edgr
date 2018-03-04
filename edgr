@@ -19,6 +19,47 @@ my $conf_file   = "$ENV{HOME}/.config/edgr";
 main();
 exit;
 
+sub check_allowed {
+  my $session = shift;
+
+  my $dbh = db_connect($$session{database});
+
+  my $sql = qq{ select count(*) from sessions where user = ?
+                and date >= datetime('now', ?, 'localtime') };
+
+  my $sth = $dbh->prepare($sql);
+
+  $sth->execute($$session{user},$$session{edge_window});
+  my ($edges_this_window) = $sth->fetchrow_array;
+  if ($edges_this_window >= $$session{max_per_window}) {
+    printf "No more edging allowed for this time period.\n";
+    exit;
+  }
+
+  if ($edges_this_window > 1) {
+    # This would be edge #3; make sure #3 and later need a longer cooldown
+    $sth->execute($$session{user},$$session{cooldown2});
+    my ($count) = $sth->fetchrow_array;
+    if ($count > 0) {
+      print "Not so fast. Wait longer.\n";
+      exit;
+    }
+  } else {
+    $sth->execute($$session{user},$$session{cooldown});
+    my ($count) = $sth->fetchrow_array;
+    if ($count > 0) {
+      print "Not so fast. Wait longer.\n";
+      exit;
+    }
+  }
+
+  $sth->finish;
+  $dbh->disconnect;
+
+  return $edges_this_window;
+}
+
+
 sub main {
   my $conf = read_config($conf_file);
   my $session = init_session($conf);
@@ -27,7 +68,8 @@ sub main {
     "random"    => \$$session{random},
   );
 
-  my $dbh = db_connect($$session{database});
+  my $edges_this_window = check_allowed($session);
+
   # Add "next_session_in" check; restrict sessions, and consequecences for
   # trying again too soon. Have a chance of allowing it, and adding punishment
   # to next session for not passing
@@ -40,7 +82,12 @@ sub main {
   play_script($session);
   save_session($session);
 
-  my $extra_beads = 0;
+  # One more edge...
+  $edges_this_window++;
+
+  my $extra_beads = $edges_this_window;
+
+  my $dbh = db_connect($$session{database});
 
   my $sql = qq{ select * from sessions where user = ?
               and date >= datetime('now',?) order by date };
@@ -50,10 +97,10 @@ sub main {
   while (my $sesh = $sth->fetchrow_hashref) {
     $extra_beads++;
     if ($$sesh{length} > $$sesh{goal} + $$session{goal_over}) {
-      $extra_beads = 0;
+      $extra_beads = $edges_this_window;
     }
     if ($$sesh{length} < $$sesh{goal} - $$session{goal_under}) {
-      $extra_beads = 0;
+      $extra_beads = $edges_this_window;
     }
   }
 
@@ -61,7 +108,8 @@ sub main {
       $$session{endured} <= $$session{goal} + $$session{goal_over}) {
     printf "\n\nPass - Draw a bead\n\n";
   } else {
+    my $beads = $extra_beads;
     printf "\n\n Fail - Add %s\n\n",
-                ($extra_beads + 1> 1)?"$beads beads":"a bead";
+                ($beads > 1)?"$beads beads":"a bead";
   }
 }
