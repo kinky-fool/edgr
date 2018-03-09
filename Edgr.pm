@@ -517,39 +517,26 @@ sub get_max_bpm {
 sub up_and_down {
   my $session = shift;
 
-  my $max = get_max_bpm($session);
-
-  my $step_size = 20;
+  my $steps = int(rand(3)) + 3;
 
   my $bpm = $$session{bpm_cur};
   my $seconds = 1;
 
-  while ($$session{bpm_max} > $$session{bpm_cur}) {
+  for my $step (0 .. $steps) {
     change_tempo($session, $$session{bpm_min}, 0.5);
-    steady_beats($session, 1);
-
-    $bpm += $step_size;
-    change_tempo($session, $bpm, 0.5);
-    steady_beats($session, $seconds + (rand($seconds) * 2));
-    $seconds++;
+    steady_beats($session, fuzzy(10,2));
+    for (0 .. $step) {
+      my $diff = $$session{bpm_max} - $$session{bpm_cur};
+      my $new_bpm = $$session{bpm_cur} + ($diff / 3);
+      my $pct = ($$session{bpm_cur} - $$session{bpm_min}) /
+                ($$session{bpm_max} - $$session{bpm_min});
+      change_tempo($session, $new_bpm, 0.4 + (1.5 * $pct));
+      steady_beats($session, fuzzy(15 * $pct, 1));
+    }
   }
 
-  for (0 .. int(rand(3)) + 1) {
-    change_tempo($session, $$session{bpm_min}, 0.4);
-    steady_beats($session, int(rand(10)));
-    change_tempo($session, $bpm, 0.5);
-    steady_beats($session, $seconds + (rand($seconds) * 2));
-  }
-
-  while ($$session{bpm_cur} > $$session{bpm_min}) {
-    change_tempo($session, $$session{bpm_min}, 0.5);
-    steady_beats($session, 1);
-
-    $bpm -= $step_size;
-    change_tempo($session, $bpm, 0.5);
-    steady_beats($session, $seconds + (rand($seconds) * 2));
-    $seconds--;
-  }
+  change_tempo($session, $$session{bpm_max}, 1.5);
+  steady_beats($session, fuzzy(25, 2));
 }
 
 sub make_beats {
