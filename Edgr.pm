@@ -152,6 +152,8 @@ sub init_session {
   my @times = get_times($session);
   if (scalar(@times) >= $$session{min_sessions}) {
     $$session{mean} = mean(@times);
+    # Remove commas added by mean()
+    $$session{mean} =~ s/,//g;
     $$session{stddev} = stddev(@times);
   } else {
     $$session{mean} = $$session{default_mean};
@@ -233,7 +235,7 @@ sub fuzzy {
 
   return $number if ($degree <= 0);
 
-  for (1 .. int(rand($degree))) {
+  for (1 .. int($degree)) {
     # Control how far to deviate from $num
     my $skew = int(rand(3))+2;
     # Lean toward 0 or 2 * $num
@@ -517,7 +519,7 @@ sub get_max_bpm {
 sub up_and_down {
   my $session = shift;
 
-  my $steps = int(rand(3)) + 3;
+  my $steps = int(rand(5)) + 6;
 
   my $bpm = $$session{bpm_cur};
   my $seconds = 1;
@@ -530,13 +532,16 @@ sub up_and_down {
       my $new_bpm = $$session{bpm_cur} + ($diff / 3);
       my $pct = ($$session{bpm_cur} - $$session{bpm_min}) /
                 ($$session{bpm_max} - $$session{bpm_min});
-      change_tempo($session, $new_bpm, 0.4 + (1.5 * $pct));
-      steady_beats($session, fuzzy(15 * $pct, 1));
+      change_tempo($session, $new_bpm, 0.6 + (1.9 * $pct));
+      my $steady = rand($seconds) + rand($seconds) + rand($seconds) + 3;
+      steady_beats($session, fuzzy($steady,2));
+      $seconds++;
     }
   }
 
-  change_tempo($session, $$session{bpm_max}, 1.5);
-  steady_beats($session, fuzzy(25, 2));
+  change_tempo($session, $$session{bpm_max}, 2.5);
+  my $steady = rand($seconds) + rand($seconds) + rand($seconds) + 3;
+  steady_beats($session, fuzzy($steady,2));
 }
 
 sub make_beats {
