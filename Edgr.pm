@@ -219,11 +219,15 @@ sub next_lube {
 
   my $safe = $$session{goal} - $$session{goal_under};
   my $roll = int(rand(6));
-  $$session{lube_break} = $safe / 3;
+  my $base = 2;
+  if ($$session{liquid_silk}) {
+    $base = 4;
+  }
+  $$session{lube_break} = $safe / ($base + 1);
   if ($roll == 0) {
-    $$session{lube_break} = $safe / 2;
+    $$session{lube_break} = $safe / $base;
   } elsif ($roll > 3) {
-    $$session{lube_break} = $safe / 4;
+    $$session{lube_break} = $safe / ($base + 2);
   }
 
   return $$session{duration} + fuzzy($$session{lube_break},1);
