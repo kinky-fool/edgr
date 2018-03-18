@@ -264,6 +264,22 @@ sub fuzzy {
   return $number;
 }
 
+sub go_high {
+  my $number  = shift;
+
+  my $result = $number;
+  my $granularity = 1000;
+
+  for my $i (1 .. $number * $granularity) {
+    if (int(rand(3))) {
+      $result += 1 / $granularity;
+    } else {
+      $result -= 1 / $granularity;
+    }
+  }
+
+  return $result;
+}
 sub maybe_add_command {
   my $session = shift;
 
