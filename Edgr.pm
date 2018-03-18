@@ -285,8 +285,6 @@ sub maybe_add_command {
 
   my $command = undef;
 
-  my $prize_on = 0;
-
   if (defined $$session{max_lubes} and $$session{max_lubes} >= 0) {
     if ($$session{lubed} >= $$session{max_lubes}) {
       return undef;
