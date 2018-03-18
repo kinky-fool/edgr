@@ -558,6 +558,23 @@ sub up_and_down {
   steady_beats($session, fuzzy($steady,2));
 }
 
+sub up_to_percent {
+  my $session = shift;
+
+  change_tempo($session, $$session{bpm_min}, 0.7);
+  steady_beats($session, go_high(6));
+
+  my $range = $$session{bpm_max} - $$session{bpm_min};
+  my $steady = fuzzy(25,1);
+  my $percent = 20 + go_high(40);
+  my $add = $range * $percent / 100;
+  my $steps = int(rand(4)) + 2;
+  for my $step (1 .. $steps) {
+    change_tempo($session, $$session{bpm_cur} + ($add / $steps), go_high(2));
+    steady_beats($session, go_high($steady * $step / $steps));
+  }
+}
+
 sub make_beats {
   my $session = shift;
 
