@@ -59,7 +59,6 @@ sub check_allowed {
   return $edges_this_window;
 }
 
-
 sub main {
   my $conf = read_config($conf_file);
   my $session = init_session($conf);
