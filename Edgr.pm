@@ -275,7 +275,7 @@ sub go_high {
   my $granularity = 1000;
 
   for my $i (1 .. $number * $granularity) {
-    if (int(rand(3))) {
+    if (int(rand(rand(6)))) {
       $result += 1 / $granularity;
     } else {
       $result -= 1 / $granularity;
@@ -403,7 +403,7 @@ sub seconds_per_bpm {
 sub change_tempo {
   my $session = shift;
   my $bpm_new = shift;
-  my $rate    = shift || 1;
+  my $rate    = shift;
 
   my $direction = 1;
   if ($$session{bpm_cur} > $bpm_new) {
@@ -570,11 +570,12 @@ sub up_to_percent {
 
   my $range = $$session{bpm_max} - $$session{bpm_min};
   my $steady = fuzzy(25,1);
-  my $percent = 20 + go_high(40);
+  my $percent = 25 + go_high(50);
   my $add = $range * $percent / 100;
   my $steps = int(rand(4)) + 2;
   for my $step (1 .. $steps) {
-    change_tempo($session, $$session{bpm_cur} + ($add / $steps), go_high(2));
+    change_tempo($session, $$session{bpm_cur} + ($add / $steps),
+                  1 + go_high(2));
     steady_beats($session, go_high($steady * $step / $steps));
   }
 }
@@ -582,7 +583,7 @@ sub up_to_percent {
 sub make_beats {
   my $session = shift;
 
-  up_and_down($session);
+  up_to_percent($session);
 }
 
 
