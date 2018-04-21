@@ -12,13 +12,19 @@ $DEBUG        = 0;
 # Functions used in scripts
 @EXPORT       = qw(
                     db_connect
-                    read_config
+                    deny_play
+                    get_history
                     init_session
+                    load_user
                     make_beats
-                    write_script
                     play_script
+                    read_config
                     save_session
+                    score_sessions
+                    sec_to_human
+                    sec_to_human_precise
                     twitters
+                    write_script
                 );
 @EXPORT_OK    = @EXPORT;
 
@@ -27,6 +33,22 @@ sub db_connect {
   my $dbh = DBI->connect("dbi:SQLite:dbname=$dbf","","") ||
     error("could not connect to database: $!",1);
   return $dbh;
+}
+
+sub deny_play {
+  my $settings = shift;
+
+  my $most_recent = time - $$settings{session_break};
+  my $history = get_history($settings,$$settings{history_max});
+
+  foreach my $key (keys %$history) {
+    my $sess = $$history{$key};
+    if ($$sess{finished} > $most_recent) {
+      my $to_wait = $$sess{finished} - $most_recent;
+      printf "Wait %s longer\n", sec_to_human_precise($to_wait);
+      exit;
+    }
+  }
 }
 
 sub error {
@@ -40,22 +62,21 @@ sub error {
 }
 
 sub get_history {
-  my $session = shift;
+  my $session       = shift;
+  my $history_max   = shift;
+
+  my $too_short     = $$session{too_short};
+  my $since         = time - ($$session{history} * 24 * 60 * 60);
 
   my $dbh = db_connect($$session{database});
+  my $user = $$session{user};
+
   my $sql = qq{
 select * from sessions where user = ? and
-date between datetime('now', ?) and datetime('now', 'localtime')
-order by date desc limit ?
+length > ? and finished > ? order by finished desc limit ?
 };
-
-  # Prepare the SQL statement
   my $sth = $dbh->prepare($sql);
-
-  # Execute the SQL statement
-  $sth->execute($$session{user},
-                $$session{past_time},
-                $$session{past_sessions});
+  $sth->execute($user, $too_short, $since, $history_max);
 
   # Fetch any results into a hashref
   my $history = $sth->fetchall_hashref('session_id');
@@ -70,22 +91,13 @@ order by date desc limit ?
 sub get_times {
   my $session = shift;
 
-  my $dbh = db_connect($$session{database});
-  my $sql = qq{
-select length from sessions where user = ? and
-length / goal > ? / 100 and
-date between datetime('now', ?) and datetime('now', 'localtime')
-order by date desc limit ?
-  };
-  my $sth = $dbh->prepare($sql);
-  $sth->execute($$session{user},$$session{min_pct},
-                $$session{past_time},$$session{past_sessions});
-  my @times = ();
-  while (my ($time) = $sth->fetchrow_array) {
-    push @times, $time;
+  my $history = get_history($session,$$session{history_max});
+  my @times   = ();
+
+  foreach my $key (keys %$history) {
+    my $sess = $$history{$key};
+    push(@times,$$sess{length});
   }
-  $sth->finish;
-  $dbh->disconnect;
 
   return @times;
 }
@@ -130,26 +142,12 @@ sub read_config {
 }
 
 sub init_session {
-  my $conf = shift;
+  my $settings  = shift;
 
-  my $session = $conf;
-  my $dbh = db_connect($$session{database});
-
-  my $sql = 'select * from users where user = ?';
-  my $sth = $dbh->prepare($sql);
-  $sth->execute($$session{user});
-  my $options = $sth->fetchrow_hashref;
-
-  $sth->finish;
-  $dbh->disconnect;
-
-  foreach my $key (keys %$options) {
-    $$session{$key} = $$options{$key};
-  }
-
-  $$session{duration} = 0;
+  my $session   = $settings;
 
   my @times = get_times($session);
+
   if (scalar(@times) >= $$session{min_sessions}) {
     $$session{mean} = mean(@times);
     # Remove commas added by mean()
@@ -160,10 +158,6 @@ sub init_session {
     $$session{stddev} = $$session{default_stddev};
   }
 
-  #printf "Resetting to default_mean code in place\n";
-  # Reset things
-  #$$session{mean} = fuzzy($$session{default_mean},1);
-  #$$session{stddev} = $$session{default_stddev};
 
   $$session{goal} = $$session{mean};
 
@@ -175,7 +169,11 @@ sub init_session {
     $$session{goal} = $$session{goal_min};
   }
 
-  $$session{time_max} = $$session{goal} + fuzzy(8*60,1);
+  $$session{min_safe} = $$session{goal} - $$session{goal_under};
+  $$session{max_safe} = $$session{goal} + $$session{goal_over};
+
+  $$session{time_max} = $$session{max_safe} + 300;
+  $$session{duration} = 0;
 
   $$session{bpm_cur} = $$session{bpm_min};
 
@@ -185,7 +183,10 @@ sub init_session {
 
   $$session{liquid_silk} = 0;
   $$session{lubed} = 0;
-  $$session{prized} = 0;
+  $$session{prized} = -1;
+  if ($$session{prize_enabled}) {
+    $$session{prized} = 0;
+  }
 
   # What ratio of recent past failures were due to being over-long
   # determines the chance for a "prize"
@@ -214,6 +215,79 @@ sub init_session {
   return $session;
 }
 
+sub load_user {
+  my $settings = shift;
+
+  my $dbh = db_connect($$settings{database});
+  my $sql = qq{ select * from users where user = ? };
+  my $sth = $dbh->prepare($sql);
+
+  $sth->execute($$settings{user});
+
+  my $user = $sth->fetchrow_hashref;
+
+  $sth->finish;
+  $dbh->disconnect;
+
+  foreach my $key (keys %$user) {
+    $$settings{$key} = $$user{$key};
+  }
+}
+
+sub sec_to_human {
+  my $secs = shift;
+  if ($secs >= 365*24*60*60) {
+    return sprintf '%.1f years', $secs/(365+*24*60*60);
+  } elsif ($secs >= 24*60*60) {
+    return sprintf '%.1f days', $secs/(24*60*60);
+  } elsif ($secs >= 60*60) {
+    return sprintf '%.1f hours', $secs/(60*60);
+  } elsif ($secs >= 60) {
+    return sprintf '%.1f minutes', $secs/60;
+  } else {
+    return sprintf '%.1f seconds', $secs;
+  }
+}
+
+sub sec_to_human_precise {
+  my $secs = shift;
+
+  my $output = '';
+
+  my $years;
+  my $days;
+  my $hours;
+  my $minutes;
+
+  if ($secs >= 365*24*24*60) {
+    $years = int($secs/(365*24*60*60));
+    $output .= sprintf('%iy ',$years);
+    $secs -= $years * 365*24*60*60;
+  }
+
+  if ($secs >= 24*60*60 or $years > 0) {
+    $days = int($secs/(24*60*60));
+    $output .= sprintf('%id ',$days);
+    $secs -= $days * 24*60*60;
+  }
+
+  if ($secs >= 60*60 or $years + $days > 0) {
+    $hours = int($secs/(60*60));
+    $output .= sprintf('%ih ',$hours);
+    $secs -= $hours * 60*60;
+  }
+
+  if ($secs >= 60 or $years + $days + $hours > 0) {
+    $minutes = int($secs/60);
+    $output .= sprintf('%im ',$minutes);
+    $secs -= $minutes * 60;
+  }
+
+  $output .= sprintf('%is',$secs);
+
+  return $output;
+}
+
 sub next_lube {
   my $session = shift;
 
@@ -231,6 +305,73 @@ sub next_lube {
   }
 
   return $$session{duration} + fuzzy($$session{lube_break},1);
+}
+
+sub score_sessions {
+  my $session = shift;
+  my $count   = shift;
+
+  if ($count > 1) {
+    my $pass    = 0;
+    my $history = get_history($session,$count);
+    my $owed = $$session{sessions_owed};
+    my $latest = time - $$session{session_maxbreak};
+    foreach my $key (reverse sort keys %$history) {
+      my $sess = $$history{$key};
+      if ($latest > $$sess{finished}) {
+        # Streak reset
+        last;
+      }
+
+      if ($$sess{length} >= $$sess{min_safe} and
+          $$sess{length} <= $$sess{max_safe}) {
+        $pass++;
+      }
+
+      $owed--;
+      my $start = $$sess{finished} - $$sess{length};
+      $latest = $start - $$session{session_maxbreak};
+    }
+    if ($owed > 0) {
+      printf "Only %s session%s remaining...\n", $owed, $owed == 1 ? '' : 's';
+      return;
+    } else {
+      my $percent = $pass / $count * 100;
+      if ($percent > $$session{owe_percent}) {
+        reset_owed($session);
+        printf "Passed: %s    Failed: %s\n", $pass, $count - $pass;
+      } else {
+        printf "Failed; Scored too low\n";
+      }
+      return;
+    }
+  } else {
+    my $history = get_history($session,1);
+    foreach my $key (keys %$history) {
+      my $sess = $$history{$key};
+      if ($$sess{length} >= $$sess{min_safe} and
+          $$sess{length} <= $$sess{max_safe}) {
+        printf "Session Passed!\n";
+      } else {
+        printf "Session Failed!\n";
+      }
+    }
+  }
+}
+
+sub reset_owed {
+  my $session = shift;
+
+  my $dbh = db_connect($$session{database});
+
+  my $sql = qq{ update users set sessions_owed = default_owed where user = ? };
+  my $sth = $dbh->prepare($sql);
+
+  $sth->execute($$session{user});
+  $sth->finish;
+  $dbh->disconnect;
+
+  return;
 }
 
 sub fuzzy {
@@ -336,6 +477,8 @@ sub maybe_add_command {
 sub write_script {
   my $session = shift;
 
+  # Reset for interleaving the commands
+  $$session{duration} = 0;
   if (open my $script_fh,'>',$$session{script_file}) {
     foreach my $beat (split(/#/,$$session{beats})) {
       my ($count,$bpm) = split(/:/,$beat);
@@ -384,20 +527,20 @@ sub seconds_per_bpm {
   # Calculate the number of seconds a specific BPM should be used
   my ($session,$direction) = @_;
 
-  my ($min,$max) = tempo_limits($session);
+  my $min_spb = 0.5;
+  my $max_spb = 1.0;
+  my $bpm_cur = $$session{bpm_cur};
+  my $bpm_min = $$session{bpm_min};
+  my $bpm_max = $$session{bpm_max};
 
-  my $percent = 1;
-  if ($max != $min) {
-    $percent = abs($$session{bpm_cur} - $min) / abs($max - $min);
-  }
+  my $percent = abs($bpm_cur - $bpm_min) / abs($bpm_max - $bpm_min);
 
   # Reverse percent pace is decreasing
   if ($direction < 0) {
     $percent = 1 - $percent;
   }
 
-  return (($$session{max_spb} - $$session{min_spb}) * $percent)
-          + $$session{min_spb};
+  return (($max_spb - $min_spb) * $percent) + $min_spb;
 }
 
 sub change_tempo {
@@ -433,58 +576,6 @@ sub change_tempo {
   }
 }
 
-sub tempo_limits {
-  my $session = shift;
-
-  my $min = $$session{bpm_min};
-  my $max = $$session{bpm_max};
-
-  # Handle maximum pace increases
-  if ($$session{duration} > ($$session{time_max} / 4)) {
-    $max += $$session{bpm_max_inc};
-  }
-
-  if ($$session{duration} > ($$session{goal} - $$session{goal_under})) {
-    $max += $$session{bpm_max_inc};
-  }
-
-  # Handle minimum pace increases
-  if ($$session{duration} > ($$session{time_max} / 3)) {
-    $min += $$session{bpm_min_inc};
-  }
-
-  if ($$session{duration} > ($$session{time_max} * 2 / 3)) {
-    $min += $$session{bpm_min_inc};
-  }
-
-  if ($$session{duration} > ($$session{time_max} + $$session{goal_over})) {
-    $min += $$session{bpm_min_inc};
-  }
-
-  if ($$session{bpm_cur} < $min and $$session{bpm_cur} > $$session{bpm_min}) {
-    $min = $$session{bpm_cur};
-  }
-
-  return ($min,$max);
-}
-
-sub tempo_stats {
-  my $session = shift;
-
-  my ($min,$max)  = tempo_limits($session);
-
-  my $range = abs($max - $min);
-  my $pct = 0;
-  if ($range > 0) {
-    # abs() is meant to handle situation where bpm_cur < min
-   $pct = abs($$session{bpm_cur} - $min) / $range;
-  }
-
-  my $from_half = abs($pct - 0.5);
-
-  return ($range,$pct,$from_half);
-}
-
 sub twitters {
   my $state   = shift;
   my $message = shift;
@@ -498,40 +589,6 @@ sub twitters {
   );
 
   my $result = $twitter->update($message);
-}
-
-sub get_max_bpm {
-  my $session = shift;
-
-  my $range = abs($$session{bpm_max} - $$session{bpm_min});
-
-  my $percent = $$session{duration} / ($$session{goal} - $$session{goal_under});
-
-  my $max_bpm = $range / 5;
-
-  if ($percent >= 0.10) {
-    $max_bpm = $range * 2 / 5;
-  }
-
-  if ($percent >= 0.30) {
-    $max_bpm = $range * 3 / 5;
-  }
-
-  if ($percent >= 0.60) {
-    $max_bpm = $range * 4 / 5;
-  }
-
-  if ($percent >= 1) {
-    $max_bpm = $range;
-  }
-
-  if ($$session{duration} => $$session{goal} + $$session{goal_over}) {
-    $max_bpm = $range / 5;
-  }
-
-  $max_bpm += $$session{bpm_min};
-
-  return $max_bpm;
 }
 
 sub up_and_down {
@@ -580,23 +637,68 @@ sub up_to_percent {
   }
 }
 
+sub up_by_steps {
+  my $session = shift;
+
+  my $min_rate = 1;
+  my $max_rate = rand(4) + 2;
+
+  my $max_steps = 10;
+  my $step_size = ($$session{bpm_max} - $$session{bpm_min}) / $max_steps;
+
+  my $steps = 4 + int(rand($max_steps - 3));
+
+  my $step = 0;
+
+  change_tempo($session, $$session{bpm_min}, 0.7);
+
+  while ($steps > $step) {
+    $step++;
+    my $rate = $min_rate + (($max_rate - $min_rate) / (2 ** ($steps - $step)));
+    change_tempo($session, $$session{bpm_cur} + $step_size, $rate);
+    steady_beats($session, go_high(10));
+  }
+
+  $max_rate = rand(4) + 2;
+
+  while ($step > 0) {
+    $step--;
+    my $rate = $min_rate + (($max_rate - $min_rate) / (2 ** $step));
+    change_tempo($session, $$session{bpm_cur} - $step_size, $rate);
+    steady_beats($session, go_high(10));
+  }
+}
+
 sub make_beats {
   my $session = shift;
 
-  up_to_percent($session);
+  up_by_steps($session);
 }
 
 
 sub save_session {
   my $session = shift;
 
+  my $user      = $$session{user};
+  my $finished  = time;
+  my $length    = $$session{endured};
+  my $min_safe  = $$session{min_safe};
+  my $max_safe  = $$session{max_safe};
+  my $goal      = $$session{goal};
+  my $mean      = $$session{mean};
+  my $stddev    = $$session{stddev};
+  my $prized    = $$session{prized};
+
   my $dbh = db_connect($$session{database});
-  my $sql  = qq{insert into sessions (user,length,goal,mean,prize_enabled)
-                  values (?,?,?,?,?)};
+  my $sql  = qq{ insert into sessions ( user, finished, length,
+                                        min_safe, max_safe, goal,
+                                        mean, stddev, prized)
+                  values (?,?,?,?,?,?,?,?,?)};
   my $sth = $dbh->prepare($sql);
 
-  $sth->execute($$session{user},$$session{endured},$$session{goal},
-                  $$session{mean},$$session{prize_enabled});
+  $sth->execute($user, $finished, $length, $min_safe, $max_safe, $goal,
+                $mean, $stddev, $prized);
+
   $sth->finish;
   $dbh->disconnect;
   return;

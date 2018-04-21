@@ -14,101 +14,24 @@ use warnings;
 use Edgr;
 use Getopt::Long;
 
-my $conf_file   = "$ENV{HOME}/.config/edgr";
+my $config      = "$ENV{HOME}/.config/edgr";
+my $settings    = read_config($config);
 
-main();
-exit;
+load_user($settings);
 
-sub check_allowed {
-  my $session = shift;
-
-  my $dbh = db_connect($$session{database});
-
-  my $sql = qq{ select count(*) from sessions where user = ?
-                and date >= datetime('now', ?, 'localtime') };
-
-  my $sth = $dbh->prepare($sql);
-
-  $sth->execute($$session{user},$$session{edge_window});
-  my ($edges_this_window) = $sth->fetchrow_array;
-  if ($edges_this_window >= $$session{max_per_window}) {
-    printf "No more edging allowed for this time period.\n";
-    exit;
-  }
-
-  if ($edges_this_window > 1) {
-    # This would be edge #3; make sure #3 and later need a longer cooldown
-    $sth->execute($$session{user},$$session{cooldown2});
-    my ($count) = $sth->fetchrow_array;
-    if ($count > 0) {
-      print "Not so fast. Wait longer.\n";
-      exit;
-    }
-  } else {
-    $sth->execute($$session{user},$$session{cooldown});
-    my ($count) = $sth->fetchrow_array;
-    if ($count > 0) {
-      print "Not so fast. Wait longer.\n";
-      exit;
-    }
-  }
-
-  $sth->finish;
-  $dbh->disconnect;
-
-  return $edges_this_window;
+# Check if a session is allowed
+if (deny_play($settings)) {
+  exit;
 }
 
-sub main {
-  my $conf = read_config($conf_file);
-  my $session = init_session($conf);
+my $session     = init_session($settings);
 
-  GetOptions(
-    "random"    => \$$session{random},
-  );
-
-  my $edges_this_window = check_allowed($session);
-
-  # Add "next_session_in" check; restrict sessions, and consequecences for
-  # trying again too soon. Have a chance of allowing it, and adding punishment
-  # to next session for not passing
-  while ($$session{time_max} > $$session{duration}) {
-    make_beats($session);
-  }
-  # Reset for interleaving commands in script
-  $$session{duration} = 0;
-  write_script($session);
-  play_script($session);
-  save_session($session);
-
-  # One more edge...
-  $edges_this_window++;
-
-  my $extra_beads = $edges_this_window;
-
-  my $dbh = db_connect($$session{database});
-
-  my $sql = qq{ select * from sessions where user = ?
-              and date >= datetime('now',?) order by date };
-  my $sth = $dbh->prepare($sql);
-  $sth->execute($$session{user},$$session{past_hours});
-
-  while (my $sesh = $sth->fetchrow_hashref) {
-    $extra_beads++;
-    if ($$sesh{length} > $$sesh{goal} + $$session{goal_over}) {
-      $extra_beads = $edges_this_window;
-    }
-    if ($$sesh{length} < $$sesh{goal} - $$session{goal_under}) {
-      $extra_beads = $edges_this_window;
-    }
-  }
-
-  if ($$session{endured} >= $$session{goal} - $$session{goal_under} and
-      $$session{endured} <= $$session{goal} + $$session{goal_over}) {
-    printf "\n\nPass - Draw a bead\n\n";
-  } else {
-    my $beads = $extra_beads;
-    printf "\n\n Fail - Add %s\n\n",
-                ($beads > 1)?"$beads beads":"a bead";
-  }
+while ($$session{time_max} > $$session{duration}) {
+  make_beats($session);
 }
+
+write_script($session);
+play_script($session);
+save_session($session);
+
+score_sessions($session,$$session{sessions_owed});

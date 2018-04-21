@@ -1,24 +1,50 @@
+drop table sessions;
+
 create table sessions (
   session_id    integer primary key autoincrement,
-  user          integer,
-  date          datetime default (datetime('now','localtime')),
+  user          text,
+  finished      integer default (strftime('%s','now')),
   length        real,
+  min_safe      real,
+  max_safe      real,
   goal          real,
   mean          real,
-  prize_enabled bool
+  stddev        real,
+  prized        int
+);
+/*
+insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',547.0,527.16,527.16,527.16,120,-1);
+insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',398.0,528.15,528.15,528.15,120,-1);
+insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',376.0,506.56,506.56,506.56,120,-1);
+insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',400.0,499.68,499.68,499.68,120,-1);
+insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',547.0,481.11,481.11,481.11,120,-1);
+insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',443.0,476.76,476.76,476.76,120,-1);
+insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',358.0,469.5,469.5,469.5,120,-1)   ;
+insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',397.0,453.75,453.75,453.75,120,-1);
+insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',425.0,426.25,426.25,426.25,120,-1);
+insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',391.0,409.31,409.31,409.31,120,-1);
+
+select * from sessions;
+*/
+
+drop table users;
+create table users (
+  user              text primary key, -- username
+  bpm_min           integer,          -- minimum beats per minute for strokes
+  bpm_max           integer,          -- maximum beats per minute for strokes
+  default_mean      real,             -- when not enough data, use this mean
+  default_stddev    real,             -- when not enough data, use this stddev
+  goal_under        real,             -- goal window min time
+  goal_over         real,             -- goal window max time
+  prize_speedup     real,             -- time to remove from lube-break 
+  prize_enabled     bool,             -- whether to enable icy hot or not
+  sessions_owed     integer,          -- number of sessions before results
+  default_owed      integer,          -- sessions owed by default
+  owe_percent       real,             -- percent needed to pass
+  session_break     real,             -- mandatory time before next session
+  session_maxbreak  real,             -- if no session in time, streak breaks
+  next_allowed      integer default 0 -- time next session is allowed
 );
 
-create table users (
-  user            text primary key,
-  bpm_min_min     integer,
-  bpm_min_max     integer,
-  bpm_max_min     integer,
-  bpm_max_max     integer,
-  default_mean    real,
-  default_stddev  real,
-  lube_delay      real,
-  lube_break      real,
-  prize_delay     real,
-  prize_break     real,
-  prize_enabled   bool
-);
+insert into users (user, bpm_min, bpm_max, default_mean, default_stddev, goal_under, goal_over, prize_speedup, prize_enabled, sessions_owed, default_owed, owe_percent, session_break, session_maxbreak) values ('kinky',100,210,500,120,240,10,20,0,3,2,50,15*60,45*60);
+--select * from users;
