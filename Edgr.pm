@@ -315,22 +315,21 @@ sub score_sessions {
     my $pass    = 0;
     my $history = get_history($session,$count);
     my $owed = $$session{sessions_owed};
-    my $latest = time - $$session{session_maxbreak};
+    my $next_by = 0;
     foreach my $key (reverse sort keys %$history) {
       my $sess = $$history{$key};
-      if ($latest > $$sess{finished}) {
-        # Streak reset
-        last;
+
+      my $start = $$sess{finished} - $$sess{length};
+      if ($start > $next_by) {
+        $owed = $$session{sessions_owed};
       }
+      $owed--;
+      $next_by = $$sess{finished} + $$session{session_maxbreak};
 
       if ($$sess{length} >= $$sess{min_safe} and
           $$sess{length} <= $$sess{max_safe}) {
         $pass++;
       }
-
-      $owed--;
-      my $start = $$sess{finished} - $$sess{length};
-      $latest = $start - $$session{session_maxbreak};
     }
     if ($owed > 0) {
       printf "Only %s session%s remaining...\n", $owed, $owed == 1 ? '' : 's';
