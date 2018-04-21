@@ -1,11 +1,3 @@
-Less-than-professional scripts and the like for fun things to do.
+A fun little program that generates a hypnotic metronomic beat for self-abuse.
 
-master-beater   Create a metronome program for ctronome, use feh to display
-                an image slideshow that then uses icy-build to evaluate the
-                slideshow images to display "flavor text"
-
-icy-build       Check the current slideshow image; If it matches criteria,
-                display a message overlay, with instructions or status
-                information
-
-Sessions.pm     Perl module for master-beater and friends
+Currently a work in progress. If you have questions or suggestions, open an issue.
