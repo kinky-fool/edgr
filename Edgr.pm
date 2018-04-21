@@ -430,12 +430,6 @@ sub maybe_add_command {
 
   my $command = undef;
 
-  if (defined $$session{max_lubes} and $$session{max_lubes} >= 0) {
-    if ($$session{lubed} >= $$session{max_lubes}) {
-      return undef;
-    }
-  }
-
   if ($$session{duration} > $$session{lube_next}) {
 
     if ($$session{lube_chance} > rand(100)) {
