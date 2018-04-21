@@ -332,15 +332,23 @@ sub score_sessions {
       }
     }
     if ($owed > 0) {
-      printf "Only %s session%s remaining...\n", $owed, $owed == 1 ? '' : 's';
+      if ($$session{verbose}) {
+        printf "Only %s session%s remaining...\n", $owed, $owed == 1 ? '' : 's';
+      } else {
+        printf "More sessions required.\n";
+      }
       return;
     } else {
       my $percent = $pass / $count * 100;
       if ($percent > $$session{owe_percent}) {
         reset_owed($session);
-        printf "Passed: %s    Failed: %s\n", $pass, $count - $pass;
+        if ($$session{verbose}) {
+          printf "Passed: %s    Failed: %s\n", $pass, $count - $pass;
+        } else {
+          printf "Passed.\n";
+        }
       } else {
-        printf "Failed; Scored too low\n";
+        printf "More sessions required.\n";
       }
       return;
     }
@@ -350,9 +358,9 @@ sub score_sessions {
       my $sess = $$history{$key};
       if ($$sess{length} >= $$sess{min_safe} and
           $$sess{length} <= $$sess{max_safe}) {
-        printf "Session Passed!\n";
+        printf "Passed.\n";
       } else {
-        printf "Session Failed!\n";
+        printf "Failed.\n";
       }
     }
   }

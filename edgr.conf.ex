@@ -2,6 +2,7 @@ user                kinky
 database            ~/.config/edgr.sqlite
 goal_under          240
 goal_over           10
+verbose             0
 
 # Don't evaluate sessions not lasting at least /this/ long
 too_short           30
