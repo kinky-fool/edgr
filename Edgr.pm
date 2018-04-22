@@ -314,16 +314,25 @@ sub score_sessions {
   if ($count > 1) {
     my $pass    = 0;
     my $history = get_history($session,$count);
-    my $owed = $$session{sessions_owed};
-    my $next_by = 0;
-    foreach my $key (reverse sort keys %$history) {
+    my $next_by = time;
+    my $streak = 0;
+    foreach my $key (sort keys %$history) {
       my $sess = $$history{$key};
 
-      my $start = $$sess{finished} - $$sess{length};
-      if ($start > $next_by) {
-        $owed = $$session{sessions_owed};
+      if ($$sess{scored}) {
+        next;
       }
-      $owed--;
+
+      my $start = $$sess{finished} - $$sess{length};
+
+      # Reset if session was started after allowed limit
+      if ($start > $next_by) {
+        $streak = 0;
+        $pass   = 0;
+      }
+
+      $streak++;
+
       $next_by = $$sess{finished} + $$session{session_maxbreak};
 
       if ($$sess{length} >= $$sess{min_safe} and
@@ -331,8 +340,10 @@ sub score_sessions {
         $pass++;
       }
     }
-    if ($owed > 0) {
+
+    if ($count > $streak) {
       if ($$session{verbose}) {
+        my $owed = $count - $streak;
         printf "Only %s session%s remaining...\n", $owed, $owed == 1 ? '' : 's';
       } else {
         printf "More sessions required.\n";
