@@ -10,7 +10,8 @@ create table sessions (
   goal          real,
   mean          real,
   stddev        real,
-  prized        int
+  prized        int,
+  scored        bool default false
 );
 /*
 insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',547.0,527.16,527.16,527.16,120,-1);
@@ -19,7 +20,7 @@ insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values (
 insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',400.0,499.68,499.68,499.68,120,-1);
 insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',547.0,481.11,481.11,481.11,120,-1);
 insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',443.0,476.76,476.76,476.76,120,-1);
-insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',358.0,469.5,469.5,469.5,120,-1)   ;
+insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',358.0,469.5,469.5,469.5,120,-1);
 insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',397.0,453.75,453.75,453.75,120,-1);
 insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',425.0,426.25,426.25,426.25,120,-1);
 insert into sessions (user,length,min_safe,max_safe,mean,stddev,prized) values ('kinky',391.0,409.31,409.31,409.31,120,-1);
