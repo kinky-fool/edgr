@@ -60,6 +60,30 @@ sub error {
     exit $rv
   }
 }
+sub get_unscored {
+  my $session       = shift;
+
+  my $too_short     = $$session{too_short};
+
+  my $dbh = db_connect($$session{database});
+  my $user_id = $$session{user_id};
+
+  my $sql = qq{
+select * from sessions where user_id = ? and
+length > ? and scored = 0 order by finished desc
+};
+  my $sth = $dbh->prepare($sql);
+  $sth->execute($user_id, $too_short);
+
+  # Fetch any results into a hashref
+  my $unscored = $sth->fetchall_hashref('session_id');
+
+  # Clean up
+  $sth->finish;
+  $dbh->disconnect;
+
+  return $unscored;
+}
 
 sub get_history {
   my $session       = shift;
@@ -69,14 +93,14 @@ sub get_history {
   my $since         = time - ($$session{history} * 24 * 60 * 60);
 
   my $dbh = db_connect($$session{database});
-  my $user = $$session{user};
+  my $user_id = $$session{user_id};
 
   my $sql = qq{
-select * from sessions where user = ? and
+select * from sessions where user_id = ? and
 length > ? and finished > ? order by finished desc limit ?
 };
   my $sth = $dbh->prepare($sql);
-  $sth->execute($user, $too_short, $since, $history_max);
+  $sth->execute($user_id, $too_short, $since, $history_max);
 
   # Fetch any results into a hashref
   my $history = $sth->fetchall_hashref('session_id');
@@ -219,19 +243,25 @@ sub load_user {
   my $settings = shift;
 
   my $dbh = db_connect($$settings{database});
-  my $sql = qq{ select * from users where user = ? };
+  my $sql = qq{ select user_id from users where username = ? };
   my $sth = $dbh->prepare($sql);
 
   $sth->execute($$settings{user});
 
-  my $user = $sth->fetchrow_hashref;
+  my ($user_id) = $sth->fetchrow_array;
+
+  $$settings{user_id} = $user_id;
+
+  $sql = qq{ select key,value from settings where user_id = ? };
+  $sth = $dbh->prepare($sql);
+  $sth->execute($user_id);
+
+  while (my $row = $sth->fetchrow_hashref) {
+    $$settings{$$row{key}} = $$row{value};
+  }
 
   $sth->finish;
   $dbh->disconnect;
-
-  foreach my $key (keys %$user) {
-    $$settings{$key} = $$user{$key};
-  }
 }
 
 sub sec_to_human {
@@ -309,72 +339,74 @@ sub next_lube {
 
 sub score_sessions {
   my $session = shift;
-  my $count   = shift;
 
-  if ($count > 1) {
-    my $pass    = 0;
-    my $history = get_history($session,$count);
-    my $next_by = time;
-    my $streak = 0;
-    foreach my $key (sort keys %$history) {
-      my $sess = $$history{$key};
+  my $sessions = get_unscored($session);
 
-      if ($$sess{scored}) {
-        next;
-      }
+  my $streak  = 0;
+  my $pass    = 0;
+  my $fail    = 0;
+  my $next_by = time;
 
-      my $start = $$sess{finished} - $$sess{length};
+  foreach my $session_id (keys %$sessions) {
+    my $sess = $$sessions{$session_id};
 
-      # Reset if session was started after allowed limit
-      if ($start > $next_by) {
-        $streak = 0;
-        $pass   = 0;
-      }
+    my $start = $$sess{finished} - $$sess{length};
 
-      $streak++;
-
-      $next_by = $$sess{finished} + $$session{session_maxbreak};
-
-      if ($$sess{length} >= $$sess{min_safe} and
-          $$sess{length} <= $$sess{max_safe}) {
-        $pass++;
-      }
+    if ($start > $next_by) {
+      $streak = 0;
     }
 
-    if ($count > $streak) {
-      if ($$session{verbose}) {
-        my $owed = $count - $streak;
-        printf "Only %s session%s remaining...\n", $owed, $owed == 1 ? '' : 's';
-      } else {
-        printf "More sessions required.\n";
-      }
-      return;
+    $streak++;
+    $next_by = $$sess{finished} + $$session{session_maxbreak};
+
+    if ($$sess{length} >= $$sess{min_safe} and
+        $$sess{length} <= $$sess{max_safe}) {
+      $pass++;
     } else {
-      my $percent = $pass / $count * 100;
-      if ($percent > $$session{owe_percent}) {
-        reset_owed($session);
-        if ($$session{verbose}) {
-          printf "Passed: %s    Failed: %s\n", $pass, $count - $pass;
-        } else {
-          printf "Passed.\n";
-        }
-      } else {
-        printf "More sessions required.\n";
-      }
-      return;
-    }
-  } else {
-    my $history = get_history($session,1);
-    foreach my $key (keys %$history) {
-      my $sess = $$history{$key};
-      if ($$sess{length} >= $$sess{min_safe} and
-          $$sess{length} <= $$sess{max_safe}) {
-        printf "Passed.\n";
-      } else {
-        printf "Failed.\n";
-      }
+      $fail++;
     }
   }
+
+  my $passed = 1;
+
+  if ($$session{sessions_owed} > $streak) {
+    $passed = 0;
+  }
+
+  if ($$session{passes_owed} > $pass) {
+    $passed = 0;
+  }
+
+  my $percent = ($pass / ($pass + $fail)) * 100;
+
+  if ($$session{percent_owed} > $percent) {
+    $passed = 0;
+  }
+
+  if ($passed) {
+    if ($$session{verbose}) {
+      printf "Passed!\n\nPass: %s\nFail: %s\n", $pass, $fail;
+    } else {
+      printf "Passed!\n"
+    }
+    #reset_owed($session);
+    mark_scored($session);
+  } else {
+    printf "More sessions required.\n";
+  }
+}
+
+sub mark_scored {
+  my $session     = shift;
+
+  my $dbh = db_connect($$session{database});
+
+  my $sql = qq{ update sessions set scored = 1 where user = ? };
+  my $sth = $dbh->prepare($sql);
+  $sth->execute($$session{user});
+
+  $sth->finish;
+  $dbh->disconnect;
 }
 
 sub reset_owed {
