@@ -17,7 +17,7 @@ use Getopt::Long;
 my $config      = "$ENV{HOME}/.config/edgr";
 my $settings    = read_config($config);
 
-load_user($settings);
+read_settings($settings);
 
 # Check if a session is allowed
 if (deny_play($settings)) {
