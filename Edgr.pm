@@ -15,7 +15,7 @@ $DEBUG        = 0;
                     deny_play
                     get_history
                     init_session
-                    load_user
+                    read_settings
                     make_beats
                     play_script
                     read_config
@@ -239,7 +239,7 @@ sub init_session {
   return $session;
 }
 
-sub load_user {
+sub read_settings {
   my $settings = shift;
 
   my $dbh = db_connect($$settings{database});
@@ -252,7 +252,7 @@ sub load_user {
 
   $$settings{user_id} = $user_id;
 
-  $sql = qq{ select key,value from settings where user_id = ? };
+  $sql = qq{ select key, value from settings where user_id = ? };
   $sth = $dbh->prepare($sql);
   $sth->execute($user_id);
 
@@ -347,6 +347,9 @@ sub score_sessions {
   my $fail    = 0;
   my $next_by = time;
 
+  # re-fresh settings from the database
+  read_settings($session);
+
   foreach my $session_id (keys %$sessions) {
     my $sess = $$sessions{$session_id};
 
@@ -369,17 +372,17 @@ sub score_sessions {
 
   my $passed = 1;
 
-  if ($$session{sessions_owed} > $streak) {
+  if ($$session{owed_sessions} > $streak) {
     $passed = 0;
   }
 
-  if ($$session{passes_owed} > $pass) {
+  if ($$session{owed_passes} > $pass) {
     $passed = 0;
   }
 
   my $percent = ($pass / ($pass + $fail)) * 100;
 
-  if ($$session{percent_owed} > $percent) {
+  if ($$session{owed_percent} > $percent) {
     $passed = 0;
   }
 
@@ -412,10 +415,19 @@ sub mark_scored {
 sub reset_owed {
   my $session = shift;
 
+  read_settings($session);
+
   my $dbh = db_connect($$session{database});
 
-  my $sql = qq{ update users set sessions_owed = default_owed where user = ? };
+  my $sql = qq{ update settings set value = ? where key = ? and user_id = ? };
   my $sth = $dbh->prepare($sql);
+
+  $sth->execute($$session{owed_sessions_default}, 'owed_sessions',
+                                                  $$session{user_id});
+  $sth->execute($$session{owed_percent_default}, 'owed_percent',
+                                                  $$session{user_id});
+  $sth->execute($$session{owed_passes_default}, 'owed_passes',
+                                                  $$session{user_id});
 
   $sth->execute($$session{user});
   $sth->finish;
@@ -723,7 +735,7 @@ sub make_beats {
 sub save_session {
   my $session = shift;
 
-  my $user      = $$session{user};
+  my $user_id   = $$session{user_id};
   my $finished  = time;
   my $length    = $$session{endured};
   my $min_safe  = $$session{min_safe};
@@ -734,13 +746,13 @@ sub save_session {
   my $prized    = $$session{prized};
 
   my $dbh = db_connect($$session{database});
-  my $sql  = qq{ insert into sessions ( user, finished, length,
+  my $sql  = qq{ insert into sessions ( user_id, finished, length,
                                         min_safe, max_safe, goal,
                                         mean, stddev, prized)
                   values (?,?,?,?,?,?,?,?,?)};
   my $sth = $dbh->prepare($sql);
 
-  $sth->execute($user, $finished, $length, $min_safe, $max_safe, $goal,
+  $sth->execute($user_id, $finished, $length, $min_safe, $max_safe, $goal,
                 $mean, $stddev, $prized);
 
   $sth->finish;
