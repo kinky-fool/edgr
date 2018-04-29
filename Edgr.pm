@@ -375,11 +375,11 @@ sub score_sessions {
 
   my $passed = 1;
 
-  if ($$session{owed_sessions} > $streak) {
+  if ($$session{owed_streak} > $streak) {
     $passed = 0;
   }
 
-  if ($$session{owed_passes} > $pass) {
+  if ($$session{owed_passes} + $$session{owed_passes_add} * $fail > $pass) {
     $passed = 0;
   }
 
