@@ -212,6 +212,9 @@ sub init_session {
     $$session{prized} = 0;
   }
 
+  # TODO:
+  # get max_history sessions, calculate the win/loss record
+  # use wins/losses to affect liklihood of 'prize'
   # What ratio of recent past failures were due to being over-long
   # determines the chance for a "prize"
   #$$session{prize_chance} *= get_long_fail_ratio($session);
