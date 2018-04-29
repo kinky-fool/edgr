@@ -203,7 +203,7 @@ sub init_session {
 
   $$session{direction} = 1;
 
-  $$session{lube_next} = next_lube($session);
+  $$session{lube_next} = lube_next($session);
 
   $$session{liquid_silk} = 0;
   $$session{lubed} = 0;
@@ -318,23 +318,23 @@ sub sec_to_human_precise {
   return $output;
 }
 
-sub next_lube {
+sub lube_next {
   my $session = shift;
 
-  my $safe = $$session{goal} - $$session{goal_under};
-  my $roll = int(rand(6));
-  my $base = 2;
+  my $range = abs($$session{lube_break_max} - $$session{lube_break_min});
+
+  my $delay = $$session{lube_min} + go_high($range / 2);
+
   if ($$session{liquid_silk}) {
-    $base = 4;
-  }
-  $$session{lube_break} = $safe / ($base + 1);
-  if ($roll == 0) {
-    $$session{lube_break} = $safe / $base;
-  } elsif ($roll > 3) {
-    $$session{lube_break} = $safe / ($base + 2);
+    $delay = $$session{lube_min} + fuzzy($range / 2, 1);
+    $delay = $delay * $$session{prize_speedup_percent} / 100;
   }
 
-  return $$session{duration} + fuzzy($$session{lube_break},1);
+  if ($$session{lube_break_min} > $delay) {
+    $delay = $$session{lube_break_min};
+  }
+
+  return $$session{duration} + $delay;
 }
 
 sub score_sessions {
@@ -494,33 +494,23 @@ sub maybe_add_command {
 
   if ($$session{duration} > $$session{lube_next}) {
 
-    if ($$session{lube_chance} > rand(100)) {
-      $command = 'Use lube';
-      $$session{lube_next} = next_lube($session);
+    $command = 'Use lube';
+    $$session{lube_next} = lube_next($session);
 
-      if ($$session{liquid_silk}) {
-        $command = 'Use Liquid Silk';
-        if ($$session{prize_armed} and $$session{lubed}) {
-          if ($$session{prize_apply_chance} > rand(100)) {
-            $$session{prized}++;
-          }
-
-          if ($$session{prized} > 0) {
-            if ($$session{prize_apply_chance} * 2 > rand(100)) {
-              $command = 'Use Liquid Fire';
-            }
-          }
-
-          if ($$session{prized} > 1) {
-            if ($$session{prize_apply_chance} > rand(100)) {
-              $command = 'Use Icy Hot';
-            }
+    if ($$session{liquid_silk}) {
+      $command = 'Use Liquid Silk';
+      if ($$session{prize_armed} and $$session{lubed}) {
+        if ($$session{prize_apply_chance} > rand(100)) {
+          if (int(rand(4))) {
+            $command = 'Use Liquid Fire';
+          } else {
+            $command = 'Use Icy Hot';
           }
         }
       }
-
-      $$session{lubed}++;
     }
+
+    $$session{lubed}++;
   }
 
   if ($command) {
