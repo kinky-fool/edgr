@@ -395,7 +395,11 @@ sub score_sessions {
     } else {
       printf "Passed!\n"
     }
-    #reset_owed($session);
+
+    reset_default($session,'owed_streak');
+    reset_default($session,'owed_passes');
+    reset_default($session,'owed_percent');
+
     mark_scored($session);
   } else {
     printf "More sessions required.\n";
@@ -415,8 +419,9 @@ sub mark_scored {
   $dbh->disconnect;
 }
 
-sub reset_owed {
+sub reset_default {
   my $session = shift;
+  my $key     = shift;
 
   read_settings($session);
 
@@ -425,14 +430,8 @@ sub reset_owed {
   my $sql = qq{ update settings set value = ? where key = ? and user_id = ? };
   my $sth = $dbh->prepare($sql);
 
-  $sth->execute($$session{owed_sessions_default}, 'owed_sessions',
-                                                  $$session{user_id});
-  $sth->execute($$session{owed_percent_default}, 'owed_percent',
-                                                  $$session{user_id});
-  $sth->execute($$session{owed_passes_default}, 'owed_passes',
-                                                  $$session{user_id});
+  $sth->execute($$session{$key . '_default'}, $key, $$session{user_id});
 
-  $sth->execute($$session{user});
   $sth->finish;
   $dbh->disconnect;
 
