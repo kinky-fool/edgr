@@ -30,31 +30,59 @@ create table settings (
 );
 
 insert into settings (key, value, user_id) values
+-- minimum beats per minute
   ('bpm_min',               100,      1),
+-- maximum beats per minute
   ('bpm_max',               210,      1),
+-- sessions owed to complete a challenge, completed back-to-back
   ('owed_streak',           0,        1),
+-- number of passed sessions owed to complete a challenge
   ('owed_passes',           0,        1),
+-- number of sessions to add when a session is failed, during a challenge
   ('owed_passes_add',       0,        1),
+-- percent (pass / pass+fail) necessary to complete a challenge
   ('owed_percent',          0,        1),
+-- value to reset owed_streak to when a challenge is completed
   ('owed_streak_default',   0,        1),
+-- value to reset owed_passes to when a challenge is completed
   ('owed_passes_default',   0,        1),
+-- value to reset owed_percent to when a challenge is completed
   ('owed_percent_default',  0,        1),
+-- time (in seconds) before another session may be played
   ('session_break',         15*60,    1),
+-- time (in seconds) another session must be played in to continue a streak
   ('session_break_max',     45*60,    1),
+-- minimum time between applications of lube
   ('lube_break_min',        60,       1),
+-- maximum time between applications of lube
   ('lube_break_max',        240,      1),
+-- percent to adjust lube breaks by, when lube is icy hot
   ('prize_speedup_percent', 80,       1),
+-- enable use of icy hot as lube
   ('prize_enabled',         1,        1),
+-- percent chance to "arm" the icy hot rule
   ('prize_arm',             40,       1),
+-- percent chance to "disarm" the icy hot rule
   ('prize_disarm',          42,       1),
+-- percent chance that icy hot or liquid fire will be used
   ('prize_apply',           25,       1),
+-- time in seconds to sub from 'goal' to define the "pass window"
   ('goal_under',            240,      1),
+-- time in seconds to add to 'goal' to define the "pass window"
   ('goal_over',             10,       1),
+-- minimum time in seconds that the goal time may be
   ('goal_min',              300,      1),
+-- maximum time in seconds that the goal time may be
   ('goal_max',              1800,     1),
+-- value to use for 'mean' when min_sessions have not been completed
   ('mean_default',          540,      1),
+-- value to use for 'stddev' when min_sessions have not been completed
   ('stddev_default',        120,      1),
+-- time in seconds that a session may be aborted and not counted
   ('too_short',             30,       1),
+-- number of days to consider previous sessions when creating the goal
   ('history',               15,       1),
+-- number of sessions to consider when creating the goal
   ('history_max',           20,       1),
+-- minimum number of sessions before mean_default / stddev_default not used
   ('min_sessions',          5,        1);
