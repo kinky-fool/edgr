@@ -25,16 +25,18 @@ create table settings (
   setting_id        integer primary key autoincrement,
   user_id           integer,
   key               text,
-  value             text
+  value             text,
+  constraint setting_unique unique (user_id, key)
 );
 
 insert into settings (key, value, user_id) values
   ('bpm_min',               100,      1),
   ('bpm_max',               210,      1),
-  ('owed_sessions',         0,        1),
+  ('owed_streak',           0,        1),
   ('owed_passes',           0,        1),
+  ('owed_passes_add',       0,        1),
   ('owed_percent',          0,        1),
-  ('owed_sessions_default', 0,        1),
+  ('owed_streak_default',   0,        1),
   ('owed_passes_default',   0,        1),
   ('owed_percent_default',  0,        1),
   ('session_break',         15*60,    1),
@@ -43,8 +45,16 @@ insert into settings (key, value, user_id) values
   ('lube_break_max',        240,      1),
   ('prize_speedup_percent', 80,       1),
   ('prize_enabled',         1,        1),
+  ('prize_arm',             40,       1),
+  ('prize_disarm',          42,       1),
+  ('prize_apply',           25,       1),
   ('goal_under',            240,      1),
   ('goal_over',             10,       1),
+  ('goal_min',              300,      1),
+  ('goal_max',              1800,     1),
   ('mean_default',          540,      1),
   ('stddev_default',        120,      1),
-  ('allowed_after',         0,        1);
+  ('too_short',             30,       1),
+  ('history',               15,       1),
+  ('history_max',           20,       1),
+  ('min_sessions',          5,        1);
