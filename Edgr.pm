@@ -470,25 +470,36 @@ sub fuzzy {
 
     $number = $result;
   }
+
   return $number;
 }
+
 
 sub go_high {
   my $number  = shift;
 
-  my $result = $number;
-  my $granularity = 1000;
+  for (1 .. 3) {
+    my $result = $number;
 
-  for my $i (1 .. $number * $granularity) {
-    if (int(rand(rand(6)))) {
-      $result += 1 / $granularity;
-    } else {
-      $result -= 1 / $granularity;
+    my $step = 1;
+
+    if (!int(rand(3))) {
+      $step = -1;
     }
+
+    for (1 .. int($number)) {
+      if (int(rand(7)) > 2) {
+        $result += $step;
+      } else {
+        $result -= $step;
+      }
+    }
+    $number = $result;
   }
 
-  return $result;
+  return $number;
 }
+
 sub maybe_add_command {
   my $session = shift;
 
