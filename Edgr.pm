@@ -205,41 +205,67 @@ sub init_session {
 
   $$session{lube_next} = lube_next($session);
 
-  $$session{liquid_silk} = 0;
   $$session{lubed} = 0;
   $$session{prized} = -1;
+
   if ($$session{prize_enabled}) {
     $$session{prized} = 0;
+    arm_prize($session);
   }
 
-  # TODO:
-  # get max_history sessions, calculate the win/loss record
-  # use wins/losses to affect liklihood of 'prize'
-  # What ratio of recent past failures were due to being over-long
-  # determines the chance for a "prize"
-  #$$session{prize_chance} *= get_long_fail_ratio($session);
-
-  # What ratio of recent sessions were successful determines a saving throw
-  #$$session{disarm_chance} *= get_success_ratio($session);
-
-  #if ($$session{prize_armed} and $$session{prize_chance} > rand(100)) {
-  #  $$session{liquid_silk} = 1;
-  #  if ($$session{disarm_chance} > rand(100)) {
-  #    # Disable the 'prize' but keep up appearances by leaving liquid silk
-  #    $$session{prize_armed} = 0;
-  #    if (80 > int(100)) {
-  #      $$session{liquid_silk} = 0;
-  #    }
-  #  }
-
-  #  if ($$session{liquid_silk} > 0 and $$session{prize_aware}) {
-  #    printf "You won the prize! Get the appropriate lubes handy.\n";
-  #    printf "< Press Enter to Resume >";
-  #    my $input = <STDIN>;
-  #  }
-  #}
 
   return $session;
+}
+
+sub arm_prize {
+  my $session = shift;
+
+  my $unscored = get_unscored($session);
+
+  my $too_long  = 0;
+  my $pass      = 0;
+  my $total     = 0;
+
+  foreach my $sesh_id (keys %$unscored) {
+    my $sesh = $$unscored{$sesh_id};
+
+    if ($$sesh{length} > $$sesh{max_safe}) {
+      $too_long++;
+    }
+
+    if ($$sesh{length} >= $$sesh{min_safe} and
+        $$sesh{length} <= $$sesh{max_safe}) {
+      $pass++;
+    }
+
+    $total++;
+  }
+
+  for (0 .. $too_long) {
+
+    if ($$session{prize_arm} > rand(100)) {
+      $$session{prize_armed}  = 1;
+      $$session{prize_fake}   = 1;
+    }
+
+    if ($$session{prize_armed} and $pass > 0) {
+      $pass--;
+      if ($$session{prize_disarm} > rand(100)) {
+        $$session{prize_armed} = 0;
+      }
+    }
+  }
+
+  if ($$session{prize_armed}) {
+    $$session{prized} = 1;
+  }
+
+  if ($$session{prize_fake}) {
+    printf "   You won the prize!\n";
+    printf "   Get Icy Hot Handy.\n";
+    printf "< Press Enter to Resume >";
+    my $input = <STDIN>;
+  }
 }
 
 sub read_settings {
@@ -328,13 +354,23 @@ sub lube_next {
 
   my $delay = $$session{lube_min} + go_high($range / 2);
 
-  if ($$session{liquid_silk}) {
+  if ($$session{prize_fake}) {
     $delay = $$session{lube_min} + fuzzy($range / 2, 1);
-    $delay = $delay * $$session{prize_speedup_percent} / 100;
   }
 
-  if ($$session{lube_break_min} > $delay) {
-    $delay = $$session{lube_break_min};
+  if ($$session{prize_fake} and $$session{lubed} == 0) {
+    $delay = $delay * 180 / 100;
+    if (int(rand(3))) {
+      $$session{prize_fake} = 0;
+    }
+  }
+
+  if ($$session{prize_armed} and $$session{lubed} == 1) {
+    $delay = $delay * 40 / 100;
+  }
+
+  if ($$session{prize_armed} and $$session{lubed} > 1) {
+    $delay = $delay * 120 / 100;
   }
 
   return $$session{duration} + $delay;
@@ -389,6 +425,10 @@ sub score_sessions {
     $passed = 0;
   }
 
+  if ($$session{prized} == 1) {
+    printf "You got very lucky. Prize was armed.\n";
+  }
+
   if ($passed) {
     if ($$session{verbose}) {
       printf "Passed!\n\nPass: %s\nFail: %s\n", $pass, $fail;
@@ -411,9 +451,9 @@ sub mark_scored {
 
   my $dbh = db_connect($$session{database});
 
-  my $sql = qq{ update sessions set scored = 1 where user = ? };
+  my $sql = qq{ update sessions set scored = 1 where user_id = ? };
   my $sth = $dbh->prepare($sql);
-  $sth->execute($$session{user});
+  $sth->execute($$session{user_id});
 
   $sth->finish;
   $dbh->disconnect;
@@ -510,15 +550,12 @@ sub maybe_add_command {
     $command = 'Use lube';
     $$session{lube_next} = lube_next($session);
 
-    if ($$session{liquid_silk}) {
-      $command = 'Use Liquid Silk';
+    if ($$session{prize_fake} or $$session{prize_armed}) {
+      $command = 'Use "Icy-safe" lube.';
       if ($$session{prize_armed} and $$session{lubed}) {
-        if ($$session{prize_apply_chance} > rand(100)) {
-          if (int(rand(4))) {
-            $command = 'Use Liquid Fire';
-          } else {
-            $command = 'Use Icy Hot';
-          }
+        if ($$session{prize_apply} > rand(100)) {
+          $$session{prized}++;
+          $command = 'Use Icy Hot.';
         }
       }
     }
