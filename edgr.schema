@@ -56,15 +56,17 @@ insert into settings (key, value, user_id) values
   ('lube_break_min',        60,       1),
 -- maximum time between applications of lube
   ('lube_break_max',        240,      1),
--- percent to adjust lube breaks by, when lube is icy hot
-  ('prize_speedup_percent', 80,       1),
 -- enable use of icy hot as lube
   ('prize_enabled',         1,        1),
 -- percent chance to "arm" the icy hot rule
   ('prize_arm',             40,       1),
 -- percent chance to "disarm" the icy hot rule
   ('prize_disarm',          42,       1),
--- percent chance that icy hot or liquid fire will be used
+-- whether or not icy hot is 'armed' / possible to be used
+  ('prize_armed',           0,        1),
+-- whether or not to fake icy hot being armed
+  ('prize_fake',            0,        1),
+-- percent chance that icy hot will be required
   ('prize_apply',           25,       1),
 -- time in seconds to sub from 'goal' to define the "pass window"
   ('goal_under',            240,      1),
