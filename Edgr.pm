@@ -193,6 +193,9 @@ sub init_session {
     $$session{goal} = $$session{goal_min};
   }
 
+  $$session{pass_told} = 0;
+  $$session{fail_told} = 1;
+
   $$session{min_safe} = $$session{goal} - $$session{goal_under};
   $$session{max_safe} = $$session{goal} + $$session{goal_over};
 
@@ -578,6 +581,17 @@ sub write_script {
     foreach my $beat (split(/#/,$$session{beats})) {
       my ($count,$bpm) = split(/:/,$beat);
       while ($count > 0) {
+
+        if ($$session{duration} > $$session{min_safe} and
+            $$session{pass_told} == 0) {
+          printf $script_fh "# Min safe reached.\n";
+          $$session{pass_told} = 1;
+        }
+        if ($$session{duration} > $$session{max_safe} and
+            $$session{fail_told} == 0) {
+          printf $script_fh "# Max safe reached.\n";
+          $$session{fail_told} = 1;
+        }
         if (my $command = maybe_add_command($session)) {
           printf $script_fh "# ...\n";
           if (int(rand(5)) < 3) {
