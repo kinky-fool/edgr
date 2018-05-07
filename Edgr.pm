@@ -827,12 +827,18 @@ sub fixed_program_two {
   $$session{bpm_cur} = $bpm_min;
   steady_beats($session, 10);
 
-  for my $loop (1 .. $steps) {
-    for my $count (1 .. $loop) {
-      tempo_rate_time($session, $step_size * $count, 1, 2 * $count);
+  for my $loop (3 .. $steps) {
+    for (1 .. $loop) {
+      tempo_rate_time($session, $step_size, 0.2 + (0.1 * $loop), 5);
     }
-    tempo_rate_time($session, ($$session{bpm_cur} - $bpm_min) * -1,
-                                                        0.6, 5 + 3 * $loop);
+    steady_beats($session,10);
+    my $diff = ($$session{bpm_cur} - $bpm_min);
+    my $step1 = $diff / 4;
+    my $step2 = $diff / 3;
+    my $step3 = $diff - ($step1 + $step2);
+    tempo_rate_time($session, $step1 * -1, 0.6, 5 + $loop);
+    tempo_rate_time($session, $step2 * -1, 0.8, 5 + $loop);
+    tempo_rate_time($session, $step3 * -1, 1.2, 10 + $loop * 2);
   }
 }
 
