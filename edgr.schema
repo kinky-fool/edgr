@@ -68,10 +68,12 @@ insert into settings (key, value, user_id) values
   ('prize_fake',            0,        1),
 -- percent chance that icy hot will be required
   ('prize_apply',           25,       1),
+-- time in seconds for a fixed goal (-1 = use mean)
+  ('goal',                   -1,      1),
 -- time in seconds to sub from 'goal' to define the "pass window"
-  ('goal_under',            240,      1),
+  ('goal_pre',              180,      1),
 -- time in seconds to add to 'goal' to define the "pass window"
-  ('goal_over',             10,       1),
+  ('goal_window',           180,      1),
 -- minimum time in seconds that the goal time may be
   ('goal_min',              300,      1),
 -- maximum time in seconds that the goal time may be
