@@ -194,9 +194,6 @@ sub init_session {
     $$session{goal} = $$session{goal_min};
   }
 
-  $$session{pass_told} = 0;
-  $$session{fail_told} = 1;
-
   $$session{min_safe} = $$session{goal} - $$session{goal_pre};
   $$session{max_safe} = $$session{min_safe} + $$session{goal_window};
 
@@ -584,14 +581,14 @@ sub write_script {
       while ($count > 0) {
 
         if ($$session{duration} > $$session{min_safe} and
-            $$session{pass_told} == 0) {
+            $$session{tell_pass}) {
           printf $script_fh "# Min safe reached.\n";
-          $$session{pass_told} = 1;
+          $$session{tell_pass} = 0;
         }
         if ($$session{duration} > $$session{max_safe} and
-            $$session{fail_told} == 0) {
+            $$session{tell_fail}) {
           printf $script_fh "# Max safe reached.\n";
-          $$session{fail_told} = 1;
+          $$session{tell_fail} = 0;
         }
         if (my $command = maybe_add_command($session)) {
           printf $script_fh "# ...\n";
