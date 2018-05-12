@@ -431,15 +431,28 @@ sub score_sessions {
   }
 
   if ($passed) {
-    if ($$session{verbose}) {
-      printf "Passed!\n\nPass: %s\nFail: %s\n", $pass, $fail;
-    } else {
-      printf "Passed!\n"
+    if ($$session{passes_per_draw} > 0) {
+      $$session{owed_passes_default} += $$session{passes_per_draw};
     }
 
     reset_default($session,'owed_streak');
     reset_default($session,'owed_passes');
     reset_default($session,'owed_percent');
+
+    if ($$session{passes_per_fail} > 0) {
+      $$session{owed_passes} += $$session{passes_per_fail} * $fail;
+    }
+
+    if ($$session{verbose}) {
+      printf "Draw a bead! Passes: %s Fails: %s\n", $pass, $fail;
+      if ($$session{verbose} > 1) {
+        printf "%s pass%s owed before next draw.\n",
+                  $$session{owed_passes},
+                  ($$session{owed_passes} == 1)?'':'es';
+      }
+    } else {
+      printf "Draw a bead!\n"
+    }
 
     mark_scored($session);
   } else {
