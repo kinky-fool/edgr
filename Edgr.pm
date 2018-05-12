@@ -182,8 +182,9 @@ sub init_session {
     $$session{stddev} = $$session{default_stddev};
   }
 
-
-  $$session{goal} = $$session{mean};
+  if ($$session{goal} == -1) {
+    $$session{goal} = $$session{mean};
+  }
 
   if ($$session{goal} > $$session{goal_max}) {
     $$session{goal} = $$session{goal_max};
@@ -196,8 +197,8 @@ sub init_session {
   $$session{pass_told} = 0;
   $$session{fail_told} = 1;
 
-  $$session{min_safe} = $$session{goal} - $$session{goal_under};
-  $$session{max_safe} = $$session{goal} + $$session{goal_over};
+  $$session{min_safe} = $$session{goal} - $$session{goal_pre};
+  $$session{max_safe} = $$session{min_safe} + $$session{goal_window};
 
   $$session{time_max} = $$session{max_safe} + 300;
   $$session{duration} = 0;
@@ -883,25 +884,27 @@ sub make_beats {
 sub save_session {
   my $session = shift;
 
-  my $user_id   = $$session{user_id};
-  my $finished  = time;
-  my $length    = $$session{endured};
-  my $min_safe  = $$session{min_safe};
-  my $max_safe  = $$session{max_safe};
-  my $goal      = $$session{goal};
-  my $mean      = $$session{mean};
-  my $stddev    = $$session{stddev};
-  my $prized    = $$session{prized};
+  my $user_id     = $$session{user_id};
+  my $finished    = time;
+  my $length      = $$session{endured};
+  my $min_safe    = $$session{min_safe};
+  my $max_safe    = $$session{max_safe};
+  my $goal        = $$session{goal};
+  my $goal_pre    = $$session{goal_pre};
+  my $goal_window = $$session{goal_window};
+  my $mean        = $$session{mean};
+  my $stddev      = $$session{stddev};
+  my $prized      = $$session{prized};
 
   my $dbh = db_connect($$session{database});
   my $sql  = qq{ insert into sessions ( user_id, finished, length,
-                                        min_safe, max_safe, goal,
-                                        mean, stddev, prized)
-                  values (?,?,?,?,?,?,?,?,?)};
+                                        min_safe, max_safe, goal, goal_pre,
+                                        goal_window, mean, stddev, prized)
+                  values (?,?,?,?,?,?,?,?,?,?,?)};
   my $sth = $dbh->prepare($sql);
 
   $sth->execute($user_id, $finished, $length, $min_safe, $max_safe, $goal,
-                $mean, $stddev, $prized);
+                $goal_pre, $goal_window, $mean, $stddev, $prized);
 
   $sth->finish;
   $dbh->disconnect;
