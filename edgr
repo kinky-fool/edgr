@@ -1,13 +1,5 @@
 #!/usr/bin/perl
 
-# todo:
-# finish algorithm to calculate goal
-# use more functions
-# test goals
-# add considerations for distance from mean / std dev
-# add considerations for coin flips
-# determine how failure and success should affect things
-
 use strict;
 use warnings;
 
@@ -24,7 +16,7 @@ if (deny_play($settings)) {
   exit;
 }
 
-my $session     = init_session($settings);
+my $session = init_session($settings);
 
 while ($$session{time_max} > $$session{duration}) {
   make_beats($session);
