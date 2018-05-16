@@ -443,6 +443,9 @@ sub score_sessions {
       $$session{owed_passes} += $$session{passes_per_fail} * $fail;
     }
 
+    my @keys = qw( owed_streak owed_passes owed_percent owed_passes_default );
+    save_settings($session,\@keys);
+
     if ($$session{verbose}) {
       printf "Draw a bead! Passes: %s Fails: %s\n", $pass, $fail;
       if ($$session{verbose} > 1) {
@@ -889,6 +892,29 @@ sub make_beats {
   my $session = shift;
 
   fixed_program_two($session);
+}
+
+sub save_settings {
+  my $session = shift;
+  my $keys    = shift;
+
+  my $user_id = $$session{user_id};
+
+  my $dbh = db_connect($$session{database});
+  my $sql = 'insert or replace into settings (user_id, key, value)
+                                              values (?, ?, ?)';
+  my $sth = $dbh->prepare($sql);
+
+  foreach my $key (@$keys) {
+    my $val = $$session{$key};
+    my $rv = $sth->execute($user_id, $key, $val);
+    unless ($rv) {
+      printf "error: unable to update %s -> %s for user_id: %s\n",
+                $key, $val, $user_id;
+    }
+  }
+  $sth->finish;
+  $dbh->disconnect;
 }
 
 sub save_session {
