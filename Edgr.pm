@@ -435,9 +435,9 @@ sub score_sessions {
       $$session{owed_passes_default} += $$session{passes_per_draw};
     }
 
-    reset_default($session,'owed_streak');
-    reset_default($session,'owed_passes');
-    reset_default($session,'owed_percent');
+    $$session{owed_streak} = $$session{owed_streak_default};
+    $$session{owed_passes} = $$session{owed_passes_default};
+    $$session{owed_percent} = $$session{owed_percent_default};
 
     if ($$session{passes_per_fail} > 0) {
       $$session{owed_passes} += $$session{passes_per_fail} * $fail;
@@ -474,25 +474,6 @@ sub mark_scored {
 
   $sth->finish;
   $dbh->disconnect;
-}
-
-sub reset_default {
-  my $session = shift;
-  my $key     = shift;
-
-  read_settings($session);
-
-  my $dbh = db_connect($$session{database});
-
-  my $sql = qq{ update settings set value = ? where key = ? and user_id = ? };
-  my $sth = $dbh->prepare($sql);
-
-  $sth->execute($$session{$key . '_default'}, $key, $$session{user_id});
-
-  $sth->finish;
-  $dbh->disconnect;
-
-  return;
 }
 
 sub fuzzy {
