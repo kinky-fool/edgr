@@ -60,6 +60,7 @@ sub error {
     exit $rv
   }
 }
+
 sub get_unscored {
   my $session       = shift;
 
@@ -474,7 +475,7 @@ sub score_sessions {
     save_settings($session,\@keys);
 
     if ($$session{verbose}) {
-      printf "% Passes - %s Fails - Draw a bead!\n", $pass, $fail;
+      printf "%s Passes - %s Fails - Draw a bead!\n", $pass, $fail;
       if ($$session{verbose} > 1) {
         printf "%s pass%s required for next draw.\n",
                   $$session{owed_passes},
@@ -606,12 +607,12 @@ sub write_script {
 
         if ($$session{duration} > $$session{min_safe} and
             $$session{tell_pass}) {
-          printf $script_fh "# Min safe reached.\n";
+          printf $script_fh "# Minimum time reached.\n";
           $$session{tell_pass} = 0;
         }
         if ($$session{duration} > $$session{max_safe} and
             $$session{tell_fail}) {
-          printf $script_fh "# Max safe reached.\n";
+          printf $script_fh "# Too late...\n";
           $$session{tell_fail} = 0;
         }
 
