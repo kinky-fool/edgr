@@ -26,4 +26,4 @@ write_script($session);
 play_script($session);
 save_session($session);
 
-score_sessions($session,$$session{sessions_owed});
+score_sessions($session);
