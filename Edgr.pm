@@ -197,6 +197,9 @@ sub init_session {
   $$session{min_safe} = $$session{goal} - $$session{goal_pre};
   $$session{max_safe} = $$session{min_safe} + $$session{goal_window};
 
+  $$session{too_slow_next} = $$session{max_safe} + $$session{too_slow_start};
+  $$session{too_slow} = $$session{too_slow_next};
+
   $$session{time_max} = $$session{max_safe} + 300;
   $$session{duration} = 0;
 
@@ -380,18 +383,36 @@ sub lube_next {
 sub score_sessions {
   my $session = shift;
 
-  my $sessions = get_unscored($session);
-
-  my $streak  = 0;
-  my $pass    = 0;
-  my $fail    = 0;
-  my $next_by = time;
+  my $streak      = 0;
+  my $max_streak  = 0;
+  my $pass        = 0;
+  my $fail        = 0;
+  my $next_by     = time;
 
   # re-fresh settings from the database
   read_settings($session);
 
-  foreach my $session_id (keys %$sessions) {
-    my $sess = $$sessions{$session_id};
+  # First score the current session
+  if ($$session{passes_per_slow}) {
+    if ($$session{length} >= $$session{too_slow}) {
+      my $over_by = $$session{length} - $$session{too_slow};
+      my $count = int($over_by / $$session{too_slow_interval}) + 1;
+      $$session{owed_passes} += $$session{passes_per_slow} * $count;
+    }
+  }
+
+  if ($$session{passes_per_fail} > 0) {
+    if ($$session{min_safe} > $$session{length} or
+        $$session{length} > $$session{max_safe}) {
+       $$session{owed_passes} += $$session{passes_per_fail};
+    }
+  }
+
+  # Then check the unscored sessions, to see if a challenge has been passed
+  my $unscored = get_unscored($session);
+
+  foreach my $id (keys %$unscored) {
+    my $sess = $$unscored{$id};
 
     my $start = $$sess{finished} - $$sess{length};
 
@@ -400,6 +421,9 @@ sub score_sessions {
     }
 
     $streak++;
+    if ($streak > $max_streak) {
+      $max_streak = $streak;
+    }
     $next_by = $$sess{finished} + $$session{session_maxbreak};
 
     if ($$sess{length} >= $$sess{min_safe} and
@@ -410,18 +434,21 @@ sub score_sessions {
     }
   }
 
+  # Flag for passing any set challenges (no challege = pass)
   my $passed = 1;
 
-  if ($$session{owed_streak} > $streak) {
+  # Fail if player hasn't achieved a required streak
+  if ($$session{owed_streak} > $max_streak) {
     $passed = 0;
   }
 
-  if ($$session{owed_passes} + $$session{owed_passes_add} * $fail > $pass) {
+  # Fail if player has not passed the a required number of sessions
+  if ($$session{owed_passes} > $pass) {
     $passed = 0;
   }
 
+  # Fail if player has not achieved the required pass/fail percent
   my $percent = ($pass / ($pass + $fail)) * 100;
-
   if ($$session{owed_percent} > $percent) {
     $passed = 0;
   }
@@ -447,9 +474,9 @@ sub score_sessions {
     save_settings($session,\@keys);
 
     if ($$session{verbose}) {
-      printf "Draw a bead! Passes: %s Fails: %s\n", $pass, $fail;
+      printf "% Passes - %s Fails - Draw a bead!\n", $pass, $fail;
       if ($$session{verbose} > 1) {
-        printf "%s pass%s owed before next draw.\n",
+        printf "%s pass%s required for next draw.\n",
                   $$session{owed_passes},
                   ($$session{owed_passes} == 1)?'':'es';
       }
@@ -587,6 +614,14 @@ sub write_script {
           printf $script_fh "# Max safe reached.\n";
           $$session{tell_fail} = 0;
         }
+
+        if ($$session{duration} > $$session{too_slow_next} and
+            $$session{tell_too_slow}) {
+          printf $script_fh "# Too slow...\n";
+          $$session{too_slow_next} =
+              $$session{too_slow_next} + $$session{too_slow_interval};
+        }
+
         if (my $command = maybe_add_command($session)) {
           printf $script_fh "# ...\n";
           if (int(rand(5)) < 3) {
