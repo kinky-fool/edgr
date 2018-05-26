@@ -394,11 +394,17 @@ sub score_sessions {
   read_settings($session);
 
   # First score the current session
-  if ($$session{passes_per_slow}) {
-    if ($$session{length} >= $$session{too_slow}) {
+  if ($$session{passes_per_slow} > 0) {
+    if ($$session{length} > $$session{too_slow}) {
       my $over_by = $$session{length} - $$session{too_slow};
       my $count = int($over_by / $$session{too_slow_interval}) + 1;
       $$session{owed_passes} += $$session{passes_per_slow} * $count;
+      $$session{passes_per_slow}--;
+    }
+  } else {
+    $$session{slow_tripwire} = 0;
+    if (int(rand(20)) + 1 == 1) {
+      $$session{slow_tripwire} = 1;
     }
   }
 
@@ -406,6 +412,18 @@ sub score_sessions {
     if ($$session{min_safe} > $$session{length} or
         $$session{length} > $$session{max_safe}) {
        $$session{owed_passes} += $$session{passes_per_fail};
+    }
+  }
+
+  # Increase or activate penalty for taking too long to edge
+  if ($$session{slow_tripwire}) {
+    if ($$session{length} >= $$session{mean}) {
+      $$session{passes_per_slow} = 1;
+      $$session{slow_tripwire} = 0;
+      if ($$session{too_slow_rand}) {
+        $$session{too_slow_start} = rand(150) + 30;
+        $$session{too_slow_interval} = rand(50) + 10;
+      }
     }
   }
 
@@ -446,6 +464,11 @@ sub score_sessions {
   # Fail if player has not passed the a required number of sessions
   if ($$session{owed_passes} > $pass) {
     $passed = 0;
+    if ($$session{verbose} > 2) {
+      my $remaining = $$session{owed_passes} - $pass;
+      printf "%s Pass%s until next bead draw.\n",
+              $remaining, ($remaining==1?'':'es');
+    }
   }
 
   # Fail if player has not achieved the required pass/fail percent
@@ -471,8 +494,6 @@ sub score_sessions {
       $$session{owed_passes} += $$session{passes_per_fail} * $fail;
     }
 
-    my @keys = qw( owed_streak owed_passes owed_percent owed_passes_default );
-    save_settings($session,\@keys);
 
     if ($$session{verbose}) {
       printf "%s Passes - %s Fails - Draw a bead!\n", $pass, $fail;
@@ -489,6 +510,15 @@ sub score_sessions {
   } else {
     printf "More sessions required.\n";
   }
+
+  save($session,'too_slow_start');
+  save($session,'too_slow_interval');
+  save($session,'slow_tripwire');
+  save($session,'passes_per_slow');
+  save($session,'owed_streak');
+  save($session,'owed_passes');
+  save($session,'owed_passes_default');
+  save($session,'owed_percent');
 }
 
 sub mark_scored {
@@ -598,29 +628,49 @@ sub maybe_add_command {
 sub write_script {
   my $session = shift;
 
+  my $untripped = 1;
+  my $tell_safe = 1;
+  my $tell_fail = 1;
+  my $tell_slow = 1;
+
   # Reset for interleaving the commands
   $$session{duration} = 0;
   if (open my $script_fh,'>',$$session{script_file}) {
     foreach my $beat (split(/#/,$$session{beats})) {
       my ($count,$bpm) = split(/:/,$beat);
+
       while ($count > 0) {
-
-        if ($$session{duration} > $$session{min_safe} and
-            $$session{tell_pass}) {
-          printf $script_fh "# Minimum time reached.\n";
-          $$session{tell_pass} = 0;
-        }
-        if ($$session{duration} > $$session{max_safe} and
-            $$session{tell_fail}) {
-          printf $script_fh "# Too late...\n";
-          $$session{tell_fail} = 0;
+        if ($$session{duration} > $$session{min_safe}) {
+          if ($$session{verbose} > 0 and $tell_safe) {
+            $tell_safe = 0;
+            printf $script_fh "# Minimum time reached.\n";
+          }
         }
 
-        if ($$session{duration} > $$session{too_slow_next} and
-            $$session{tell_too_slow}) {
-          printf $script_fh "# Too slow...\n";
-          $$session{too_slow_next} =
-              $$session{too_slow_next} + $$session{too_slow_interval};
+        if ($$session{duration} > $$session{max_safe}) {
+          if ($$session{verbose} > 1 and $tell_fail) {
+            $tell_fail = 0;
+            printf $script_fh "# Too late...\n";
+          }
+        }
+
+        if ($$session{duration} > $$session{too_slow_next}) {
+          if ($$session{verbose} > 1 and $tell_slow) {
+            $tell_slow = 0;
+            if ($$session{passes_per_slow} or $$session{verbose} > 2) {
+              printf $script_fh "# Too slow...\n";
+              $$session{too_slow_next} += $$session{too_slow_interval};
+            }
+          }
+        }
+
+        if ($$session{duration} > $$session{mean}) {
+          if ($$session{verbose} > 1 and $untripped) {
+            if ($$session{slow_tripwire}) {
+              $untripped = 0;
+              printf $script_fh "# Tripwire tripped.\n";
+            }
+          }
         }
 
         if (my $command = maybe_add_command($session)) {
@@ -630,11 +680,13 @@ sub write_script {
           }
           printf $script_fh "# %s\n", $command;
         }
+
         $$session{duration} += 60  / $bpm;
         printf $script_fh "1 %g/4 2/8\n", $bpm;
         $count--;
       }
     }
+
     close $script_fh;
   } else {
     error("Unable to open script ($$session{script_file}): $!",1);
@@ -649,7 +701,7 @@ sub play_script {
   my $command  = "aoss $$session{ctronome} -c 1 -w1 $$session{tick_file} ";
      $command .= "-w2 $$session{tock_file} -p $$session{script_file}";
   system($command);
-  $$session{endured} = abs($start - time());
+  $$session{length} = abs($start - time());
 }
 
 sub steady_beats {
@@ -911,9 +963,9 @@ sub make_beats {
   fixed_program_two($session);
 }
 
-sub save_settings {
+sub save {
   my $session = shift;
-  my $keys    = shift;
+  my $key     = shift;
 
   my $user_id = $$session{user_id};
 
@@ -922,14 +974,14 @@ sub save_settings {
                                               values (?, ?, ?)';
   my $sth = $dbh->prepare($sql);
 
-  foreach my $key (@$keys) {
-    my $val = $$session{$key};
-    my $rv = $sth->execute($user_id, $key, $val);
-    unless ($rv) {
-      printf "error: unable to update %s -> %s for user_id: %s\n",
-                $key, $val, $user_id;
-    }
+  my $val = $$session{$key};
+  my $rv = $sth->execute($user_id, $key, $val);
+
+  unless ($rv) {
+    printf "error: unable to update %s -> %s for user_id: %s\n",
+              $key, $val, $user_id;
   }
+
   $sth->finish;
   $dbh->disconnect;
 }
@@ -939,7 +991,7 @@ sub save_session {
 
   my $user_id     = $$session{user_id};
   my $finished    = time;
-  my $length      = $$session{endured};
+  my $length      = $$session{length};
   my $min_safe    = $$session{min_safe};
   my $max_safe    = $$session{max_safe};
   my $goal        = $$session{goal};
