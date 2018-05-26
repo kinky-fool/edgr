@@ -466,8 +466,8 @@ sub score_sessions {
     $passed = 0;
     if ($$session{verbose} > 2) {
       my $remaining = $$session{owed_passes} - $pass;
-      printf "%s Pass%s until next bead draw.\n",
-              $remaining, ($remaining==1?'':'es');
+      printf "%s pass%s until next bead draw.\n",
+              $remaining, ($remaining==1)?'':'es';
     }
   }
 
@@ -495,7 +495,7 @@ sub score_sessions {
     }
 
 
-    if ($$session{verbose}) {
+    if ($$session{verbose} > 0) {
       printf "%s Passes - %s Fails - Draw a bead!\n", $pass, $fail;
       if ($$session{verbose} > 1) {
         printf "%s pass%s required for next draw.\n",
@@ -511,14 +511,41 @@ sub score_sessions {
     printf "More sessions required.\n";
   }
 
-  save($session,'too_slow_start');
-  save($session,'too_slow_interval');
-  save($session,'slow_tripwire');
-  save($session,'passes_per_slow');
-  save($session,'owed_streak');
-  save($session,'owed_passes');
-  save($session,'owed_passes_default');
-  save($session,'owed_percent');
+  store_settings($session);
+}
+
+sub store_settings {
+  my $session = shift;
+
+  my @keys = qw(
+    too_slow_start
+    too_slow_interval
+    slow_tripwire
+    passes_per_slow
+    passes_per_fail
+    owed_streak
+    owed_passes
+    owed_passes_default
+    owed_percent
+  );
+
+  my $user_id = $$session{user_id};
+  my $dbh = db_connect($$session{database});
+  my $sql = 'insert or replace into settings (user_id, key, value)
+                                              values (?, ?, ?)';
+  my $sth = $dbh->prepare($sql);
+
+  foreach my $key (@keys) {
+    my $rv = $sth->execute($user_id, $key, $$session{$key});
+
+    unless ($rv) {
+      printf "error: unable to update %s -> %s for user_id: %s\n",
+                $key, $$session{$key}, $user_id;
+    }
+  }
+
+  $sth->finish;
+  $dbh->disconnect;
 }
 
 sub mark_scored {
@@ -648,18 +675,19 @@ sub write_script {
         }
 
         if ($$session{duration} > $$session{max_safe}) {
-          if ($$session{verbose} > 1 and $tell_fail) {
+          if ($$session{verbose} > 2 and $tell_fail) {
             $tell_fail = 0;
             printf $script_fh "# Too late...\n";
           }
         }
 
         if ($$session{duration} > $$session{too_slow_next}) {
-          if ($$session{verbose} > 1 and $tell_slow) {
-            $tell_slow = 0;
-            if ($$session{passes_per_slow} or $$session{verbose} > 2) {
+          if ($$session{verbose} > 0 and $tell_slow) {
+            if ($$session{passes_per_slow} or $$session{verbose} > 1) {
               printf $script_fh "# Too slow...\n";
               $$session{too_slow_next} += $$session{too_slow_interval};
+            } else {
+              $tell_slow = 0;
             }
           }
         }
@@ -961,29 +989,6 @@ sub make_beats {
   my $session = shift;
 
   fixed_program_two($session);
-}
-
-sub save {
-  my $session = shift;
-  my $key     = shift;
-
-  my $user_id = $$session{user_id};
-
-  my $dbh = db_connect($$session{database});
-  my $sql = 'insert or replace into settings (user_id, key, value)
-                                              values (?, ?, ?)';
-  my $sth = $dbh->prepare($sql);
-
-  my $val = $$session{$key};
-  my $rv = $sth->execute($user_id, $key, $val);
-
-  unless ($rv) {
-    printf "error: unable to update %s -> %s for user_id: %s\n",
-              $key, $val, $user_id;
-  }
-
-  $sth->finish;
-  $dbh->disconnect;
 }
 
 sub save_session {
