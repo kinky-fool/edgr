@@ -381,6 +381,40 @@ sub lube_next {
   return $$session{duration} + $delay;
 }
 
+sub evaluate_session {
+  my $session = shift;
+
+  if ($$session{length} > $$session{too_slow}) {
+    if ($$session{passes_per_slow} > 0) {
+      my $over_by = $$session{length} - $$session{too_slow};
+      my $count = int($over_by / $$session{too_slow_interval}) + 1;
+      $$session{owed_passes} += $$session{passes_per_slow} * $count;
+      $$session{passes_per_slow}--;
+    }
+  }
+
+  if ($$session{min_safe} > $$session{length} or
+      $$session{length} > $$session{max_safe}) {
+    if ($$session{passes_per_fail} > 0) {
+       $$session{owed_passes} += $$session{passes_per_fail};
+    }
+  }
+
+  # Increase or activate penalty for taking too long to edge
+  if ($$session{length} >= $$session{mean}) {
+    if ($$session{slow_tripwire}) {
+      $$session{passes_per_slow} = 1;
+      $$session{slow_tripwire} = 0;
+      if ($$session{too_slow_rand}) {
+        $$session{too_slow_start} = rand(150) + 30;
+        $$session{too_slow_interval} = rand(50) + 10;
+      }
+    } else {
+      $$session{slow_tripwire} = 1;
+    }
+  }
+}
+
 sub score_sessions {
   my $session = shift;
 
@@ -393,41 +427,6 @@ sub score_sessions {
   # re-fresh settings from the database
   read_settings($session);
 
-  # First score the current session
-  if ($$session{passes_per_slow} > 0) {
-    if ($$session{length} > $$session{too_slow}) {
-      my $over_by = $$session{length} - $$session{too_slow};
-      my $count = int($over_by / $$session{too_slow_interval}) + 1;
-      $$session{owed_passes} += $$session{passes_per_slow} * $count;
-      $$session{passes_per_slow}--;
-    }
-  } else {
-    $$session{slow_tripwire} = 0;
-    if (int(rand(20)) + 1 == 1) {
-      $$session{slow_tripwire} = 1;
-    }
-  }
-
-  if ($$session{passes_per_fail} > 0) {
-    if ($$session{min_safe} > $$session{length} or
-        $$session{length} > $$session{max_safe}) {
-       $$session{owed_passes} += $$session{passes_per_fail};
-    }
-  }
-
-  # Increase or activate penalty for taking too long to edge
-  if ($$session{slow_tripwire}) {
-    if ($$session{length} >= $$session{mean}) {
-      $$session{passes_per_slow} = 1;
-      $$session{slow_tripwire} = 0;
-      if ($$session{too_slow_rand}) {
-        $$session{too_slow_start} = rand(150) + 30;
-        $$session{too_slow_interval} = rand(50) + 10;
-      }
-    }
-  }
-
-  # Then check the unscored sessions, to see if a challenge has been passed
   my $unscored = get_unscored($session);
 
   foreach my $id (keys %$unscored) {
@@ -694,9 +693,11 @@ sub write_script {
 
         if ($$session{duration} > $$session{mean}) {
           if ($$session{verbose} > 1 and $untripped) {
+            $untripped = 0;
             if ($$session{slow_tripwire}) {
-              $untripped = 0;
               printf $script_fh "# Tripwire tripped.\n";
+            } else {
+              printf $script_fh "# Tripwire set.\n";
             }
           }
         }
