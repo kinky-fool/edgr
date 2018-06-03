@@ -395,21 +395,28 @@ sub evaluate_session {
 
   if ($$session{min_safe} > $$session{length} or
       $$session{length} > $$session{max_safe}) {
+    # Session failed
     if ($$session{passes_per_fail} > 0) {
        $$session{owed_passes} += $$session{passes_per_fail};
     }
+  } else {
+    # Session passed
+    $$session{slow_tripwire} = 0;
+    $$session{passes_per_slow} = 0;
   }
 
-  # Increase or activate penalty for taking too long to edge
   if ($$session{length} >= $$session{mean}) {
+    # Increment passes added for taking too long
     if ($$session{slow_tripwire}) {
-      $$session{passes_per_slow} = 1;
-      $$session{slow_tripwire} = 0;
+      $$session{passes_per_slow}++;
       if ($$session{too_slow_rand}) {
+        # Random time in seconds between max_safe and adding passes
         $$session{too_slow_start} = rand(150) + 30;
+        # Random time in seconds between added passes
         $$session{too_slow_interval} = rand(50) + 10;
       }
     } else {
+      # Set the tripwire for taking too long
       $$session{slow_tripwire} = 1;
     }
   }
@@ -427,6 +434,10 @@ sub score_sessions {
   # re-fresh settings from the database
   read_settings($session);
 
+  # Evaluate the current session
+  evaluate_session($session);
+
+  # Examine past sessions
   my $unscored = get_unscored($session);
 
   foreach my $id (keys %$unscored) {
