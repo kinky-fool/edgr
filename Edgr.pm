@@ -15,7 +15,6 @@ $DEBUG        = 0;
                     deny_play
                     get_history
                     init_session
-                    read_settings
                     make_beats
                     play_script
                     read_config
@@ -35,96 +34,70 @@ sub db_connect {
   return $dbh;
 }
 
-sub deny_play {
-  my $settings = shift;
+sub last_session {
+  my $dbh     = shift;
+  my $user_id = shift;
 
-  my $most_recent = time - $$settings{session_break};
-  my $history = get_history($settings,$$settings{history_max});
+  my $sql = 'select id from sessions
+                where user_id = ? order by id desc limit 1';
+  my $sth = $dbh->prepare($sql);
+  $sth->execute($user_id);
+  my ($session_id) = $sth->selectrow_array;
 
-  foreach my $key (keys %$history) {
-    my $sess = $$history{$key};
-    if ($$sess{finished} > $most_recent) {
-      my $to_wait = $$sess{finished} - $most_recent;
-      printf "Wait %s longer\n", sec_to_human_precise($to_wait);
-      exit;
-    }
+  $sth->finish
+
+  if ($session_id) {
+    return $session_id;
   }
+
+  printf STDERR "error: Unable to get previous session_id for %s\n", $username;
+  return undef;
+}
+
+sub get_session {
+  my $dbh       = shift;
+  my $sess_id   = shift;
+
+  my $sql = 'select key, val from session_settings where session_id = ?';
+  my $sth = $dbh->prepare($sql);
+  $sth->execute($sess_id);
+  my $session = $sth->selectall_hashref('key');
+
+  if ($session) {
+    return $session;
+  }
+
+  printf STDERR "error: Unable to load session data for session %s: %s",
+                  $sess_id, $!;
+  return undef;
+}
+
+sub deny_play {
+  my $dbh   = shift;
+  my $user  = shift;
+
+  my $session_id  = last_session($dbh, $$user{user_id});
+  my $session     = get_session($dbh, $session_id);
+
+  my $since = time - $$session{time_end};
+
+  if ($$user{cooldown} > time - $$session{time_end}) {
+    my $wait = $$user{cooldown} - (time - $$session{time_end});
+    printf "Wait %s longer\n", sec_to_human_precise($wait);
+    return 1;
+  }
+
+  return 0;
 }
 
 sub error {
   my $message = shift;
   my $rv      = shift;
 
-  printf STDERR "Error: %s\n",$message;
+  printf STDERR "error: %s\n",$message;
   if ($rv >= 0) {
     exit $rv
   }
-}
-
-sub get_unscored {
-  my $session       = shift;
-
-  my $too_short     = $$session{too_short};
-
-  my $dbh = db_connect($$session{database});
-  my $user_id = $$session{user_id};
-
-  my $sql = qq{
-select * from sessions where user_id = ? and
-length > ? and scored = 0 order by finished desc
-};
-  my $sth = $dbh->prepare($sql);
-  $sth->execute($user_id, $too_short);
-
-  # Fetch any results into a hashref
-  my $unscored = $sth->fetchall_hashref('session_id');
-
-  # Clean up
-  $sth->finish;
-  $dbh->disconnect;
-
-  return $unscored;
-}
-
-sub get_history {
-  my $session       = shift;
-  my $history_max   = shift;
-
-  my $too_short     = $$session{too_short};
-  my $since         = time - ($$session{history} * 24 * 60 * 60);
-
-  my $dbh = db_connect($$session{database});
-  my $user_id = $$session{user_id};
-
-  my $sql = qq{
-select * from sessions where user_id = ? and
-length > ? and finished > ? order by finished desc limit ?
-};
-  my $sth = $dbh->prepare($sql);
-  $sth->execute($user_id, $too_short, $since, $history_max);
-
-  # Fetch any results into a hashref
-  my $history = $sth->fetchall_hashref('session_id');
-
-  # Clean up
-  $sth->finish;
-  $dbh->disconnect;
-
-  return $history;
-}
-
-sub get_times {
-  my $session = shift;
-
-  my $history = get_history($session,$$session{history_max});
-  my @times   = ();
-
-  foreach my $key (keys %$history) {
-    my $sess = $$history{$key};
-    push(@times,$$sess{length});
-  }
-
-  return @times;
 }
 
 sub read_config {
@@ -166,136 +139,86 @@ sub read_config {
   return \%options;
 }
 
-sub init_session {
-  my $settings  = shift;
+sub get_user {
+  my $dbh       = shift;
+  my $username  = shift;
 
-  my $session   = $settings;
+  my $sql = 'select key, val from user_settings
+              join users on users.id = user_settings.user_id
+              where users.username = ?';
+  my $sth = $dbh->prepare($sql);
+  $sth->execute($username);
 
-  my @times = get_times($session);
+  my $user = $sth->fetchall_hashref('key');
 
-  if (scalar(@times) >= $$session{min_sessions}) {
-    $$session{mean} = mean(@times);
-    # Remove commas added by mean()
-    $$session{mean} =~ s/,//g;
-    $$session{stddev} = stddev(@times);
-  } else {
-    $$session{mean} = $$session{default_mean};
-    $$session{stddev} = $$session{default_stddev};
+  $sth->finish;
+
+  if ($user) {
+    return $user;
   }
 
-  if ($$session{goal} == -1) {
-    $$session{goal} = $$session{mean};
-  }
-
-  if ($$session{goal} > $$session{goal_max}) {
-    $$session{goal} = $$session{goal_max};
-  }
-
-  if ($$session{goal} < $$session{goal_min}) {
-    $$session{goal} = $$session{goal_min};
-  }
-
-  $$session{min_safe} = $$session{goal} - $$session{goal_pre};
-  $$session{max_safe} = $$session{min_safe} + $$session{goal_window};
-
-  $$session{too_slow_next} = $$session{max_safe} + $$session{too_slow_start};
-  $$session{too_slow} = $$session{too_slow_next};
-
-  $$session{time_max} = $$session{max_safe} + 300;
-  $$session{duration} = 0;
-
-  $$session{bpm_cur} = $$session{bpm_min};
-
-  $$session{direction} = 1;
-
-  $$session{lube_next} = lube_next($session);
-
-  $$session{lubed} = 0;
-  $$session{prized} = -1;
-
-  if ($$session{prize_enabled}) {
-    $$session{prized} = 0;
-    arm_prize($session);
-  }
-
-
-  return $session;
+  printf STDERR "error: Unable to get user '%s': %s\n", $username, $!;
+  exit 1;
 }
 
-sub arm_prize {
+sub init_session {
+  my $dbh   = shift;
+  my $user  = shift;
+
+  my %session = ();
+
+  $session{duration}  = 0;
+
+  $session{round_id}  = $$user{round};
+  $session{inning_id} = $$user{inning};
+  $session{safe_min}  = $$user{end_zone_start};
+  $session{safe_max}  = $$user{end_zone_length};
+  $session{slow_next} = $session{safe_max} + $$user{slow_start};
+  $session{slow_one}  = $session{slow_next};
+  $session{bpm_cur}   = $$user{bpm_min};
+  $session{bpm_min}   = $$user{bpm_min};
+  $session{bpm_max}   = $$user{bpm_max};
+
+  my $sql = 'insert into sessions (user_id) values ( ? )';
+  my $sth = $dbh->prepare($sql);
+  my $rv = $sth->execute($$user{user_id});
+
+  $sth->finish;
+
+  if ($rv) {
+    my $sql = 'select last_insert_rowid()';
+    my $sth = $dbh->prepare($sql);
+    $sth->execute;
+    ($session_id) = $sth->fetchrow_array;
+
+    $sth->finish;
+  } else {
+    error("error: Unable to create session.",1);
+  }
+
+  if ($session_id) {
+    $session{session_id} = $session_id;
+  }
+
+  return \%session;
+}
+
+sub store_session {
+  my $dbh     = shift;
   my $session = shift;
 
-  my $unscored = get_unscored($session);
-
-  my $too_long  = 0;
-  my $pass      = 0;
-  my $total     = 0;
-
-  foreach my $sesh_id (keys %$unscored) {
-    my $sesh = $$unscored{$sesh_id};
-
-    if ($$sesh{length} > $$sesh{max_safe}) {
-      $too_long++;
-    }
-
-    if ($$sesh{length} >= $$sesh{min_safe} and
-        $$sesh{length} <= $$sesh{max_safe}) {
-      $pass++;
-    }
-
-    $total++;
-  }
-
-  for (0 .. $too_long) {
-
-    if ($$session{prize_arm} > rand(100)) {
-      $$session{prize_armed}  = 1;
-      $$session{prize_fake}   = 1;
-    }
-
-    if ($$session{prize_armed} and $pass > 0) {
-      $pass--;
-      if ($$session{prize_disarm} > rand(100)) {
-        $$session{prize_armed} = 0;
-      }
-    }
-  }
-
-  if ($$session{prize_armed}) {
-    $$session{prized} = 1;
-  }
-
-  if ($$session{prize_fake}) {
-    printf "   You won the prize!\n";
-    printf "   Get Icy Hot Handy.\n";
-    printf "< Press Enter to Resume >";
-    my $input = <STDIN>;
-  }
-}
-
-sub read_settings {
-  my $settings = shift;
-
-  my $dbh = db_connect($$settings{database});
-  my $sql = qq{ select user_id from users where username = ? };
+  my $sql = 'insert or replace into session_settings (session_id, key, val)
+              values ( ?, ?, ? )';
   my $sth = $dbh->prepare($sql);
 
-  $sth->execute($$settings{user});
-
-  my ($user_id) = $sth->fetchrow_array;
-
-  $$settings{user_id} = $user_id;
-
-  $sql = qq{ select key, value from settings where user_id = ? };
-  $sth = $dbh->prepare($sql);
-  $sth->execute($user_id);
-
-  while (my $row = $sth->fetchrow_hashref) {
-    $$settings{$$row{key}} = $$row{value};
+  foreach my $key (keys %$session) {
+    my $rv = $sth->execute($$session{session_id}, $key, $$session{$key});
+    unless ($rv) {
+      error("Store session; $key: $$session{key} failed",-1);
+    }
   }
 
   $sth->finish;
-  $dbh->disconnect;
 }
 
 sub sec_to_human {
@@ -352,35 +275,6 @@ sub sec_to_human_precise {
   return $output;
 }
 
-sub lube_next {
-  my $session = shift;
-
-  my $range = abs($$session{lube_break_max} - $$session{lube_break_min});
-
-  my $delay = $$session{lube_min} + go_high($range / 2);
-
-  if ($$session{prize_fake}) {
-    $delay = $$session{lube_min} + fuzzy($range / 2, 1);
-  }
-
-  if ($$session{prize_fake} and $$session{lubed} == 0) {
-    $delay = $delay * 180 / 100;
-    if (int(rand(3))) {
-      $$session{prize_fake} = 0;
-    }
-  }
-
-  if ($$session{prize_armed} and $$session{lubed} == 1) {
-    $delay = $delay * 40 / 100;
-  }
-
-  if ($$session{prize_armed} and $$session{lubed} > 1) {
-    $delay = $delay * 120 / 100;
-  }
-
-  return $$session{duration} + $delay;
-}
-
 sub evaluate_session {
   my $session = shift;
 
@@ -393,8 +287,8 @@ sub evaluate_session {
     }
   }
 
-  if ($$session{min_safe} > $$session{length} or
-      $$session{length} > $$session{max_safe}) {
+  if ($$session{safe_min} > $$session{length} or
+      $$session{length} > $$session{safe_max}) {
     # Session failed
     if ($$session{passes_per_fail} > 0) {
        $$session{owed_passes} += $$session{passes_per_fail};
@@ -455,8 +349,8 @@ sub score_sessions {
     }
     $next_by = $$sess{finished} + $$session{session_maxbreak};
 
-    if ($$sess{length} >= $$sess{min_safe} and
-        $$sess{length} <= $$sess{max_safe}) {
+    if ($$sess{length} >= $$sess{safe_min} and
+        $$sess{length} <= $$sess{safe_max}) {
       $pass++;
     } else {
       $fail++;
@@ -487,10 +381,6 @@ sub score_sessions {
     $passed = 0;
   }
 
-  if ($$session{prized} == 1) {
-    printf "You got very lucky. Prize was armed.\n";
-  }
-
   if ($passed) {
     if ($$session{passes_per_draw} > 0) {
       $$session{owed_passes_default} += $$session{passes_per_draw};
@@ -516,7 +406,6 @@ sub score_sessions {
       printf "Draw a bead!\n"
     }
 
-    mark_scored($session);
   } else {
     printf "More sessions required.\n";
   }
@@ -558,17 +447,40 @@ sub store_settings {
   $dbh->disconnect;
 }
 
-sub mark_scored {
-  my $session     = shift;
+sub set_messages {
+  my $session = shift;
 
-  my $dbh = db_connect($$session{database});
+  my @all_messages = qw(
+    safe_min
+    safe_max
+    too_slow
+    tripwire_set
+    tripwire_tripped
+    sessions_remaining
+    sessions_reset_val
+    round_passes
+    round_fails
+  );
 
-  my $sql = qq{ update sessions set scored = 1 where user_id = ? };
-  my $sth = $dbh->prepare($sql);
-  $sth->execute($$session{user_id});
+  my @messages = @all_messages;
+  unless ($$session{messages} =~ /\ball\b/) {
+    @messages = split(/\s+/, $$session{messages});
+  }
 
-  $sth->finish;
-  $dbh->disconnect;
+  foreach my $message (@messages) {
+    my $valid = 0;
+    foreach my $valid_message (@all_messages) {
+      if ($message eq $valid_message) {
+        $valid = 1;
+      }
+    }
+
+    if ($valid) {
+      $$session{"tell_${message}"} = 1;
+    } else {
+      printf STDERR "Unknown message type: %s\n", $message;
+    }
+  }
 }
 
 sub fuzzy {
@@ -632,38 +544,9 @@ sub go_high {
   return $number;
 }
 
-sub maybe_add_command {
-  my $session = shift;
-
-  my $command = undef;
-
-  if ($$session{duration} > $$session{lube_next}) {
-
-    $command = 'Use lube';
-    $$session{lube_next} = lube_next($session);
-
-    if ($$session{prize_fake} or $$session{prize_armed}) {
-      $command = 'Use "Icy-safe" lube.';
-      if ($$session{prize_armed} and $$session{lubed}) {
-        if ($$session{prize_apply} > rand(100)) {
-          $$session{prized}++;
-          $command = 'Use Icy Hot.';
-        }
-      }
-    }
-
-    $$session{lubed}++;
-  }
-
-  if ($command) {
-    return $command;
-  }
-
-  return undef;
-}
-
 sub write_script {
-  my $session = shift;
+  my $session   = shift;
+  my $settings  = shift;
 
   my $untripped = 1;
   my $tell_safe = 1;
@@ -672,19 +555,19 @@ sub write_script {
 
   # Reset for interleaving the commands
   $$session{duration} = 0;
-  if (open my $script_fh,'>',$$session{script_file}) {
+  if (open my $script_fh,'>',$$settings{script_file}) {
     foreach my $beat (split(/#/,$$session{beats})) {
       my ($count,$bpm) = split(/:/,$beat);
 
       while ($count > 0) {
-        if ($$session{duration} > $$session{min_safe}) {
+        if ($$session{duration} > $$session{safe_min}) {
           if ($$session{verbose} > 0 and $tell_safe) {
             $tell_safe = 0;
             printf $script_fh "# Minimum time reached.\n";
           }
         }
 
-        if ($$session{duration} > $$session{max_safe}) {
+        if ($$session{duration} > $$session{safe_max}) {
           if ($$session{verbose} > 2 and $tell_fail) {
             $tell_fail = 0;
             printf $script_fh "# Too late...\n";
@@ -711,14 +594,6 @@ sub write_script {
               printf $script_fh "# Tripwire set.\n";
             }
           }
-        }
-
-        if (my $command = maybe_add_command($session)) {
-          printf $script_fh "# ...\n";
-          if (int(rand(5)) < 3) {
-            printf $script_fh "# ...\n";
-          }
-          printf $script_fh "# %s\n", $command;
         }
 
         $$session{duration} += 60  / $bpm;
@@ -757,7 +632,7 @@ sub steady_beats {
 
 sub seconds_per_bpm {
   # Calculate the number of seconds a specific BPM should be used
-  my ($session,$direction) = @_;
+  my ($session, $direction) = @_;
 
   my $min_spb = 0.5;
   my $max_spb = 1.0;
@@ -823,111 +698,6 @@ sub twitters {
   my $result = $twitter->update($message);
 }
 
-sub up_and_down {
-  my $session = shift;
-
-  my $steps = int(rand(5)) + 6;
-
-  my $bpm = $$session{bpm_cur};
-  my $seconds = 1;
-
-  for my $step (0 .. $steps) {
-    change_tempo($session, $$session{bpm_min}, 0.5);
-    steady_beats($session, fuzzy(10,2));
-    for (0 .. $step) {
-      my $diff = $$session{bpm_max} - $$session{bpm_cur};
-      my $new_bpm = $$session{bpm_cur} + ($diff / 3);
-      my $pct = ($$session{bpm_cur} - $$session{bpm_min}) /
-                ($$session{bpm_max} - $$session{bpm_min});
-      change_tempo($session, $new_bpm, 0.6 + (1.9 * $pct));
-      my $steady = rand($seconds) + rand($seconds) + rand($seconds) + 3;
-      steady_beats($session, fuzzy($steady,2));
-      $seconds++;
-    }
-  }
-
-  change_tempo($session, $$session{bpm_max}, 2.5);
-  my $steady = rand($seconds) + rand($seconds) + rand($seconds) + 3;
-  steady_beats($session, fuzzy($steady,2));
-}
-
-sub up_to_percent {
-  my $session = shift;
-
-  change_tempo($session, $$session{bpm_min}, 0.7);
-  steady_beats($session, go_high(6));
-
-  my $range = $$session{bpm_max} - $$session{bpm_min};
-  my $steady = fuzzy(25,1);
-  my $percent = 25 + go_high(50);
-  my $add = $range * $percent / 100;
-  my $steps = int(rand(4)) + 2;
-  for my $step (1 .. $steps) {
-    change_tempo($session, $$session{bpm_cur} + ($add / $steps),
-                  1 + go_high(2));
-    steady_beats($session, go_high($steady * $step / $steps));
-  }
-}
-
-sub fixed_program_one {
-  my $session = shift;
-
-  my $bpm_min = $$session{bpm_min};
-  my $bpm_max = $$session{bpm_max};
-  my $bpm_range = $bpm_max - $bpm_min;
-  my $step_size = $bpm_range / 7;
-
-  $$session{bpm_cur} = $bpm_min;
-  steady_beats($session,15);
-  change_tempo($session,$$session{bpm_cur} + $step_size,1);
-  steady_beats($session,4);
-  change_tempo($session,$bpm_min,0.7);
-  steady_beats($session,10);
-  change_tempo($session,$$session{bpm_cur} + ($step_size * 2),1.2);
-  steady_beats($session,4);
-  change_tempo($session,$$session{bpm_cur} + $step_size, 1);
-  steady_beats($session,4);
-  change_tempo($session,$bpm_min,0.5);
-  steady_beats($session,10);
-  change_tempo($session,$$session{bpm_cur} + ($step_size * 5), 0.9);
-  steady_beats($session,10);
-  change_tempo($session,$$session{bpm_cur} - ($step_size * 3), 0.6);
-  steady_beats($session, 3);
-  change_tempo($session,$$session{bpm_cur} + ($step_size * 4), 0.7);
-  steady_beats($session, 8);
-  change_tempo($session,$$session{bpm_cur} - ($step_size * 3), 0.6);
-  steady_beats($session, 5);
-  change_tempo($session, $$session{bpm_cur} + ($step_size * 4), 0.5);
-  steady_beats($session, 10);
-
-  for (0 .. 4) {
-    change_tempo($session, $$session{bpm_cur} - ($step_size * 2), 0.5);
-    change_tempo($session, $$session{bpm_cur} + $step_size, 0.8);
-  }
-
-  steady_beats($session, 10);
-  change_tempo($session, $bpm_min, 1);
-  steady_beats($session, 5);
-  change_tempo($session, $$session{bpm_cur} + ($step_size * 4), 0.5);
-  steady_beats($session, 4);
-  change_tempo($session, $$session{bpm_cur} - ($step_size * 2), 1.5);
-  steady_beats($session, 10);
-  change_tempo($session, $$session{bpm_cur} + ($step_size * 4), 0.5);
-  steady_beats($session, 4);
-  change_tempo($session, $$session{bpm_cur} - ($step_size * 2), 1.5);
-  steady_beats($session, 10);
-  change_tempo($session, $bpm_max, 2);
-  steady_beats($session, 15);
-  change_tempo($session, $bpm_min + ($bpm_range / 2), 0.8);
-  steady_beats($session, 4);
-  change_tempo($session, $bpm_min + ($bpm_range * 2 / 3), 1.2);
-  steady_beats($session, 4);
-  change_tempo($session, $bpm_min + ($bpm_range / 3), 0.6);
-  steady_beats($session, 4);
-  change_tempo($session, $bpm_min + ($bpm_range / 2), 1.3);
-  change_tempo($session, $bpm_min, 0.4);
-}
-
 sub tempo_rate_time {
   my $session = shift;
   my $tempo = shift;
@@ -938,7 +708,7 @@ sub tempo_rate_time {
   steady_beats($session, $time);
 }
 
-sub fixed_program_two {
+sub make_beats {
   my $session = shift;
 
   my $bpm_min = $$session{bpm_min};
@@ -963,72 +733,4 @@ sub fixed_program_two {
     tempo_rate_time($session, $step2 * -1, 0.8, 5 + $loop);
     tempo_rate_time($session, $step3 * -1, 1.2, 10 + $loop * 2);
   }
-}
-
-sub up_by_steps {
-  my $session = shift;
-
-  my $min_rate = 1;
-  my $max_rate = rand(4) + 2;
-
-  my $max_steps = 10;
-  my $step_size = ($$session{bpm_max} - $$session{bpm_min}) / $max_steps;
-
-  my $steps = 4 + int(rand($max_steps - 3));
-
-  my $step = 0;
-
-  change_tempo($session, $$session{bpm_min}, 0.7);
-
-  while ($steps > $step) {
-    $step++;
-    my $rate = $min_rate + (($max_rate - $min_rate) / (2 ** ($steps - $step)));
-    change_tempo($session, $$session{bpm_cur} + $step_size, $rate);
-    steady_beats($session, go_high(10));
-  }
-
-  $max_rate = rand(4) + 2;
-
-  while ($step > 0) {
-    $step--;
-    my $rate = $min_rate + (($max_rate - $min_rate) / (2 ** $step));
-    change_tempo($session, $$session{bpm_cur} - $step_size, $rate);
-    steady_beats($session, go_high(10));
-  }
-}
-
-sub make_beats {
-  my $session = shift;
-
-  fixed_program_two($session);
-}
-
-sub save_session {
-  my $session = shift;
-
-  my $user_id     = $$session{user_id};
-  my $finished    = time;
-  my $length      = $$session{length};
-  my $min_safe    = $$session{min_safe};
-  my $max_safe    = $$session{max_safe};
-  my $goal        = $$session{goal};
-  my $goal_pre    = $$session{goal_pre};
-  my $goal_window = $$session{goal_window};
-  my $mean        = $$session{mean};
-  my $stddev      = $$session{stddev};
-  my $prized      = $$session{prized};
-
-  my $dbh = db_connect($$session{database});
-  my $sql  = qq{ insert into sessions ( user_id, finished, length,
-                                        min_safe, max_safe, goal, goal_pre,
-                                        goal_window, mean, stddev, prized)
-                  values (?,?,?,?,?,?,?,?,?,?,?)};
-  my $sth = $dbh->prepare($sql);
-
-  $sth->execute($user_id, $finished, $length, $min_safe, $max_safe, $goal,
-                $goal_pre, $goal_window, $mean, $stddev, $prized);
-
-  $sth->finish;
-  $dbh->disconnect;
-  return;
 }

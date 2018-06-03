@@ -20,6 +20,57 @@ create table users (
 );
 insert into users (username) values ('kinky');
 
+drop table if exists sessions;
+create table sessions (
+  id                integer primary key autoincrement,
+  inning_id         integer
+);
+
+drop table if exists session_settings;
+create table session_settings (
+  session_id        integer,
+  key               text,
+  val               text,
+  priv              integer default 0,
+  constraint session_setting (session_id, key)
+);
+  
+drop table if exists user_settings;
+create table user_settings (
+  user_id           integer,
+  key               text,
+  val               text,
+  priv              integer default 0,
+  constraint user_setting (user_id, key)
+);
+
+insert into user_settings (user_id, key, val) values
+  (1, 'bpm_min',          110),
+  (1, 'bpm_max',          200),
+  (1, 'end_zone_start',   120),
+  (1, 'end_zone_length',  60),
+  (1, 'time_min',         30),
+  (1, 'time_max',         900),
+  (1, 'slow_start',       120),
+  (1, 'slow_interval',    30),
+  (1, 'slow_trip',        0),
+  (1, 'slow_rand',        1),
+  (1, 'pass_per_draw',    1),
+  (1, 'pass_per_fail',    0),
+  (1, 'pass_per_slow',    0),
+  (1, 'req_pass',         0),
+  (1, 'req_pass_next',    0),
+  (1, 'req_streak',       0),
+  (1, 'req_streak_next',  0),
+  (1, 'req_time',         0),
+  (1, 'req_time_next',    0),
+  (1, 'req_sess',         0),
+  (1, 'req_sess_next',    0),
+  (1, 'round',            1),
+  (1, 'inning',           1),
+  (1, 'cooldown',         900),
+  (1, 'messages',         'all');
+
 drop table if exists settings;
 create table settings (
   setting_id        integer primary key autoincrement,
@@ -90,3 +141,4 @@ insert into settings (key, value, user_id) values
   ('history_max',           20,       1),
 -- minimum number of sessions before mean_default / stddev_default not used
   ('min_sessions',          5,        1);
+

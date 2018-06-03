@@ -9,21 +9,23 @@ use Getopt::Long;
 my $config      = "$ENV{HOME}/.config/edgr";
 my $settings    = read_config($config);
 
-read_settings($settings);
+my $dbh = db_connect($$settings{database});
+my $user = get_user($dbh, $$settings{user});
 
 # Check if a session is allowed
-if (deny_play($settings)) {
+if (deny_play($dbh, $user)) {
   exit;
 }
 
-my $session = init_session($settings);
+my $session = init_session($dbh, $user);
+store_session($dbh, $session);
 
-while ($$session{time_max} > $$session{duration}) {
+while ($$user{time_max} > $$session{duration}) {
   make_beats($session);
 }
 
-write_script($session);
-play_script($session);
-save_session($session);
-
-score_sessions($session);
+write_script($session, $settings);
+#play_script($session);
+#save_session($session);
+#
+#score_sessions($session);
