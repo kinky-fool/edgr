@@ -918,7 +918,7 @@ sub tempo_rate_time {
   steady_beats($session, $time);
 }
 
-sub fixed_program_two {
+sub make_beats {
   my $session = shift;
 
   my $bpm_min = $$session{bpm_min};
@@ -975,12 +975,6 @@ sub up_by_steps {
     change_tempo($session, $$session{bpm_cur} - $step_size, $rate);
     steady_beats($session, go_high(10));
   }
-}
-
-sub make_beats {
-  my $session = shift;
-
-  fixed_program_two($session);
 }
 
 sub save_session {
