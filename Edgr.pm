@@ -899,38 +899,6 @@ sub make_beats {
   }
 }
 
-sub up_by_steps {
-  my $session = shift;
-
-  my $min_rate = 1;
-  my $max_rate = rand(4) + 2;
-
-  my $max_steps = 10;
-  my $step_size = ($$session{bpm_max} - $$session{bpm_min}) / $max_steps;
-
-  my $steps = 4 + int(rand($max_steps - 3));
-
-  my $step = 0;
-
-  change_tempo($session, $$session{bpm_min}, 0.7);
-
-  while ($steps > $step) {
-    $step++;
-    my $rate = $min_rate + (($max_rate - $min_rate) / (2 ** ($steps - $step)));
-    change_tempo($session, $$session{bpm_cur} + $step_size, $rate);
-    steady_beats($session, go_high(10));
-  }
-
-  $max_rate = rand(4) + 2;
-
-  while ($step > 0) {
-    $step--;
-    my $rate = $min_rate + (($max_rate - $min_rate) / (2 ** $step));
-    change_tempo($session, $$session{bpm_cur} - $step_size, $rate);
-    steady_beats($session, go_high(10));
-  }
-}
-
 sub save_session {
   my $session = shift;
 
