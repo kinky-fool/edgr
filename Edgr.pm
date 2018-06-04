@@ -195,13 +195,12 @@ sub init_session {
     $$session{goal} = $$session{goal_min};
   }
 
-  $$session{min_safe} = $$session{goal} - $$session{goal_pre};
-  $$session{max_safe} = $$session{min_safe} + $$session{goal_window};
+  $$session{safe_min} = $$session{goal} - $$session{goal_pre};
+  $$session{safe_max} = $$session{safe_min} + $$session{goal_window};
 
-  $$session{too_slow_next} = $$session{max_safe} + $$session{too_slow_start};
-  $$session{too_slow} = $$session{too_slow_next};
+  $$session{slow_next} = $$session{safe_min} + $$session{slow_offset};
 
-  $$session{time_max} = $$session{max_safe} + 300;
+  $$session{time_max} = $$session{safe_max} + 300;
   $$session{duration} = 0;
 
   $$session{bpm_cur} = $$session{bpm_min};
@@ -234,12 +233,12 @@ sub arm_prize {
   foreach my $sesh_id (keys %$unscored) {
     my $sesh = $$unscored{$sesh_id};
 
-    if ($$sesh{length} > $$sesh{max_safe}) {
+    if ($$sesh{length} > $$sesh{safe_max}) {
       $too_long++;
     }
 
-    if ($$sesh{length} >= $$sesh{min_safe} and
-        $$sesh{length} <= $$sesh{max_safe}) {
+    if ($$sesh{length} >= $$sesh{safe_min} and
+        $$sesh{length} <= $$sesh{safe_max}) {
       $pass++;
     }
 
@@ -384,40 +383,58 @@ sub lube_next {
 sub evaluate_session {
   my $session = shift;
 
-  if ($$session{length} > $$session{too_slow}) {
-    if ($$session{passes_per_slow} > 0) {
-      my $over_by = $$session{length} - $$session{too_slow};
-      my $count = int($over_by / $$session{too_slow_interval}) + 1;
-      $$session{owed_passes} += $$session{passes_per_slow} * $count;
-      $$session{passes_per_slow}--;
+  my $too_slow  = $$session{safe_min} + $$session{slow_offset};
+  my $tripwire  = $$session{safe_max} + $$session{tripwire_offset};
+
+  if ($$session{length} > $too_slow) {
+    if ($$session{slow_enabled}) {
+      if ($$session{slow_penalty} > 0) {
+        my $over_by = $$session{length} - $too_slow;
+        my $count = int($over_by / $$session{slow_grace}) + 1;
+        if ($$session{slow_percent} >= rand(100) + 1) {
+          $$session{passes_owed} += $$session{passes_per_slow} * $count;
+        }
+        $$session{slow_penalty}--;
+      }
     }
   }
 
-  if ($$session{min_safe} > $$session{length} or
-      $$session{length} > $$session{max_safe}) {
+  if ($$session{safe_min} > $$session{length} or
+      $$session{safe_max} < $$session{length}) {
     # Session failed
-    if ($$session{passes_per_fail} > 0) {
-       $$session{owed_passes} += $$session{passes_per_fail};
+    if ($$session{fail_enabled}) {
+      if ($$session{fail_percent} >= rand(100)+1) {
+        if ($$session{fail_penalty} > 0) {
+          $$session{passes_owed} += $$session{fail_penalty};
+        }
+      }
     }
   } else {
     # Session passed
-    $$session{slow_tripwire} = 0;
-    $$session{passes_per_slow} = 0;
+    $$session{tripwire_tripped} = 0;
+    $$session{slow_penalty} = 0;
+    if ($$session{passes_owed} > 0) {
+      $$session{passes_owed}--;
+    }
   }
 
-  if ($$session{length} >= $$session{mean}) {
-    # Increment passes added for taking too long
-    if ($$session{slow_tripwire}) {
-      $$session{passes_per_slow}++;
-      if ($$session{too_slow_rand}) {
-        # Random time in seconds between max_safe and adding passes
-        $$session{too_slow_start} = rand(150) + 30;
-        # Random time in seconds between added passes
-        $$session{too_slow_interval} = rand(50) + 10;
+  if ($$session{length} >= $tripwire) {
+    if ($$session{tripwire_enabled}) {
+      if ($$session{tripwire_tripped}) {
+        $$session{slow_penalty}++;
+        if ($$session{slow_random}) {
+          # Random time in seconds between safe_max and adding passes
+          $$session{slow_when} = rand(150) + 30;
+          # Random time in seconds between added passes
+          $$session{slow_grace} = rand(50) + 10;
+        }
+        if ($$session{tripwire_reset}) {
+          $$session{tripwire_tripped} == 0;
+        }
+      } else {
+        # Set the tripwire for taking too long
+        $$session{tripwire_tripped} = 1;
       }
-    } else {
-      # Set the tripwire for taking too long
-      $$session{slow_tripwire} = 1;
     }
   }
 }
@@ -429,6 +446,7 @@ sub score_sessions {
   my $max_streak  = 0;
   my $pass        = 0;
   my $fail        = 0;
+  my $stroke_time = 0;
   my $next_by     = time;
 
   # re-fresh settings from the database
@@ -443,48 +461,52 @@ sub score_sessions {
   foreach my $id (keys %$unscored) {
     my $sess = $$unscored{$id};
 
-    my $start = $$sess{finished} - $$sess{length};
+    $streak++;
 
-    if ($start > $next_by) {
+    # Still min_safe/max_safe from DB...
+    if ($$sess{min_safe} > $$sess{length} or
+        $$sess{max_safe} < $$sess{length}) {
       $streak = 0;
+      $fail++;
+    } else {
+      $pass++;
     }
 
-    $streak++;
     if ($streak > $max_streak) {
       $max_streak = $streak;
     }
-    $next_by = $$sess{finished} + $$session{session_maxbreak};
 
-    if ($$sess{length} >= $$sess{min_safe} and
-        $$sess{length} <= $$sess{max_safe}) {
-      $pass++;
-    } else {
-      $fail++;
-    }
+    $stroke_time += $$sess{length};
   }
 
   # Flag for passing any set challenges (no challege = pass)
   my $passed = 1;
 
   # Fail if player hasn't achieved a required streak
-  if ($$session{owed_streak} > $max_streak) {
+  if ($$session{streak_owed} > $max_streak) {
+    $passed = 0;
+  }
+
+  if ($$session{streak_finish} and $$session{streak_owed} > $streak) {
     $passed = 0;
   }
 
   # Fail if player has not passed the a required number of sessions
-  if ($$session{owed_passes} > $pass) {
+  if ($$session{passes_owed} > 0) {
     $passed = 0;
     if ($$session{verbose} > 2) {
-      my $remaining = $$session{owed_passes} - $pass;
       printf "%s pass%s until next bead draw.\n",
-              $remaining, ($remaining==1)?'':'es';
+              $$session{passes_owed}, ($$session{passes_owed} == 1)?'':'es';
     }
   }
 
-  # Fail if player has not achieved the required pass/fail percent
-  my $percent = ($pass / ($pass + $fail)) * 100;
-  if ($$session{owed_percent} > $percent) {
+  if ($$session{time_owed} > $stroke_time) {
     $passed = 0;
+  }
+
+  if ($$session{sessions_owed} > 0) {
+    $passed = 0;
+    $$session{sessions_owed}--;
   }
 
   if ($$session{prized} == 1) {
@@ -492,25 +514,23 @@ sub score_sessions {
   }
 
   if ($passed) {
-    if ($$session{passes_per_draw} > 0) {
-      $$session{owed_passes_default} += $$session{passes_per_draw};
+    $$session{streak_owed}    = $$session{streak_default};
+    $$session{passes_owed}    = $$session{passes_default};
+    $$session{sessions_owed}  = $$session{sessions_default};
+    $$session{time_owed}      = $$session{time_default};
+
+    if ($$session{draw_penalty} > 0) {
+      $$session{passes_default} += $$session{draw_penalty};
     }
 
-    $$session{owed_streak} = $$session{owed_streak_default};
-    $$session{owed_passes} = $$session{owed_passes_default};
-    $$session{owed_percent} = $$session{owed_percent_default};
-
-    if ($$session{passes_per_fail} > 0) {
-      $$session{owed_passes} += $$session{passes_per_fail} * $fail;
-    }
-
-
+    $pass = sprintf("%s Pass%s", $pass, ($pass == 1)?'':'es');
+    $fail = sprintf("%s Fail%s", $fail, ($fail == 1)?'':'s');
     if ($$session{verbose} > 0) {
-      printf "%s Passes - %s Fails - Draw a bead!\n", $pass, $fail;
+      printf "%s - %s - Draw a bead!\n", $pass, $fail;
       if ($$session{verbose} > 1) {
         printf "%s pass%s required for next draw.\n",
-                  $$session{owed_passes},
-                  ($$session{owed_passes} == 1)?'':'es';
+                  $$session{passes_owed},
+                  ($$session{passes_owed} == 1)?'':'es';
       }
     } else {
       printf "Draw a bead!\n"
@@ -528,15 +548,29 @@ sub store_settings {
   my $session = shift;
 
   my @keys = qw(
-    too_slow_start
-    too_slow_interval
-    slow_tripwire
-    passes_per_slow
-    passes_per_fail
-    owed_streak
-    owed_passes
-    owed_passes_default
-    owed_percent
+    streak_owed
+    streak_default
+    streak_finish
+    passes_owed
+    passes_default
+    draw_penalty
+    time_owed
+    time_default
+    sessions_owed
+    sessions_default
+    tripwire_enabled
+    tripwire_tripped
+    tripwire_offset
+    tripwire_reset
+    slow_enabled
+    slow_offset
+    slow_grace
+    slow_penalty
+    slow_random
+    slow_percent
+    fail_enabled
+    fail_penalty
+    fail_percent
   );
 
   my $user_id = $$session{user_id};
@@ -677,38 +711,43 @@ sub write_script {
       my ($count,$bpm) = split(/:/,$beat);
 
       while ($count > 0) {
-        if ($$session{duration} > $$session{min_safe}) {
+        if ($$session{duration} > $$session{safe_min}) {
           if ($$session{verbose} > 0 and $tell_safe) {
             $tell_safe = 0;
             printf $script_fh "# Minimum time reached.\n";
           }
         }
 
-        if ($$session{duration} > $$session{max_safe}) {
+        if ($$session{duration} > $$session{safe_max}) {
           if ($$session{verbose} > 2 and $tell_fail) {
             $tell_fail = 0;
             printf $script_fh "# Too late...\n";
           }
         }
 
-        if ($$session{duration} > $$session{too_slow_next}) {
-          if ($$session{verbose} > 0 and $tell_slow) {
-            if ($$session{passes_per_slow} or $$session{verbose} > 1) {
-              printf $script_fh "# Too slow...\n";
-              $$session{too_slow_next} += $$session{too_slow_interval};
-            } else {
-              $tell_slow = 0;
+        if ($$session{slow_enabled}) {
+          if ($$session{duration} > $$session{slow_next}) {
+            if ($$session{verbose} > 0 and $tell_slow) {
+              if ($$session{slow_penalty} > 0 or $$session{verbose} > 1) {
+                printf $script_fh "# Too slow...\n";
+                $$session{slow_next} += $$session{slow_grace};
+              } else {
+                $tell_slow = 0;
+              }
             }
           }
         }
 
-        if ($$session{duration} > $$session{mean}) {
-          if ($$session{verbose} > 1 and $untripped) {
-            $untripped = 0;
-            if ($$session{slow_tripwire}) {
-              printf $script_fh "# Tripwire tripped.\n";
-            } else {
-              printf $script_fh "# Tripwire set.\n";
+        if ($$session{tripwire_enabled}) {
+          if ($$session{duration} >=
+              $$session{safe_min} + $$session{tripwire_offset}) {
+            if ($$session{verbose} > 1 and $untripped) {
+              $untripped = 0;
+              if ($$session{tripwire_tripped}) {
+                printf $script_fh "# Tripwire tripped.\n";
+              } else {
+                printf $script_fh "# Tripwire set.\n";
+              }
             }
           }
         }
@@ -1009,8 +1048,8 @@ sub save_session {
   my $user_id     = $$session{user_id};
   my $finished    = time;
   my $length      = $$session{length};
-  my $min_safe    = $$session{min_safe};
-  my $max_safe    = $$session{max_safe};
+  my $min_safe    = $$session{safe_min};
+  my $max_safe    = $$session{safe_max};
   my $goal        = $$session{goal};
   my $goal_pre    = $$session{goal_pre};
   my $goal_window = $$session{goal_window};
