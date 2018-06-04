@@ -908,65 +908,6 @@ sub up_to_percent {
   }
 }
 
-sub fixed_program_one {
-  my $session = shift;
-
-  my $bpm_min = $$session{bpm_min};
-  my $bpm_max = $$session{bpm_max};
-  my $bpm_range = $bpm_max - $bpm_min;
-  my $step_size = $bpm_range / 7;
-
-  $$session{bpm_cur} = $bpm_min;
-  steady_beats($session,15);
-  change_tempo($session,$$session{bpm_cur} + $step_size,1);
-  steady_beats($session,4);
-  change_tempo($session,$bpm_min,0.7);
-  steady_beats($session,10);
-  change_tempo($session,$$session{bpm_cur} + ($step_size * 2),1.2);
-  steady_beats($session,4);
-  change_tempo($session,$$session{bpm_cur} + $step_size, 1);
-  steady_beats($session,4);
-  change_tempo($session,$bpm_min,0.5);
-  steady_beats($session,10);
-  change_tempo($session,$$session{bpm_cur} + ($step_size * 5), 0.9);
-  steady_beats($session,10);
-  change_tempo($session,$$session{bpm_cur} - ($step_size * 3), 0.6);
-  steady_beats($session, 3);
-  change_tempo($session,$$session{bpm_cur} + ($step_size * 4), 0.7);
-  steady_beats($session, 8);
-  change_tempo($session,$$session{bpm_cur} - ($step_size * 3), 0.6);
-  steady_beats($session, 5);
-  change_tempo($session, $$session{bpm_cur} + ($step_size * 4), 0.5);
-  steady_beats($session, 10);
-
-  for (0 .. 4) {
-    change_tempo($session, $$session{bpm_cur} - ($step_size * 2), 0.5);
-    change_tempo($session, $$session{bpm_cur} + $step_size, 0.8);
-  }
-
-  steady_beats($session, 10);
-  change_tempo($session, $bpm_min, 1);
-  steady_beats($session, 5);
-  change_tempo($session, $$session{bpm_cur} + ($step_size * 4), 0.5);
-  steady_beats($session, 4);
-  change_tempo($session, $$session{bpm_cur} - ($step_size * 2), 1.5);
-  steady_beats($session, 10);
-  change_tempo($session, $$session{bpm_cur} + ($step_size * 4), 0.5);
-  steady_beats($session, 4);
-  change_tempo($session, $$session{bpm_cur} - ($step_size * 2), 1.5);
-  steady_beats($session, 10);
-  change_tempo($session, $bpm_max, 2);
-  steady_beats($session, 15);
-  change_tempo($session, $bpm_min + ($bpm_range / 2), 0.8);
-  steady_beats($session, 4);
-  change_tempo($session, $bpm_min + ($bpm_range * 2 / 3), 1.2);
-  steady_beats($session, 4);
-  change_tempo($session, $bpm_min + ($bpm_range / 3), 0.6);
-  steady_beats($session, 4);
-  change_tempo($session, $bpm_min + ($bpm_range / 2), 1.3);
-  change_tempo($session, $bpm_min, 0.4);
-}
-
 sub tempo_rate_time {
   my $session = shift;
   my $tempo = shift;
