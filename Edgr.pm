@@ -207,69 +207,7 @@ sub init_session {
 
   $$session{direction} = 1;
 
-  $$session{lube_next} = lube_next($session);
-
-  $$session{lubed} = 0;
-  $$session{prized} = -1;
-
-  if ($$session{prize_enabled}) {
-    $$session{prized} = 0;
-    arm_prize($session);
-  }
-
-
   return $session;
-}
-
-sub arm_prize {
-  my $session = shift;
-
-  my $unscored = get_unscored($session);
-
-  my $too_long  = 0;
-  my $pass      = 0;
-  my $total     = 0;
-
-  foreach my $sesh_id (keys %$unscored) {
-    my $sesh = $$unscored{$sesh_id};
-
-    if ($$sesh{length} > $$sesh{safe_max}) {
-      $too_long++;
-    }
-
-    if ($$sesh{length} >= $$sesh{safe_min} and
-        $$sesh{length} <= $$sesh{safe_max}) {
-      $pass++;
-    }
-
-    $total++;
-  }
-
-  for (0 .. $too_long) {
-
-    if ($$session{prize_arm} > rand(100)) {
-      $$session{prize_armed}  = 1;
-      $$session{prize_fake}   = 1;
-    }
-
-    if ($$session{prize_armed} and $pass > 0) {
-      $pass--;
-      if ($$session{prize_disarm} > rand(100)) {
-        $$session{prize_armed} = 0;
-      }
-    }
-  }
-
-  if ($$session{prize_armed}) {
-    $$session{prized} = 1;
-  }
-
-  if ($$session{prize_fake}) {
-    printf "   You won the prize!\n";
-    printf "   Get Icy Hot Handy.\n";
-    printf "< Press Enter to Resume >";
-    my $input = <STDIN>;
-  }
 }
 
 sub read_settings {
@@ -349,35 +287,6 @@ sub sec_to_human_precise {
   $output .= sprintf('%is',$secs);
 
   return $output;
-}
-
-sub lube_next {
-  my $session = shift;
-
-  my $range = abs($$session{lube_break_max} - $$session{lube_break_min});
-
-  my $delay = $$session{lube_min} + go_high($range / 2);
-
-  if ($$session{prize_fake}) {
-    $delay = $$session{lube_min} + fuzzy($range / 2, 1);
-  }
-
-  if ($$session{prize_fake} and $$session{lubed} == 0) {
-    $delay = $delay * 180 / 100;
-    if (int(rand(3))) {
-      $$session{prize_fake} = 0;
-    }
-  }
-
-  if ($$session{prize_armed} and $$session{lubed} == 1) {
-    $delay = $delay * 40 / 100;
-  }
-
-  if ($$session{prize_armed} and $$session{lubed} > 1) {
-    $delay = $delay * 120 / 100;
-  }
-
-  return $$session{duration} + $delay;
 }
 
 sub evaluate_session {
@@ -507,10 +416,6 @@ sub score_sessions {
   if ($$session{sessions_owed} > 0) {
     $passed = 0;
     $$session{sessions_owed}--;
-  }
-
-  if ($$session{prized} == 1) {
-    printf "You got very lucky. Prize was armed.\n";
   }
 
   if ($passed) {
@@ -666,36 +571,6 @@ sub go_high {
   return $number;
 }
 
-sub maybe_add_command {
-  my $session = shift;
-
-  my $command = undef;
-
-  if ($$session{duration} > $$session{lube_next}) {
-
-    $command = 'Use lube';
-    $$session{lube_next} = lube_next($session);
-
-    if ($$session{prize_fake} or $$session{prize_armed}) {
-      $command = 'Use "Icy-safe" lube.';
-      if ($$session{prize_armed} and $$session{lubed}) {
-        if ($$session{prize_apply} > rand(100)) {
-          $$session{prized}++;
-          $command = 'Use Icy Hot.';
-        }
-      }
-    }
-
-    $$session{lubed}++;
-  }
-
-  if ($command) {
-    return $command;
-  }
-
-  return undef;
-}
-
 sub write_script {
   my $session = shift;
 
@@ -750,14 +625,6 @@ sub write_script {
               }
             }
           }
-        }
-
-        if (my $command = maybe_add_command($session)) {
-          printf $script_fh "# ...\n";
-          if (int(rand(5)) < 3) {
-            printf $script_fh "# ...\n";
-          }
-          printf $script_fh "# %s\n", $command;
         }
 
         $$session{duration} += 60  / $bpm;
@@ -912,7 +779,7 @@ sub save_session {
   my $goal_window = $$session{goal_window};
   my $mean        = $$session{mean};
   my $stddev      = $$session{stddev};
-  my $prized      = $$session{prized};
+  my $prized      = 0;
 
   my $dbh = db_connect($$session{database});
   my $sql  = qq{ insert into sessions ( user_id, finished, length,
