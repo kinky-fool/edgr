@@ -862,34 +862,6 @@ sub twitters {
   my $result = $twitter->update($message);
 }
 
-sub up_and_down {
-  my $session = shift;
-
-  my $steps = int(rand(5)) + 6;
-
-  my $bpm = $$session{bpm_cur};
-  my $seconds = 1;
-
-  for my $step (0 .. $steps) {
-    change_tempo($session, $$session{bpm_min}, 0.5);
-    steady_beats($session, fuzzy(10,2));
-    for (0 .. $step) {
-      my $diff = $$session{bpm_max} - $$session{bpm_cur};
-      my $new_bpm = $$session{bpm_cur} + ($diff / 3);
-      my $pct = ($$session{bpm_cur} - $$session{bpm_min}) /
-                ($$session{bpm_max} - $$session{bpm_min});
-      change_tempo($session, $new_bpm, 0.6 + (1.9 * $pct));
-      my $steady = rand($seconds) + rand($seconds) + rand($seconds) + 3;
-      steady_beats($session, fuzzy($steady,2));
-      $seconds++;
-    }
-  }
-
-  change_tempo($session, $$session{bpm_max}, 2.5);
-  my $steady = rand($seconds) + rand($seconds) + rand($seconds) + 3;
-  steady_beats($session, fuzzy($steady,2));
-}
-
 sub tempo_rate_time {
   my $session = shift;
   my $tempo = shift;
