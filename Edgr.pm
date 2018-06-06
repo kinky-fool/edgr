@@ -39,7 +39,7 @@ sub deny_play {
   my $settings = shift;
 
   my $most_recent = time - $$settings{session_break};
-  my $history = get_history($settings,$$settings{history_max});
+  my $history = get_history($settings, $$settings{history_max});
 
   foreach my $key (keys %$history) {
     my $sess = $$history{$key};
