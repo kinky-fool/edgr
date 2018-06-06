@@ -207,6 +207,21 @@ sub init_session {
 
   $$session{direction} = 1;
 
+  store_settings($session);
+
+  my $last = get_history($session, 1);
+
+  my ($session_id) = keys %$last;
+
+  unless ($session_id) {
+    $session_id = 1;
+  }
+
+  $$settings{session_id} = $session_id;
+
+  my $message = sprintf "Session #%s started.", $session_id;
+  twitters($session, $message);
+
   return $session;
 }
 
@@ -440,6 +455,13 @@ sub score_sessions {
     } else {
       printf "Draw a bead!\n"
     }
+
+    my $message = sprintf "Session #%s earned a bead draw. " .
+                          "%s sessions since last bead draw. " .
+                          "%s passed sessions required before next bead draw.",
+                          $$session{session_id}, $pass+$fail,
+                          $$session{passes_owed};
+    twitters($session, $message);
 
     mark_scored($session);
   } else {
