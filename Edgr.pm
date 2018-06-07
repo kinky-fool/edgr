@@ -207,13 +207,13 @@ sub init_session {
 
   $$session{direction} = 1;
 
-  store_settings($session);
-
   my $last = get_history($session, 1);
 
   my ($session_id) = keys %$last;
 
-  unless ($session_id) {
+  if ($session_id) {
+    $session_id++;
+  } else {
     $session_id = 1;
   }
 
