@@ -719,7 +719,7 @@ sub change_tempo {
   my $beats = 0;
 
   while ($bpm_delta > 0) {
-    my $seconds = seconds_per_bpm($session,$direction) * $rate;
+    my $seconds = seconds_per_bpm($session, $direction) * $rate;
 
     $beats += $$session{bpm_cur} * $seconds / 60;
 
