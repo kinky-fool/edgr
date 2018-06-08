@@ -711,14 +711,7 @@ sub change_tempo {
   while ($bpm_delta > 0) {
     my $seconds = seconds_per_bpm($session, $direction) * $rate;
 
-    $beats += $$session{bpm_cur} * $seconds / 60;
-
-    if (int($beats) > 0) {
-      $$session{beats} = join('#',(split(/#/,$$session{beats}),
-                          sprintf('%g:%g', int($beats), $$session{bpm_cur})));
-      $$session{duration} += int($beats) * 60 / $$session{bpm_cur};
-      $beats -= int($beats);
-    }
+    steady_beats($session, $seconds);
 
     $$session{bpm_cur} += $direction;
 
