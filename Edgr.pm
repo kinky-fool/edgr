@@ -199,6 +199,7 @@ sub init_session {
   $$session{safe_max} = $$session{safe_min} + $$session{goal_window};
 
   $$session{slow_next} = $$session{safe_min} + $$session{slow_offset};
+  $$session{tripwire} = $$session{safe_max} + $$session{tripwire_offset};
 
   $$session{time_max} = $$session{safe_max} + 300;
   $$session{duration} = 0;
@@ -310,15 +311,27 @@ sub evaluate_session {
   my $too_slow  = $$session{safe_min} + $$session{slow_offset};
   my $tripwire  = $$session{safe_max} + $$session{tripwire_offset};
 
-  if ($$session{length} > $too_slow) {
-    if ($$session{slow_enabled}) {
+  if ($$session{slow_enabled}) {
+    if ($$session{length} > $too_slow) {
       if ($$session{slow_penalty} > 0) {
         my $over_by = $$session{length} - $too_slow;
         my $count = int($over_by / $$session{slow_grace}) + 1;
         if ($$session{slow_percent} >= rand(100) + 1) {
           $$session{passes_owed} += $$session{passes_per_slow} * $count;
         }
-        $$session{slow_penalty}--;
+      }
+    }
+  }
+
+  if ($$session{tripwire_enabled}) {
+    if ($$session{length} >= $tripwire) {
+      if ($$session{tripwire_tripped}) {
+        if ($$session{tripwire_reset}) {
+          $$session{tripwire_tripped} == 0;
+        }
+      } else {
+        # Set the tripwire for taking too long
+        $$session{tripwire_tripped} = 1;
       }
     }
   }
@@ -327,7 +340,7 @@ sub evaluate_session {
       $$session{safe_max} < $$session{length}) {
     # Session failed
     if ($$session{fail_enabled}) {
-      if ($$session{fail_percent} >= rand(100)+1) {
+      if ($$session{fail_percent} >= rand(100) + 1) {
         if ($$session{fail_penalty} > 0) {
           $$session{passes_owed} += $$session{fail_penalty};
         }
@@ -336,29 +349,11 @@ sub evaluate_session {
   } else {
     # Session passed
     $$session{tripwire_tripped} = 0;
-    $$session{slow_penalty} = 0;
+    if ($$session{slow_penalty} > 0) {
+      $$session{slow_penalty}--;
+    }
     if ($$session{passes_owed} > 0) {
       $$session{passes_owed}--;
-    }
-  }
-
-  if ($$session{length} >= $tripwire) {
-    if ($$session{tripwire_enabled}) {
-      if ($$session{tripwire_tripped}) {
-        $$session{slow_penalty}++;
-        if ($$session{slow_random}) {
-          # Random time in seconds between safe_max and adding passes
-          $$session{slow_when} = rand(150) + 30;
-          # Random time in seconds between added passes
-          $$session{slow_grace} = rand(50) + 10;
-        }
-        if ($$session{tripwire_reset}) {
-          $$session{tripwire_tripped} == 0;
-        }
-      } else {
-        # Set the tripwire for taking too long
-        $$session{tripwire_tripped} = 1;
-      }
     }
   }
 }
@@ -601,6 +596,9 @@ sub write_script {
   my $tell_fail = 1;
   my $tell_slow = 1;
 
+  my $tripwire  = $$session{safe_max} + $$session{tripwire_offset};
+  my $tripped   = 0;
+
   # Reset for interleaving the commands
   $$session{duration} = 0;
   if (open my $script_fh,'>',$$session{script_file}) {
@@ -624,27 +622,19 @@ sub write_script {
 
         if ($$session{slow_enabled}) {
           if ($$session{duration} > $$session{slow_next}) {
-            if ($$session{verbose} > 0 and $tell_slow) {
-              if ($$session{slow_penalty} > 0 or $$session{verbose} > 1) {
-                printf $script_fh "# Too slow...\n";
-                $$session{slow_next} += $$session{slow_grace};
-              } else {
-                $tell_slow = 0;
-              }
+            if ($$session{slow_penalty} and $$session{tripwire_tripped}) {
+              printf $script_fh "# Too slow...\n";
+              $$session{slow_next} += $$session{slow_grace};
             }
           }
         }
 
+
         if ($$session{tripwire_enabled}) {
-          if ($$session{duration} >=
-              $$session{safe_min} + $$session{tripwire_offset}) {
-            if ($$session{verbose} > 1 and $untripped) {
-              $untripped = 0;
-              if ($$session{tripwire_tripped}) {
-                printf $script_fh "# Tripwire tripped.\n";
-              } else {
-                printf $script_fh "# Tripwire set.\n";
-              }
+          if ($$session{duration} >= $tripwire) {
+            if ($tripped == 0 and $$session{tripwire_tripped} == 0) {
+              $tripped = 1;
+              printf $script_fh "# Tripwire tripped.\n";
             }
           }
         }
