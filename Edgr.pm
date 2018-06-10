@@ -388,32 +388,48 @@ sub get_settings {
   my $options = shift;
   my $key     = shift;
 
+  my $show_hidden = 0;
+  if (defined $key and $key eq 'hidden') {
+    $show_hidden = 1;
+    $key = undef;
+  }
+
   my $dbh = db_connect($$options{database});
   my $user_id = get_user_id($dbh, $$options{user});
 
   my $see_val = read_data($dbh, $user_id, 'user', 2);
   my $see_set = read_data($dbh, $user_id, 'user', 3);
 
-  if ($key) {
-    if (defined $$see_val{$key}) {
-      printf "%-15s%10s\n", "$key:", $$see_val{$key};
-    } elsif (defined $$see_set{$key}) {
-      printf "%-15s%10s\n", "$key:", "<secret>";
+  my %keys = ();
+  foreach my $key (keys %$see_val, keys %$see_set) {
+    $keys{$key} = 1;
+  }
+
+  if (defined $key) {
+    if ($key =~ /%/) {
+      $key =~ s/%/.*/g;
+      foreach my $wildkey (grep { /^$key$/i } keys %keys) {
+        if (defined $$see_val{$wildkey}) {
+          printf "%-15s%10s\n", "$wildkey:", $$see_val{$wildkey};
+        } elsif (defined $$see_set{$wildkey}) {
+          printf "%-15s%10s\n", "$wildkey:", "[hidden]";
+        }
+      }
     } else {
-      printf "%-15s%10s\n", "$key:", "<unknown>";
-    }
-  } else {
-    my %keys = ();
-
-    foreach my $key (keys %$see_val, keys %$see_set) {
-      $keys{$key} = 1;
-    }
-
-    foreach my $key (sort %keys) {
       if (defined $$see_val{$key}) {
         printf "%-15s%10s\n", "$key:", $$see_val{$key};
       } elsif (defined $$see_set{$key}) {
-        printf "%-15s%10s\n", "$key:", "<secret>";
+        printf "%-15s%10s\n", "$key:", "[hidden]";
+      } else {
+        printf "%-15s%10s\n", "$key:", "[unknown]";
+      }
+    }
+  } else {
+    foreach my $key (sort %keys) {
+      if (defined $$see_val{$key}) {
+        printf "%-15s%10s\n", "$key:", $$see_val{$key};
+      } elsif (defined $$see_set{$key} and $show_hidden) {
+        printf "%-15s%10s\n", "$key:", "[hidden]";
       }
     }
   }
