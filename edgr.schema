@@ -12,10 +12,10 @@ create table sessions (
 
 drop table if exists session_data;
 create table session_data (
-  session_id  integer,
   key         text,
   val         text,
   level       integer default 0,
+  session_id  integer,
   constraint  uniq_data unique (session_id, key)
 );
 
@@ -29,10 +29,10 @@ insert into users (name) values ('kinky');
 
 drop table if exists user_data;
 create table user_data (
-  user_id     integer,
   key         text,
   val         text,
   level       integer default 0,
+  user_id     integer,
   constraint  uniq_data unique (user_id, key)
 );
 
@@ -49,8 +49,8 @@ insert into user_data (key, val, user_id) values
   ('streak_owed',           0,        1),
   ('streak_next',           0,        1),
   ('streak_finish',         0,        1),
-  ('passes_owed',           0,        1),
-  ('passes_next',           0,        1),
+  ('passes_owed',           3,        1),
+  ('passes_next',           8,        1),
   ('trip_on',               1,        1),
   ('trip_ped',              0,        1),
   ('trip_after',            60,       1),
@@ -63,4 +63,6 @@ insert into user_data (key, val, user_id) values
   ('fail_on',               0,        1),
   ('fail_penalty',          1,        1),
   ('fail_percent',          100,      1),
-  ('set_bonus',             1,        1);
+  ('set_bonus',             1,        1),
+  ('verbose',               2,        1)
+;
