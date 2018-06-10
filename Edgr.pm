@@ -10,9 +10,7 @@ $VERSION      = 0.0.1;
 $DEBUG        = 0;
 @ISA          = qw(Exporter);
 # Functions used in scripts
-@EXPORT       = qw(
-                    do_session
-                );
+@EXPORT       = qw( do_session );
 @EXPORT_OK    = @EXPORT;
 
 sub beat_time {
@@ -95,6 +93,8 @@ sub do_session {
 
   # Create a new session
   my $session = init_session($dbh, $user_id);
+
+  # Save session data
   write_data($dbh, $session, 'session');
 
   # Create the tempo program
@@ -123,6 +123,9 @@ sub do_session {
   if ($elapsed > $$session{time_min} and $elapsed < $$session{time_max}) {
     $$session{valid} = 1;
   }
+
+  # Save session data
+  write_data($dbh, $session, 'session');
 
   # Load the player's settings
   my $user = read_data($dbh, $user_id, 'user');
@@ -179,7 +182,6 @@ sub do_session {
     printf "More sessions required.\n";
   }
 
-  # Save session and user data
   write_data($dbh, $session, 'session');
   write_data($dbh, $user, 'user');
 
@@ -695,7 +697,7 @@ sub write_data {
 
   foreach my $key (keys %$data) {
     # Attempt to update the entry
-    my $rv = $update->execute($$data{key}, $key, $id);
+    my $rv = $update->execute($$data{$key}, $key, $id);
     unless ($rv > 0) {
       # Insert if update failed.
       unless ($insert->execute($$data{$key}, $key, $id)) {
