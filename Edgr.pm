@@ -10,7 +10,7 @@ $VERSION      = 0.0.1;
 $DEBUG        = 0;
 @ISA          = qw(Exporter);
 # Functions used in scripts
-@EXPORT       = qw( do_session );
+@EXPORT       = qw( do_session read_config get_settings set_settings );
 @EXPORT_OK    = @EXPORT;
 
 sub beat_time {
@@ -61,8 +61,8 @@ sub check_cooldown {
 
   my $session_id  = get_session_id($dbh, $user_id);
   if ($session_id) {
-    my $user        = read_data($dbh, $user_id, 'user');
-    my $session     = read_data($dbh, $session_id, 'session');
+    my $user        = read_data($dbh, $user_id, 'user', 10);
+    my $session     = read_data($dbh, $session_id, 'session', 10);
 
     if ($$session{valid} == 1) {
       my $remaining = $$session{time_end} - (time - $$user{cooldown});
@@ -82,9 +82,8 @@ sub db_connect {
 }
 
 sub do_session {
-  my $config  = shift;
+  my $options = shift;
 
-  my $options = read_config($config);
   my $dbh     = db_connect($$options{database});
   my $user_id = get_user_id($dbh, $$options{user});
 
@@ -128,7 +127,7 @@ sub do_session {
   write_data($dbh, $session, 'session');
 
   # Load the player's settings
-  my $user = read_data($dbh, $user_id, 'user');
+  my $user = read_data($dbh, $user_id, 'user', 10);
 
   # Evaluate the session and update settings
   eval_session($session, $user);
@@ -333,7 +332,7 @@ sub get_sessions_by_keyval {
   $sth->execute($key, $val);
 
   while (my ($session_id) = $sth->fetchrow_array) {
-    my $session = read_data($dbh, $session_id, 'session');
+    my $session = read_data($dbh, $session_id, 'session', 10);
     $sessions{$$session{time_end}} = $session;
   }
 
@@ -385,6 +384,43 @@ sub get_set_id {
   error("Unable to get set_id for $user_id", 1);
 }
 
+sub get_settings {
+  my $options = shift;
+  my $key     = shift;
+
+  my $dbh = db_connect($$options{database});
+  my $user_id = get_user_id($dbh, $$options{user});
+
+  my $see_val = read_data($dbh, $user_id, 'user', 2);
+  my $see_set = read_data($dbh, $user_id, 'user', 3);
+
+  if ($key) {
+    if (defined $$see_val{$key}) {
+      printf "%-15s%10s\n", "$key:", $$see_val{$key};
+    } elsif (defined $$see_set{$key}) {
+      printf "%-15s%10s\n", "$key:", "<secret>";
+    } else {
+      printf "%-15s%10s\n", "$key:", "<unknown>";
+    }
+  } else {
+    my %keys = ();
+
+    foreach my $key (keys %$see_val, keys %$see_set) {
+      $keys{$key} = 1;
+    }
+
+    foreach my $key (sort %keys) {
+      if (defined $$see_val{$key}) {
+        printf "%-15s%10s\n", "$key:", $$see_val{$key};
+      } elsif (defined $$see_set{$key}) {
+        printf "%-15s%10s\n", "$key:", "<secret>";
+      }
+    }
+  }
+
+  $dbh->disconnect;
+}
+
 sub get_user_id {
   my $dbh   = shift;
   my $user  = shift;
@@ -408,7 +444,7 @@ sub init_session {
   my $user_id = shift;
 
   my $session = new_session($dbh, $user_id);
-  my $user    = read_data($dbh, $user_id, 'user');
+  my $user    = read_data($dbh, $user_id, 'user', 10);
 
   $$session{bpm_min}    = $$user{bpm_min};
   $$session{bpm_max}    = $$user{bpm_max};
@@ -563,12 +599,14 @@ sub read_data {
   my $dbh   = shift;
   my $id    = shift;
   my $type  = shift;
+  my $level = shift;
 
   my %data  = ();
 
-  my $sql = "select key, val from ${type}_data where ${type}_id = ?";
+  my $sql = "select key, val from ${type}_data
+                  where ${type}_id = ? and level <= ?";
   my $sth = $dbh->prepare($sql);
-  $sth->execute($id);
+  $sth->execute($id, $level);
 
   my $valid = 0;
 
@@ -657,6 +695,54 @@ sub seconds_per_bpm {
   }
 
   return (($max_spb - $min_spb) * $percent) + $min_spb;
+}
+
+sub set_settings {
+  my $options = shift;
+  my $key     = shift;
+  my $val     = shift;
+
+  my $dbh = db_connect($$options{database});
+  my $user_id = get_user_id($dbh, $$options{user});
+
+  my $set_any = read_data($dbh, $user_id, 'user', 0);
+  my $set_hi  = read_data($dbh, $user_id, 'user', 1);
+
+  $$set_hi{id} = $user_id;
+
+  if (defined $key) {
+    if (defined $$set_any{$key}) {
+      if (defined $val) {
+        $$set_hi{$key} = $val;
+        printf "Set %s = %s\n", $key, $val;
+      } else {
+        printf "Value to set not supplied\n", $key, $val;
+      }
+    } elsif (defined $$set_hi{$key}) {
+      if (defined $val) {
+        if ($val > $$set_hi{$key}) {
+          $$set_hi{$key} = $val;
+          printf "Set %s = %s\n", $key, $val;
+        } else {
+          printf "Unable to set %s = %s\n", $key, $val;
+        }
+      } else {
+        printf "Value to set not supplied\n", $key, $val;
+      }
+    } else {
+      if (defined $val) {
+        printf "Unable to set %s = %s\n", $key, $val;
+      } else {
+        printf "Value to set not supplied\n", $key, $val;
+      }
+    }
+  } else {
+    printf "Please supply a key and value\n";
+  }
+
+  write_data($dbh, $set_hi, 'user');
+
+  $dbh->disconnect;
 }
 
 sub steady_beats {

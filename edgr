@@ -7,4 +7,21 @@ use Edgr;
 
 my $config  = "$ENV{HOME}/.config/edgr";
 
-do_session($config);
+my $options = read_config($config);
+
+my $action = shift @ARGV;
+
+if ($action) {
+  if ($action =~ /^get$/i) {
+    get_settings($options, @ARGV);
+  } elsif ($action =~ /^set$/i) {
+    set_settings($options, @ARGV);
+  } elsif ($action =~ /^play$/i) {
+    do_session($options);
+  } else {
+    printf STDERR "Unrecognized action: %s\n", $action;
+    exit 1;
+  }
+} else {
+  do_session($options);
+}
