@@ -422,6 +422,7 @@ sub init_session {
   $$session{trip_on}    = $$user{trip_on};
   $$session{trip_time}  = $$user{goal_max} + $$user{trip_after};
   $$session{trip_ped}   = $$user{trip_ped};
+  $$session{verbose}    = $$user{verbose};
 
   return $session;
 }
@@ -743,7 +744,7 @@ sub write_script {
           }
         }
 
-        if ($$session{slow_on}) {
+        if ($$session{slow_on} and $$session{verbose} > 0) {
           if ($elapsed > $slow_next) {
             if ($$session{slow_penalty} and $$session{trip_ped}) {
               printf $script_fh "# Too slow...\n";
@@ -752,7 +753,7 @@ sub write_script {
           }
         }
 
-        if ($$session{trip_on}) {
+        if ($$session{trip_on} and $$session{verbose} > 1) {
           if ($elapsed >= $$session{trip_time}) {
             if ($tripped == 0 and $$session{trip_ped} == 0) {
               $tripped = 1;
