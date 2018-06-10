@@ -4,26 +4,7 @@ use strict;
 use warnings;
 
 use Edgr;
-use Getopt::Long;
 
-my $config      = "$ENV{HOME}/.config/edgr";
-my $settings    = read_config($config);
+my $config  = "$ENV{HOME}/.config/edgr";
 
-read_settings($settings);
-
-# Check if a session is allowed
-if (deny_play($settings)) {
-  exit;
-}
-
-my $session = init_session($settings);
-
-while ($$session{time_max} > $$session{duration}) {
-  make_beats($session);
-}
-
-write_script($session);
-play_script($session);
-save_session($session);
-
-score_sessions($session);
+do_session($config);
