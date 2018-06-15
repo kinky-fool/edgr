@@ -214,7 +214,7 @@ sub eval_session {
         my $count = int($over_by / $$session{slow_grace}) + 1;
         my $possible = $$user{slow_penalty} * $count;
         for (1 .. $possible) {
-          if ($$session{slow_percent} >= rand(100) + 1) {
+          if ($$user{slow_percent} >= rand(100) + 1) {
             $$session{penalties}++;
           }
         }
@@ -464,19 +464,20 @@ sub init_session {
   my $session = new_session($dbh, $user_id);
   my $user    = read_data($dbh, $user_id, 'user', 10);
 
-  $$session{bpm_min}    = $$user{bpm_min};
-  $$session{bpm_max}    = $$user{bpm_max};
-  $$session{time_min}   = $$user{time_min};
-  $$session{time_max}   = $$user{time_max};
-  $$session{goal_min}   = $$user{goal_min};
-  $$session{goal_max}   = $$user{goal_max};
-  $$session{slow_on}    = $$user{slow_on};
-  $$session{slow_time}  = $$user{goal_min} + $$user{slow_after};
-  $$session{slow_grace} = $$user{slow_grace};
-  $$session{trip_on}    = $$user{trip_on};
-  $$session{trip_time}  = $$user{goal_max} + $$user{trip_after};
-  $$session{trip_ped}   = $$user{trip_ped};
-  $$session{verbose}    = $$user{verbose};
+  $$session{bpm_min}      = $$user{bpm_min};
+  $$session{bpm_max}      = $$user{bpm_max};
+  $$session{time_min}     = $$user{time_min};
+  $$session{time_max}     = $$user{time_max};
+  $$session{goal_min}     = $$user{goal_min};
+  $$session{goal_max}     = $$user{goal_max};
+  $$session{slow_on}      = $$user{slow_on};
+  $$session{slow_time}    = $$user{goal_min} + $$user{slow_after};
+  $$session{slow_grace}   = $$user{slow_grace};
+  $$session{slow_penalty} = $$user{slow_penalty};
+  $$session{trip_on}      = $$user{trip_on};
+  $$session{trip_time}    = $$user{goal_max} + $$user{trip_after};
+  $$session{trip_ped}     = $$user{trip_ped};
+  $$session{verbose}      = $$user{verbose};
 
   return $session;
 }
@@ -869,6 +870,11 @@ sub write_script {
         $elapsed += 60  / $bpm;
         printf $script_fh "1 %g/4 2/8\n", $bpm;
         $count--;
+
+      }
+
+      if ($elapsed > $$session{time_max}) {
+        last;
       }
     }
 
