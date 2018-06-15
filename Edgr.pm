@@ -175,6 +175,9 @@ sub do_session {
 
     twitters($options, $message);
 
+    # Reset tripwire when a set is passed
+    $$user{trip_ped} = 0;
+
     # Start a new set
     new_set($dbh, $user_id);
   } else {
@@ -218,20 +221,16 @@ sub eval_session {
 
   if ($$session{trip_on}) {
     if ($elapsed > $$session{trip_time}) {
-      if ($$session{trip_ped}) {
-        if ($$user{trip_reset}) {
-          $$user{trip_ped} = 0;
-        }
-      } else {
-        # Set the tripwire for taking too long
-        $$session{trip_ped} = 1;
-      }
+      # Set the tripwire for taking too long
+      $$session{trip_ped} = 1;
     }
   }
 
   if ($elapsed => $$user{goal_min} and $elapsed <= $$user{goal_max}) {
     # Session passed
-    $$user{trip_ped} = 0;
+    if ($$user{trip_reset}) {
+      $$user{trip_ped} = 0;
+    }
   } else {
     # Session failed
     if ($$user{fail_on}) {
