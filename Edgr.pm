@@ -207,15 +207,14 @@ sub eval_session {
 
   my $elapsed = abs($$session{time_end} - $$session{time_start});
 
-  if ($$session{slow_on}) {
+  if ($$session{trip_ped}) {
     if ($elapsed > $$session{slow_time}) {
       if ($$user{slow_penalty} > 0) {
         my $over_by = $elapsed - $$session{slow_time};
         my $count = int($over_by / $$session{slow_grace}) + 1;
-        my $possible = $$user{slow_penalty} * $count;
-        for (1 .. $possible) {
+        for (1 .. $count) {
           if ($$user{slow_percent} >= rand(100) + 1) {
-            $$session{penalties}++;
+            $$session{penalties} += $$user{slow_penalty};
           }
         }
       }
@@ -470,7 +469,6 @@ sub init_session {
   $$session{time_max}     = $$user{time_max};
   $$session{goal_min}     = $$user{goal_min};
   $$session{goal_max}     = $$user{goal_max};
-  $$session{slow_on}      = $$user{slow_on};
   $$session{slow_time}    = $$user{goal_min} + $$user{slow_after};
   $$session{slow_grace}   = $$user{slow_grace};
   $$session{slow_penalty} = $$user{slow_penalty};
@@ -849,7 +847,7 @@ sub write_script {
           }
         }
 
-        if ($$session{slow_on} and $$session{verbose} > 0) {
+        if ($$session{trip_ped} and $$session{verbose} > 0) {
           if ($elapsed > $slow_next) {
             if ($$session{slow_penalty} and $$session{trip_ped}) {
               printf $script_fh "# Too slow...\n";
