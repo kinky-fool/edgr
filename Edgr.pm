@@ -147,9 +147,9 @@ sub do_session {
     $$user{sessions_owed} = $$user{sessions_next};
     $$user{time_owed}     = $$user{time_next};
 
-    # Increment required passes every new set
+    # Increment streak required every new set
     if ($$user{set_bonus} > 0) {
-      $$user{passes_next} += $$user{set_bonus};
+      $$user{streak_next} += $$user{set_bonus};
     }
 
     my $pass = sprintf("%s Pass%s", $num_pass, ($num_pass == 1) ? '' : 'es');
