@@ -141,6 +141,8 @@ sub do_session {
   # Evaluate the sessions in the set to see if the set is completed
   my ($complete, $num_pass, $num_fail) = eval_set($set, $user);
 
+  my $num_sessions = $num_pass + $num_fail;
+
   if ($complete) {
     # Set player challenges for next set
     $$user{streak_owed}   = $$user{streak_next};
@@ -152,25 +154,24 @@ sub do_session {
       $$user{streak_next} += $$user{set_bonus};
     }
 
-    my $pass = sprintf("%s Pass%s", $num_pass, ($num_pass == 1) ? '' : 'es');
-    my $fail = sprintf("%s Fail%s", $num_fail, ($num_fail == 1) ? '' : 's');
+    printf "Set complete! Draw a bead!\n";
 
     if ($$user{verbose} > 0) {
-      printf "%s - %s - Draw a bead!\n", $pass, $fail;
-      if ($$user{verbose} > 1) {
-        printf "New inning: %s session%s owed.\n",
-                  $$user{sessions_owed},
-                  ($$user{sessions_owed} == 1) ? '' : 's';
-      }
-    } else {
-      printf "New inning! Draw a bead!\n"
+      printf "%s out of %s (%0.2g%%) session%s passed.",
+              $num_pass, $num_sessions, $num_pass / $num_sessions,
+              ($num_sessions == 1) ? '' : 's';
     }
 
-    my $message = sprintf "Inning complete: %s session%s; Bead draw earned. " .
-                          "New inning;  %s session%s owed.",
-                          $num_pass + $num_fail,
-                          ($num_pass + $num_fail == 1) ? '' : 's';
-                          $$user{sessions_owed};
+    if ($$user{verbose} > 1) {
+      printf "New set begins with %s session%s owed.\n",
+                $$user{sessions_owed},
+                ($$user{sessions_owed} == 1) ? '' : 's';
+    }
+
+    my $message = sprintf "Set completed after %s session%s. " .
+                          "New set begins with %s session%s owed.",
+                          $num_sessions, ($num_sessions == 1) ? '' : 's',
+                          $$user{sessions_owed},
                           ($$user{sessions_owed} == 1) ? '' : 's';
 
     twitters($options, $message);
