@@ -212,9 +212,16 @@ sub eval_session {
       if ($$user{slow_penalty} > 0) {
         my $over_by = $elapsed - $$session{slow_time};
         my $count = int($over_by / $$session{slow_grace}) + 1;
-        for (1 .. $count) {
+
+        if ($$user{all_or_nothing} > 0) {
           if ($$user{slow_percent} >= rand(100) + 1) {
-            $$session{penalties} += $$user{slow_penalty};
+            $$session{penalties} += $$user{slow_penalty} * $count;
+          }
+        } else {
+          for (1 .. $count) {
+            if ($$user{slow_percent} >= rand(100) + 1) {
+              $$session{penalties} += $$user{slow_penalty};
+            }
           }
         }
       }
@@ -236,10 +243,16 @@ sub eval_session {
     }
   } else {
     # Session failed
-    for (1 .. $$user{fail_penalty}) {
-      # If the fail percent is high enough, increment penalty sessions
+    if ($$user{all_or_nothing} > 1) {
       if ($$user{fail_percent} >= rand(100) + 1) {
-        $$session{penalties}++;
+        $$session{penalties} += $$user{fail_penalty};
+      }
+    } else {
+      for (1 .. $$user{fail_penalty}) {
+        # If the fail percent is high enough, increment penalty sessions
+        if ($$user{fail_percent} >= rand(100) + 1) {
+          $$session{penalties}++;
+        }
       }
     }
 
