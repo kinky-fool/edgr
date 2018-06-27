@@ -144,7 +144,6 @@ sub do_session {
   if ($complete) {
     # Set player challenges for next set
     $$user{streak_owed}   = $$user{streak_next};
-    $$user{passes_owed}   = $$user{passes_next};
     $$user{sessions_owed} = $$user{sessions_next};
     $$user{time_owed}     = $$user{time_next};
 
@@ -159,19 +158,20 @@ sub do_session {
     if ($$user{verbose} > 0) {
       printf "%s - %s - Draw a bead!\n", $pass, $fail;
       if ($$user{verbose} > 1) {
-        printf "%s pass%s required for next draw.\n",
-                  $$user{passes_owed},
-                  ($$user{passes_owed} == 1) ? '' : 'es';
+        printf "New inning: %s session%s owed.\n",
+                  $$user{sessions_owed},
+                  ($$user{sessions_owed} == 1) ? '' : 's';
       }
     } else {
-      printf "Draw a bead!\n"
+      printf "New inning! Draw a bead!\n"
     }
 
-    my $message = sprintf "Session #%s earned a bead draw. " .
-                          "%s sessions since last bead draw. " .
-                          "%s passed sessions required before next bead draw.",
-                          $$session{id}, $num_pass + $num_fail,
-                          $$user{passes_owed};
+    my $message = sprintf "Inning complete: %s session%s; Bead draw earned. " .
+                          "New inning;  %s session%s owed.",
+                          $num_pass + $num_fail,
+                          ($num_pass + $num_fail == 1) ? '' : 's';
+                          $$user{sessions_owed};
+                          ($$user{sessions_owed} == 1) ? '' : 's';
 
     twitters($options, $message);
 
@@ -242,7 +242,8 @@ sub eval_session {
         }
       }
     }
-    $$user{passes_owed} += $$session{penalties};
+
+    $$user{sessions_owed} += $$session{penalties};
   }
 }
 
@@ -306,12 +307,7 @@ sub eval_set {
   # Fail if player owes more sessions
   if ($$user{sessions_owed} > ($num_pass + $num_fail)) {
     $passed = 0;
-  }
-
-  # Fail if player owes more passed sessions
-  if ($$user{passes_owed} > $num_pass) {
-    $passed = 0;
-    my $owed = $$user{passes_owed} - $num_pass;
+    my $owed = $$user{sessions_owed} - ($num_pass + $num_fail);
     if ($$user{verbose} > 2) {
       printf "%s pass%s until next bead draw.\n",
               $owed, ($owed == 1) ? '' : 'es';
