@@ -230,16 +230,16 @@ sub eval_session {
 
   if ($elapsed => $$user{goal_min} and $elapsed <= $$user{goal_max}) {
     # Session passed
+    # If the option trip_reset is set, reset the trip_ped flag
     if ($$user{trip_reset}) {
       $$user{trip_ped} = 0;
     }
   } else {
     # Session failed
-    if ($$user{fail_on}) {
+    for (1 .. $$user{fail_penalty}) {
+      # If the fail percent is high enough, increment penalty sessions
       if ($$user{fail_percent} >= rand(100) + 1) {
-        if ($$user{fail_penalty} > 0) {
-          $$session{penalties} += $$user{fail_penalty};
-        }
+        $$session{penalties}++;
       }
     }
 
