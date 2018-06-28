@@ -276,6 +276,9 @@ sub eval_set {
 
   my $session_id  = '';
 
+  my $streak_broke  = 0;
+  my $penalties     = 0;
+
   foreach my $key (sort keys %$set) {
     my $session = $$set{$key};
 
@@ -288,9 +291,11 @@ sub eval_set {
       if ($length > $$session{goal_min} and $length < $$session{goal_max}) {
         $num_pass++;
         $passed = 1;
+        $streak_broke = 0;
       } else {
         $streak = 0;
         $num_fail++;
+        $streak_broke = 1;
       }
 
       if ($streak > $max_streak) {
@@ -298,7 +303,17 @@ sub eval_set {
       }
 
       $time_stroke += $length;
+      $penalties = $$session{penalties};
     }
+  }
+
+  if ($$user{verbose} > 0 and $streak_broke and $$user{streak_owed}) {
+    printf "Streak ended. :(\n";
+  }
+
+  if ($$user{verbose} > 1 and $penalties) {
+    printf "Earned %s extra session%s! ;)\n", $penalties,
+                                      ($penalties == 0) ? '' : 's";
   }
 
   # Flag for passing any set challenges (no challege = pass)
