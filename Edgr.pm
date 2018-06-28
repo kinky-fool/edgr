@@ -123,14 +123,14 @@ sub do_session {
     $$session{valid} = 1;
   }
 
-  # Save session data
-  write_data($dbh, $session, 'session');
-
   # Load the player's settings
   my $user = read_data($dbh, $user_id, 'user', 10);
 
   # Evaluate the session and update settings
   eval_session($session, $user);
+
+  # Save session data
+  write_data($dbh, $session, 'session');
 
   # Get the ID of the current set
   my $set_id = get_set_id($dbh, $user_id);
