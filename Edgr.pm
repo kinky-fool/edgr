@@ -212,16 +212,17 @@ sub eval_session {
     if ($elapsed > $$session{slow_time}) {
       if ($$user{slow_penalty} > 0) {
         my $over_by = $elapsed - $$session{slow_time};
-        my $count = int($over_by / $$session{slow_grace}) + 1;
+        my $count   = int($over_by / $$session{slow_grace}) + 1;
+        my $penalty = $count * $$user{slow_penalty};
 
         if ($$user{all_or_nothing} > 0) {
           if ($$user{slow_percent} >= rand(100) + 1) {
-            $$session{penalties} += $$user{slow_penalty} * $count;
+            $$session{penalties} += $penalty
           }
         } else {
-          for (1 .. $count) {
+          for (1 .. $penalty) {
             if ($$user{slow_percent} >= rand(100) + 1) {
-              $$session{penalties} += $$user{slow_penalty};
+              $$session{penalties}++;
             }
           }
         }
