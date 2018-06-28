@@ -217,7 +217,7 @@ sub eval_session {
 
         if ($$user{all_or_nothing} > 0) {
           if ($$user{slow_percent} >= rand(100) + 1) {
-            $$session{penalties} += $penalty
+            $$session{penalties} += $penalty;
           }
         } else {
           for (1 .. $penalty) {
@@ -313,7 +313,7 @@ sub eval_set {
 
   if ($$user{verbose} > 1 and $penalties) {
     printf "Earned %s extra session%s! ;)\n", $penalties,
-                                      ($penalties == 0) ? '' : 's";
+                                      ($penalties == 1) ? '' : 's';
   }
 
   # Flag for passing any set challenges (no challege = pass)
