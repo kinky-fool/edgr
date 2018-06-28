@@ -293,9 +293,11 @@ sub eval_set {
         $passed = 1;
         $streak_broke = 0;
       } else {
+        if ($streak > 0) {
+          $streak_broke = 1;
+        }
         $streak = 0;
         $num_fail++;
-        $streak_broke = 1;
       }
 
       if ($streak > $max_streak) {
