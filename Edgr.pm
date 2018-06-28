@@ -157,8 +157,8 @@ sub do_session {
     printf "Set complete! Draw a bead!\n";
 
     if ($$user{verbose} > 0) {
-      printf "%s out of %s (%0.2g%%) session%s passed.",
-              $num_pass, $num_sessions, $num_pass / $num_sessions,
+      printf "%s out of %s (%0.2g%%) session%s passed.\n",
+              $num_pass, $num_sessions, ($num_pass / $num_sessions)*100,
               ($num_sessions == 1) ? '' : 's';
     }
 
