@@ -339,8 +339,8 @@ sub eval_set {
     $passed = 0;
     my $owed = $$user{sessions_owed} - ($num_pass + $num_fail);
     if ($$user{verbose} > 2) {
-      printf "%s pass%s until next bead draw.\n",
-              $owed, ($owed == 1) ? '' : 'es';
+      printf "%s session%s to go.\n",
+              $owed, ($owed == 1) ? '' : 's';
     }
   }
 
