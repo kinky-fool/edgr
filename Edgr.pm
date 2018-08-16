@@ -96,13 +96,9 @@ sub do_session {
   # Create the tempo program
   my @beats = make_beats($$session{bpm_min}, $$session{bpm_max},
                                               $$session{time_max});
-
   # Generate the stroke tempo "program"
   write_script($$options{script_file}, $session, @beats);
 
-  # Tweet that the session has started
-  my $message = sprintf "Session #%s started.", $$session{id};
-  twitters($options, $message);
 
   # Save session data
   write_data($dbh, $session, 'session');
@@ -122,7 +118,8 @@ sub do_session {
   my $elapsed = $$session{time_end} - $$session{time_start};
 
   # Mark session as valid if it was not out of bounds in length
-  if ($elapsed > $$session{time_min} and $elapsed < $$session{time_max}) {
+  if ($elapsed > $$session{time_min} and
+      $elapsed < $$session{time_max} - $$session{time_min}) {
     $$session{valid} = 1;
   }
 
@@ -142,7 +139,7 @@ sub do_session {
   my $set = get_sessions_by_keyval($dbh, 'set_id', $set_id);
 
   # Evaluate the sessions in the set to see if the set is completed
-  my ($complete, $num_pass, $num_fail) = eval_set($set, $user);
+  my ($complete, $num_pass, $num_fail, $tweet) = eval_set($set, $user);
 
   my $num_sessions = $num_pass + $num_fail;
 
@@ -171,21 +168,24 @@ sub do_session {
                 ($$user{sessions_owed} == 1) ? '' : 's';
     }
 
-    my $message = sprintf "Set completed after %s session%s. " .
-                          "New set begins with %s session%s owed.",
+    # If the session is complete, rewrite the tweet
+    # TODO make tweets an array?
+    $tweet = sprintf "Set complete after %s session%s. " .
+                          "New set starts; %s session%s owed.",
                           $num_sessions, ($num_sessions == 1) ? '' : 's',
                           $$user{sessions_owed},
                           ($$user{sessions_owed} == 1) ? '' : 's';
 
-    twitters($options, $message);
 
     # Reset tripwire when a set is passed
     $$user{trip_ped} = 0;
 
     # Start a new set
     new_set($dbh, $user_id);
-  } else {
-    printf "More sessions required.\n";
+  }
+
+  if ($tweet) {
+    twitters($options, $tweet);
   }
 
   write_data($dbh, $session, 'session');
@@ -211,23 +211,19 @@ sub eval_session {
 
   my $elapsed = abs($$session{time_end} - $$session{time_start});
 
-  if ($$session{trip_ped}) {
-    if ($elapsed > $$session{slow_time}) {
-      if ($$user{slow_penalty} > 0) {
-        my $over_by = $elapsed - $$session{slow_time};
-        my $count   = int($over_by / $$session{slow_grace}) + 1;
-        my $penalty = $count * $$user{slow_penalty};
+  if ($$session{trip_ped} and $elapsed > $$session{slow_time}) {
+    my $over_by = $elapsed - $$session{slow_time};
+    my $count   = int($over_by / $$session{slow_grace}) + 1;
+    my $penalty = $count * $$user{slow_penalty};
 
-        if ($$user{all_or_nothing} > 0) {
-          if ($$user{slow_percent} >= rand(100) + 1) {
-            $$session{penalties} += $penalty;
-          }
-        } else {
-          for (1 .. $penalty) {
-            if ($$user{slow_percent} >= rand(100) + 1) {
-              $$session{penalties}++;
-            }
-          }
+    if ($$user{all_or_nothing} > 0) {
+      if ($$user{slow_percent} >= rand(100) + 1) {
+        $$session{penalties} += $penalty;
+      }
+    } else {
+      for (1 .. $penalty) {
+        if ($$user{slow_percent} >= rand(100) + 1) {
+          $$session{penalties}++;
         }
       }
     }
@@ -236,24 +232,50 @@ sub eval_session {
   if ($$session{trip_on}) {
     if ($elapsed > $$session{trip_time}) {
       # Set the tripwire for taking too long
-      $$session{trip_ped} = 1;
+      $$user{trip_ped} = 1;
     }
   }
 
-  if ($elapsed => $$user{goal_min} and $elapsed <= $$user{goal_max}) {
-    # Session passed
-    # If the option trip_reset is set, reset the trip_ped flag
-    if ($$user{trip_reset}) {
-      $$user{trip_ped} = 0;
+  my $chance    = 5;
+  my $possible  = $$user{slideshow};
+  my $penalties = $$user{fail_penalty};
+
+  if ($elapsed < $$user{goal_min}) {
+    # Too fast
+    if ($elapsed > $$user{time_min}) {
+      # Valid session
+      my $percent = $elapsed / $$user{goal_min} * 100;
+
+      foreach my $limit (90, 60, 45, 30, 20, 10, 5) {
+        if ($percent < $limit) {
+          $possible += 5;
+          $chance += 5;
+        }
+      }
     }
-  } else {
-    # Session failed
+  }
+
+  if ($elapsed > $$user{goal_max}) {
+    my $goal_window = abs($$user{goal_max} - $$user{goal_min});
+    # Increase the chance based on the length of the goal window
+    $chance += ($goal_window / 15) ** 2;
+    # Increase the chance based on time after the goal window
+    $chance += (($elapsed - $$user{goal_max}) / 9) ** 2;
+  }
+
+  if ($elapsed < $$user{goal_min} or $elapsed > $$user{goal_max}) {
+    for (1 .. $possible) {
+      if ($chance >= rand(100) + 1) {
+        $penalties++;
+      }
+    }
+
     if ($$user{all_or_nothing} > 1) {
       if ($$user{fail_percent} >= rand(100) + 1) {
-        $$session{penalties} += $$user{fail_penalty};
+        $$session{penalties} += $penalties;
       }
     } else {
-      for (1 .. $$user{fail_penalty}) {
+      for (1 .. $penalties) {
         # If the fail percent is high enough, increment penalty sessions
         if ($$user{fail_percent} >= rand(100) + 1) {
           $$session{penalties}++;
@@ -261,95 +283,191 @@ sub eval_session {
       }
     }
 
+    # Add penalty sessions
     $$user{sessions_owed} += $$session{penalties};
   }
+}
+
+sub get_win_streak {
+  my $sessions  = shift;
+
+  my $streak = 0;
+  foreach my $id (sort {$b cmp $a} keys %$sessions) {
+    my $session = $$sessions{$id};
+
+    if ($$session{valid}) {
+      my $length = abs($$session{time_end} - $$session{time_start});
+
+      if ($length >= $$session{goal_min} and $length <= $$session{goal_max}) {
+        $streak++;
+      } else {
+        # stop processing sessions
+        last;
+      }
+    }
+  }
+
+  return $streak;
+}
+
+sub get_fails {
+  my $sessions  = shift;
+  my $count     = shift;
+
+  my $fails = 0;
+
+  foreach my $id (sort {$b cmp $a} keys %$sessions) {
+    my $session = $$sessions{$id};
+
+    if ($count > 0 and $$session{valid}) {
+      $count--;
+      my $length = abs($$session{time_end} - $$session{time_start});
+      if ($length < $$session{goal_min} or $length > $$session{goal_max}) {
+        $fails++;
+      }
+    }
+  }
+
+  return $fails;
 }
 
 sub eval_set {
   my $set   = shift;
   my $user  = shift;
 
-  my $streak      = 0;
-  my $max_streak  = 0;
-
-  my $num_pass    = 0;
-  my $num_fail    = 0;
-
-  my $time_stroke = 0;
-
-  my $session_id  = '';
-
+  # Flag vars and counters
+  my $time_stroke   = 0;
+  my $streak_cur    = 0;
+  my $streak_max    = 0;
   my $streak_broke  = 0;
-  my $penalties     = 0;
 
+  # Most recent session
+  my $penalties     = 0;
+  my $length        = 0;
+  my $pass          = 0;
+  my $valid         = 0;
+  my $session_id    = 0;
+
+  # Returned values
+  my $num_pass      = 0;
+  my $num_fail      = 0;
+  my $passed        = 0;
+  my $tweet         = 'No ';
+
+  # Iterate through a set's sessions
   foreach my $key (sort keys %$set) {
     my $session = $$set{$key};
 
     if ($$session{valid}) {
-      my $passed = 0;
-      my $length = abs($$session{time_end} - $$session{time_start});
+      $valid = 1;
+      $length = abs($$session{time_end} - $$session{time_start});
+      $streak_cur++;
 
-      $streak++;
-
-      if ($length > $$session{goal_min} and $length < $$session{goal_max}) {
-        $num_pass++;
-        $passed = 1;
+      if ($length >= $$session{goal_min} and $length <= $$session{goal_max}) {
         $streak_broke = 0;
+        $num_pass++;
+        $pass = 1;
       } else {
-        if ($streak > 0) {
+        if ($streak_cur > 1) {
           $streak_broke = 1;
         }
-        $streak = 0;
+        $streak_cur = 0;
         $num_fail++;
+        $pass = 0;
       }
 
-      if ($streak > $max_streak) {
-        $max_streak = $streak;
+      if ($streak_cur > $streak_max) {
+        $streak_max = $streak_cur;
       }
 
       $time_stroke += $length;
       $penalties = $$session{penalties};
+      $session_id = $$session{id};
+    } else {
+      $valid = 0;
     }
   }
 
-  if ($$user{verbose} > 0 and $streak_broke and $$user{streak_owed}) {
-    printf "Streak ended. :(\n";
-  }
+  # Was the most recent session valid?
+  if ($valid > 0) {
+    # Optimism...
+    $passed = 1;
 
-  if ($$user{verbose} > 1 and $penalties) {
-    printf "Earned %s extra session%s! ;)\n", $penalties,
-                                      ($penalties == 1) ? '' : 's';
-  }
+    $tweet = sprintf("Session %s %s.", $session_id,
+                  $pass == 1 ? 'passed':'failed');
 
-  # Flag for passing any set challenges (no challege = pass)
-  my $passed = 1;
+    if ($$user{verbose} >= 2 and $streak_broke and $$user{streak_owed}) {
+      printf "Streak reset. :(\n";
 
-  # Fail if player owes a better streak of passed sessions
-  if ($$user{streak_owed} > $max_streak) {
-    $passed = 0;
-  }
-
-  # Fail if the last session doesn't end in a satisfactory streak
-  if ($$user{streak_finish} and $$user{streak_owed} > $streak) {
-    $passed = 0;
-  }
-
-  # Fail if player owes more time
-  if ($$user{time_owed} > $time_stroke) {
-    $passed = 0;
-  }
-
-  # Fail if player owes more sessions
-  if ($$user{sessions_owed} > ($num_pass + $num_fail)) {
-    $passed = 0;
-    my $owed = $$user{sessions_owed} - ($num_pass + $num_fail);
-    if ($$user{verbose} > 2) {
-      printf "%s session%s to go.\n",
-              $owed, ($owed == 1) ? '' : 's';
+      $tweet = sprintf("%s Pass streak reset.", $tweet);
     }
+
+    if ($streak_cur >= $$user{trip_reset} and $$user{trip_ped}) {
+      $$user{trip_ped} = 0;
+      if ($$user{verbose} >= 2) {
+        printf "Tripwire reset.\n";
+      }
+
+      $tweet = sprintf("%s Tripwire reset.", $tweet);
+    }
+
+    if ($penalties) {
+      if ($$user{verbose} >= 2) {
+        printf "%s bonus session%s earned.\n", $penalties,
+                                          ($penalties == 1) ? '' : 's';
+      } elsif ($$user{verbose} >= 1) {
+        printf "Bonus session(s) earned.\n";
+      }
+
+      $tweet = sprintf("%s %s bonus session%s earned.", $tweet,
+                          $penalties, ($penalties == 1) ? '' : 's');
+    }
+
+    my $sessions_owed = $$user{sessions_owed} - ($num_pass + $num_fail);
+
+    if ($$user{streak_owed} > 0 and 1 > $sessions_owed and
+          (($$user{streak_finish} and $$user{streak_owed} > $streak_cur) or
+          ($$user{streak_owed} > $streak_max))) {
+      $passed = 0;
+
+      if ($$user{verbose} >= 2) {
+        printf "%s pass%s in a row required.\n",$$user{streak_owed},
+                                ($$user{streak_owed} == 1) ? '' : 'es';
+      } elsif ($$user{verbose} >= 1) {
+        printf "Streak of passes in a row required.\n";
+      }
+      $tweet = sprintf("%s %s pass%s in a row required.", $$user{streak_owed},
+                                        ($$user{streak_owed} == 1) ? '' : 'es');
+    }
+
+    if ($$user{time_owed} > $time_stroke) {
+      $passed = 0;
+
+      if ($$user{verbose} >= 1) {
+        printf "More time required.\n";
+      }
+
+      $tweet = sprintf("%s More time required.", $tweet);
+    }
+
+    # Fail if player owes more sessions
+    if ($sessions_owed > 0) {
+      $passed = 0;
+
+      my $owed = $$user{sessions_owed} - ($num_pass + $num_fail);
+
+      if ($$user{verbose} >= 3) {
+        printf "%s more session%s required.\n",
+                $owed, ($owed == 1) ? '' : 's';
+      } elsif ($$user{verbose} >= 1) {
+        printf "More sessions required.\n";
+      }
+    }
+  } else {
+    $tweet = sprintf("Session %s disqualified.", $session_id);
   }
 
-  return ($passed, $num_pass, $num_fail);
+  return ($passed, $num_pass, $num_fail, $tweet);
 }
 
 sub get_sessions_by_keyval {
@@ -491,6 +609,10 @@ sub init_session {
   my $dbh     = shift;
   my $user_id = shift;
 
+  my $sessions = get_sessions_by_keyval($dbh, 'user_id', $user_id);
+  my $streak = get_win_streak($sessions);
+  my $fails   = get_fails($sessions, 20);
+
   my $session = new_session($dbh, $user_id);
   my $user    = read_data($dbh, $user_id, 'user', 10);
 
@@ -507,6 +629,27 @@ sub init_session {
   $$session{trip_time}    = $$user{goal_max} + $$user{trip_after};
   $$session{trip_ped}     = $$user{trip_ped};
   $$session{verbose}      = $$user{verbose};
+
+  my $endurance = 0;
+  while ($streak >= 2) {
+    if (int(rand(10)) == 0) {
+      $endurance = 1;
+    }
+    $streak -= 2;
+  }
+
+  if ($endurance) {
+    #printf "Endurance Round!\n";
+    my $bonus = rand(4) * 60;
+    for (1 .. $fails) {
+      $bonus += rand(4) * 60;
+    }
+    $$session{goal_min} += $bonus;
+    $$session{goal_max} += $bonus;
+    $$session{time_max} += $bonus;
+    $$session{trip_time} += $bonus;
+    $$session{slow_time} += $bonus;
+  }
 
   return $session;
 }
@@ -563,16 +706,17 @@ sub new_session {
   my $dbh     = shift;
   my $user_id = shift;
 
-  my $sql = 'insert into sessions (user_id) values ( ? )';
-  my $sth = $dbh->prepare($sql);
-  my $rv = $sth->execute($user_id);
+  my $set_id  = get_set_id($dbh, $user_id);
+  my $sql     = 'insert into sessions (user_id, set_id) values ( ?, ? )';
+  my $sth     = $dbh->prepare($sql);
+  my $rv      = $sth->execute($user_id, $set_id);
 
   unless ($rv) {
     error("Failed to create new session for user: $user_id", 1);
   }
 
+  # Get the newly created session's id
   my $session_id  = get_session_id($dbh, $user_id);
-  my $set_id      = get_set_id($dbh, $user_id);
 
   my %session = (
     id          => $session_id,
@@ -641,6 +785,25 @@ sub read_config {
   }
 
   return \%options;
+}
+
+sub get_limit {
+  my $dbh     = shift;
+  my $user_id = shift;
+  my $key     = shift;
+
+  my $sql = 'select direction from user_data where key = ? and user_id = ?';
+  my $sth = $dbh->prepare($sql);
+  $sth->execute($key, $user_id);
+  my ($dir) = $sth->fetchrow_array;
+
+  $sth->finish;
+
+  if ($dir) {
+    return $dir;
+  }
+
+  return undef;
 }
 
 sub read_data {
@@ -754,41 +917,37 @@ sub set_settings {
   my $user_id = get_user_id($dbh, $$options{user});
 
   my $set_any = read_data($dbh, $user_id, 'user', 0);
-  my $set_hi  = read_data($dbh, $user_id, 'user', 1);
+  my $set_dir = read_data($dbh, $user_id, 'user', 1);
 
-  $$set_hi{id} = $user_id;
+  my $skip_write = 0;
+
+  $$set_dir{id} = $user_id;
 
   if (defined $key) {
-    if (defined $$set_any{$key}) {
-      if (defined $val) {
-        $$set_hi{$key} = $val;
+    if (defined $val) {
+      if (defined $$set_any{$key}) {
+        $$set_dir{$key} = $val;
         printf "Set %s = %s\n", $key, $val;
-      } else {
-        printf "Value to set not supplied\n", $key, $val;
-      }
-    } elsif (defined $$set_hi{$key}) {
-      if (defined $val) {
-        if ($val > $$set_hi{$key}) {
-          $$set_hi{$key} = $val;
+      } elsif (defined $$set_dir{$key}) {
+        my $limit = get_limit($dbh, $user_id, $key);
+        if (($limit eq '>' and $val > $$set_dir{$key}) or
+            ($limit eq '<' and $val < $$set_dir{$key})) {
+          $$set_dir{$key} = $val;
           printf "Set %s = %s\n", $key, $val;
         } else {
           printf "Unable to set %s = %s\n", $key, $val;
+          $skip_write = 1;
         }
-      } else {
-        printf "Value to set not supplied\n", $key, $val;
       }
     } else {
-      if (defined $val) {
-        printf "Unable to set %s = %s\n", $key, $val;
-      } else {
-        printf "Value to set not supplied\n", $key, $val;
-      }
+      printf "Unable to set %s; no value supplied\n";
+      $skip_write = 1;
     }
   } else {
     printf "Please supply a key and value\n";
   }
 
-  write_data($dbh, $set_hi, 'user');
+  write_data($dbh, $set_dir, 'user');
 
   $dbh->disconnect;
 }
@@ -805,6 +964,11 @@ sub steady_beats {
 sub twitters {
   my $options = shift;
   my $message = shift;
+
+  if (not defined $message or $message eq '') {
+    printf "Tweet message does not exist or is empty.\n";
+    return;
+  }
 
   my $twitter = Net::Twitter->new(
     traits              => [qw/API::RESTv1_1/],
