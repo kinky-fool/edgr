@@ -93,9 +93,6 @@ sub do_session {
   # Create a new session
   my $session = init_session($dbh, $user_id);
 
-  # Save session data
-  write_data($dbh, $session, 'session');
-
   # Create the tempo program
   my @beats = make_beats($$session{bpm_min}, $$session{bpm_max},
                                               $$session{time_max});
@@ -107,10 +104,16 @@ sub do_session {
   my $message = sprintf "Session #%s started.", $$session{id};
   twitters($options, $message);
 
+  # Save session data
+  write_data($dbh, $session, 'session');
+
   # Spawn ctronome and play the script (fork this?)
   my $command  = "aoss $$options{ctronome} -c 1 -w1 $$options{tick_file} ";
      $command .= "-w2 $$options{tock_file} -p $$options{script_file}";
   system($command);
+
+  # Slideshow app adjusts the session_data table
+  $session = read_data($dbh, $$session{id}, 'session', 10);
 
   # Record time that session ended
   $$session{time_end} = time;
@@ -157,7 +160,7 @@ sub do_session {
     printf "Set complete! Draw a bead!\n";
 
     if ($$user{verbose} > 0) {
-      printf "%s out of %s (%0.2g%%) session%s passed.\n",
+      printf "%s out of %s (%0.0f%%) session%s passed.\n",
               $num_pass, $num_sessions, ($num_pass / $num_sessions)*100,
               ($num_sessions == 1) ? '' : 's';
     }
