@@ -99,7 +99,6 @@ sub do_session {
   # Generate the stroke tempo "program"
   write_script($$options{script_file}, $session, @beats);
 
-
   # Save session data
   write_data($dbh, $session, 'session');
 
@@ -131,6 +130,9 @@ sub do_session {
 
   # Save session data
   write_data($dbh, $session, 'session');
+
+  # Save user data (eval_session increments owed_sessions)
+  write_data($dbh, $user, 'user');
 
   # Get the ID of the current set
   my $set_id = get_set_id($dbh, $user_id);
