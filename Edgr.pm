@@ -440,7 +440,7 @@ sub eval_set {
       } elsif ($$user{verbose} >= 1) {
         printf "Streak of passes in a row required.\n";
       }
-      $tweet = sprintf("%s %s pass%s in a row required.", $$user{streak_owed},
+      $tweet = sprintf("%s pass%s in a row required.", $$user{streak_owed},
                                         ($$user{streak_owed} == 1) ? '' : 'es');
     }
 
