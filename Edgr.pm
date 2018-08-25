@@ -172,9 +172,11 @@ sub do_session {
 
     # If the session is complete, rewrite the tweet
     # TODO make tweets an array?
-    $tweet = sprintf "Set complete after %s session%s. " .
+    $tweet = sprintf "Set %s completed after %s session%s. " .
                           "New set starts; %s session%s owed.",
-                          $num_sessions, ($num_sessions == 1) ? '' : 's',
+                          $set_id,
+                          $num_sessions,
+                          ($num_sessions == 1) ? '' : 's',
                           $$user{sessions_owed},
                           ($$user{sessions_owed} == 1) ? '' : 's';
 
