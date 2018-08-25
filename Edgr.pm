@@ -613,7 +613,7 @@ sub init_session {
 
   my $sessions = get_sessions_by_keyval($dbh, 'user_id', $user_id);
   my $streak = get_win_streak($sessions);
-  my $fails   = get_fails($sessions, 20);
+  my $fails   = get_fails($sessions, 8);
 
   my $session = new_session($dbh, $user_id);
   my $user    = read_data($dbh, $user_id, 'user', 10);
