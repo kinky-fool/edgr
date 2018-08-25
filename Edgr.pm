@@ -257,15 +257,15 @@ sub eval_session {
     }
   }
 
-  if ($elapsed > $$user{goal_max}) {
-    my $goal_window = abs($$user{goal_max} - $$user{goal_min});
+  if ($elapsed > $$session{goal_max}) {
+    my $goal_window = abs($$session{goal_max} - $$session{goal_min});
     # Increase the chance based on the length of the goal window
     $chance += ($goal_window / 15) ** 2;
     # Increase the chance based on time after the goal window
-    $chance += (($elapsed - $$user{goal_max}) / 9) ** 2;
+    $chance += (($elapsed - $$session{goal_max}) / 9) ** 2;
   }
 
-  if ($elapsed < $$user{goal_min} or $elapsed > $$user{goal_max}) {
+  if ($elapsed < $$session{goal_min} or $elapsed > $$session{goal_max}) {
     for (1 .. $possible) {
       if ($chance >= rand(100) + 1) {
         $penalties++;
