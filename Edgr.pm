@@ -642,7 +642,7 @@ sub init_session {
 
   if ($endurance) {
     #printf "Endurance Round!\n";
-    my $bonus = rand(4) * 60;
+    my $bonus = rand(4 + int($streak / 2)) * 60;
     for (1 .. $fails) {
       $bonus += rand(4) * 60;
     }
