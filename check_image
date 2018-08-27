@@ -1,0 +1,31 @@
+#!/bin/bash
+
+image=$1
+number=$2
+
+user_id=1
+prefix=HaHa
+
+db="$HOME/.config/edgr.sqlite"
+
+base_image="${image##*/}"
+
+# Images that I probably shouldn't be using
+demerits=0
+if [[ "$base_image" =~ ^penalty ]]; then
+  demerits=$((RANDOM%8 + RANDOM%8 + RANDOM%8))
+fi
+
+# Images that have been added by add-bonus-pics
+if [[ "$base_image" =~ ^$prefix ]]; then
+  demerits=$(echo "$base_image" | sed -n "s/^$prefix-\([0-9]*\).*/\1/p")
+  if [[ -z "$demerits" || "$demerits" =~ [^0-9] ]]; then
+    demerits=1
+  fi
+fi
+
+if [[ "$demerits" -gt 0 ]]; then
+  sql="update user_data set val=val+$demerits where user_id=$user_id and key='slideshow'"
+  printf "Penalty +%s" "$demerits"
+  sqlite3 "$db" "$sql"
+fi
