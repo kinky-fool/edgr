@@ -1,0 +1,23 @@
+#!/bin/bash
+
+count=$1
+db="$HOME/.config/edgr.sqlite"
+
+increment_sessions() {
+  sql="update user_data set val=val+1 where user_id=1 and key='sessions_owed'"
+  sqlite3 "$db" "$sql"
+}
+
+if [[ -z "$count" || "$count" =~ [^0-9] ]]; then
+  count=1
+fi
+
+for i in $(seq 1 $count); do
+  increment_sessions
+done
+
+if [[ $count == 1 ]]; then
+  printf "Added 1 session\n"
+else
+  printf "Added %s sessions\n" "$count"
+fi
