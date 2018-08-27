@@ -1,0 +1,120 @@
+#!/bin/bash
+
+bonus_dir="$HOME/files/images/risky"
+image_dir="$HOME/files/downloads/images/game"
+trash_dir="$HOME/files/downloads/images/game/temp"
+
+prefix="HaHa"
+user_id=1
+
+reset_pictures() {
+  find $trash_dir -type f -exec mv {} "$image_dir"/ \;
+  find $image_dir -type f -name "${prefix}*" -delete
+}
+
+add_bonus() {
+  src_dir="$1"
+  dst_dir="$2"
+  prefix="$3"
+
+  find "$src_dir" -maxdepth 1 -type f -print0 \
+    | shuf -z -n 1 \
+    | while read -rd $'\0' image; do
+    suffix="${image##*.}"
+
+    points=$(echo $image | grep -Eo '[0-9]+pts' | sed -e 's/pts//')
+    new_image=$(mktemp "$dst_dir/$prefix-$points-XXXXXXXXXX.$suffix")
+    cp -f "$image" "$new_image"
+  done
+}
+
+sub_normal() {
+  count=1
+
+  find "$image_dir" -maxdepth 1 -name "$prefix-*" -prune -o -type f -print0 \
+    | shuf -z \
+    | tail -z -n $count \
+    | while read -rd $'\0' image; do
+    mv "$image" "$trash_dir"
+  done
+}
+
+db="$HOME/.config/edgr.sqlite"
+pass=0
+
+streak_fail=0
+streak_pass=0
+streak_fail_max=0
+streak_pass_max=0
+
+pics_penalty=$(find "$image_dir" -maxdepth 1 -type f -name "$prefix-*" | wc -l)
+pics_normal=$(find "$image_dir" -maxdepth 1 -type f ! -name "$prefix-*" | wc -l)
+
+if [[ $((pics_penalty * 100 / (pics_penalty + pics_normal))) -gt 15 ]]; then
+  # Mercy reset, when penalty pictures compose 25%+ of the pictures
+  reset_pictures
+  pics_penalty=$(find "$image_dir" -maxdepth 1 -type f -name "$prefix-*" | wc -l)
+  pics_normal=$(find "$image_dir" -maxdepth 1 -type f ! -name "$prefix-*" | wc -l)
+fi
+
+sql="select id from sets where user_id=$user_id order by id desc limit 1"
+set=$(sqlite3 "$db" "$sql")
+
+sql="select session_id from session_data where key = 'valid' and val = 1 and session_id in (select id from sessions where set_id=$set) order by session_id"
+sessions=( $(sqlite3 "$db" "$sql") )
+
+#if [[ ${#sessions[@]} -eq 0 ]]; then
+  #reset_pictures
+#fi
+
+if [[ ${#sessions[@]} -gt 0 ]]; then
+  for session in ${sessions[@]}; do
+    pass=0
+
+    sql="select val from session_data where key='time_start' and session_id=$session"
+    start=$(printf "%0.0f" "$(sqlite3 "$db" "$sql")")
+
+    sql="select val from session_data where key='time_end' and session_id=$session"
+    end=$(printf "%0.0f" "$(sqlite3 "$db" "$sql")")
+
+    sql="select val from session_data where key='goal_min' and session_id=$session"
+    goal_min=$(printf "%0.0f" "$(sqlite3 "$db" "$sql")")
+
+    sql="select val from session_data where key='goal_max' and session_id=$session"
+    goal_max=$(printf "%0.0f" "$(sqlite3 "$db" "$sql")")
+
+    length=$((end - start))
+
+    if [[ "$length" < "$goal_min" && "$length" > "$goal_max" ]]; then
+      pass=1
+      streak_pass=$((streak_pass + 1))
+      if [[ $streak_pass > $streak_pass_max ]]; then
+        streak_pass_max=$streak_pass
+      fi
+      streak_fail=0
+    else
+      streak_fail=$((streak_fail + 1))
+      if [[ $streak_fail > $streak_fail_max ]]; then
+        streak_fail_max=$streak_fail
+      fi
+      streak_pass=0
+    fi
+  done
+fi
+
+penalty=$((pics_normal * 1 / 100))
+
+#for fail in $(seq 1 $streak_fail); do
+#  penalty=$((penalty + penalty))
+#done
+#
+#penalty=$((penalty + (pics_normal * $streak_fail_max / 100)))
+#
+#for pass in $(seq 1 $streak_pass); do
+#  penalty=$((penalty - (pics_normal * $pass / 600)))
+#done
+
+for point in $(seq 1 $penalty); do
+  add_bonus "$bonus_dir" "$image_dir" "$prefix"
+  sub_normal
+done
