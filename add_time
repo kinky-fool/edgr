@@ -8,12 +8,12 @@ start_time="$4"
 base_image="${image##*/}"
 
 remains_file=".edge_remains"
+if [[ ! -e "$remains_file" ]]; then
+  echo 0 > "$remains_file"
+fi
 
 edge_after=$(< "$time_file")
 remaining=$(< "$remains_file")
-if [[ ! "$remaining" =~ ^[0-9]+$ ]]; then
-  remaining=0
-fi
 
 now=$(date "+%s")
 left=$((edge_after - now))
