@@ -7,20 +7,32 @@ start_time="$4"
 
 base_image="${image##*/}"
 
+remains_file=".edge_remains"
+
 edge_after=$(< "$time_file")
+remaining=$(< "$remains_file")
+if [[ ! "$remaining" =~ ^[0-9]+$ ]]; then
+  remaining=0
+fi
+
 now=$(date "+%s")
 left=$((edge_after - now))
 max=$((start_time * 3))
 
 points=$(echo "$image" | grep -Eo '[0-9]+pts' | sed -e 's/pts$//')
 if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
-  seconds=$((points * secs))
+  remaining=$((remaining + points))
+  seconds=$((remaining * secs))
   if [[ "$edge_after" -le "$now" ]] || [[ "$left" -ge "$max" ]]; then
     edge_after=$((now + start_time + seconds))
   else
     edge_after=$((edge_after + seconds))
   fi
   printf "time added\n"
+else
+  if [[ "$remaining" -gt 0 ]]; then
+    remaining=$((remaining - 1))
+  fi
 fi
 
 left=$((edge_after - now))
@@ -35,4 +47,5 @@ else
   fi
 fi
 
+echo "$remaining" > "$remains_file"
 echo "$edge_after" > "$time_file"
