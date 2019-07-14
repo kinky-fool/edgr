@@ -1,0 +1,79 @@
+#!/bin/bash
+
+source $HOME/lib/edgr_funcs.sh
+
+script="$HOME/projects/edgr/add_time"
+time_file="$HOME/.edge_after"
+images="$HOME/files/images/porn_pics"
+slideshow="$HOME/.slideshow"
+
+now=$(date "+%s")
+
+dupes=80
+start_time=90
+secs=$((RANDOM % 5 + 5))
+
+for i in {1..6}; do
+  roll=$((RANDOM%8))
+  case $roll in
+    0)
+      dupes=$((dupes + (RANDOM % 20)))
+      dupes=$((dupes + (RANDOM % 20)))
+      dupes=$((dupes + (RANDOM % 20)))
+      dupes=$((dupes + (RANDOM % 20)))
+      dupes=$((dupes + (RANDOM % 20)))
+      ;;
+    1)
+      start_time=$((start_time + (RANDOM % 45)))
+      start_time=$((start_time + (RANDOM % 45)))
+      start_time=$((start_time + (RANDOM % 45)))
+      ;;
+    2)
+      secs=$((RANDOM % 5 + $secs))
+      secs=$((RANDOM % 5 + $secs))
+      while [[ $((RANDOM % 2)) -eq 0 ]]; do
+        secs=$((secs + 1))
+      done
+      ;;
+    3|4|5)
+      dupes=$((dupes + (RANDOM % 30)))
+      start_time=$((start_time + (RANDOM % 45)))
+      while [[ $((RANDOM % 2)) -eq 0 ]]; do
+        secs=$((secs + 1))
+      done
+      ;;
+  esac
+done
+
+echo $((start_time + now)) > "$time_file"
+
+random_pic_playlist "$HOME/files/images/porn_pics" 2200 > "$slideshow"
+random_pic_playlist "$HOME/files/images/captions" 1200 >> "$slideshow"
+random_pic_playlist "$HOME/files/images/risky" "$dupes" >> "$slideshow"
+
+# Shuffle the slideshow list
+shuf "$slideshow" -o "$slideshow"
+
+printf "time: %s\ndupes: %s\nsecs: %s\n" $start_time $dupes $secs
+
+$HOME/bin/feh -f "$slideshow" \
+  --info "$script %f $time_file $secs $start_time" \
+  --auto-zoom \
+  --hide-pointer \
+  --borderless \
+  --no-jump-on-resort \
+  --randomize \
+  --scale-down \
+  --image-bg black \
+  --geometry 1500x1080+0+0 \
+  --slideshow-delay 4 \
+  --slideshow-delay-min 2 \
+  --slideshow-delay-max 6 \
+  --fontpath /usr/share/fonts/truetype/dejavu/ \
+  --font DejaVuSans/18
+
+end_time=$(date +"%s")
+
+stroke_time=$((end_time - now))
+
+printf "\nStroked for %s\n" "$(sec_to_human $stroke_time)"

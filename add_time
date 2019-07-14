@@ -1,0 +1,38 @@
+#!/bin/bash
+
+image="$1"
+time_file="$2"
+secs="$3"
+start_time="$4"
+
+base_image="${image##*/}"
+
+edge_after=$(< "$time_file")
+now=$(date "+%s")
+left=$((edge_after - now))
+max=$((start_time * 3))
+
+points=$(echo "$image" | grep -Eo '[0-9]+pts' | sed -e 's/pts$//')
+if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
+  seconds=$((points * secs))
+  if [[ "$edge_after" -le "$now" ]] || [[ "$left" -ge "$max" ]]; then
+    edge_after=$((now + start_time + seconds))
+  else
+    edge_after=$((edge_after + seconds))
+  fi
+  printf "time added\n"
+fi
+
+left=$((edge_after - now))
+
+if [[ "$now" -ge "$edge_after" ]]; then
+  printf "edge\n"
+else
+  if [[ "$left" -ge "$max" ]]; then
+    printf "edge\n"
+  else
+    printf "%s\n" "$left"
+  fi
+fi
+
+echo "$edge_after" > "$time_file"
