@@ -22,6 +22,7 @@ for i in {1..6}; do
       dupes=$((dupes + (RANDOM % 20)))
       dupes=$((dupes + (RANDOM % 20)))
       dupes=$((dupes + (RANDOM % 20)))
+      dupes=$((dupes + (RANDOM % 20)))
       ;;
     1)
       start_time=$((start_time + (RANDOM % 45)))
@@ -38,6 +39,7 @@ for i in {1..6}; do
     3|4|5)
       dupes=$((dupes + (RANDOM % 30)))
       start_time=$((start_time + (RANDOM % 45)))
+      secs=$((RANDOM % 5 + $secs))
       while [[ $((RANDOM % 2)) -eq 0 ]]; do
         secs=$((secs + 1))
       done
