@@ -24,7 +24,9 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
   remaining=$((remaining + points))
   seconds=$((remaining * secs))
   if [[ "$edge_after" -le "$now" ]] || [[ "$left" -ge "$max" ]]; then
-    edge_after=$((now + start_time + seconds))
+    remaining=$((remaining * 2))
+    seconds=$((remaining * secs))
+    edge_after=$((now + seconds))
   else
     edge_after=$((edge_after + seconds))
   fi
