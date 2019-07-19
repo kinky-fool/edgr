@@ -9,20 +9,17 @@ slideshow="$HOME/.slideshow"
 
 now=$(date "+%s")
 
-dupes=80
+dupes=120
 start_time=90
-secs=$((RANDOM % 5 + 5))
+secs=$((RANDOM % 3 + 3))
 
 for i in {1..6}; do
   roll=$((RANDOM%8))
   case $roll in
     0)
-      dupes=$((dupes + (RANDOM % 20)))
-      dupes=$((dupes + (RANDOM % 20)))
-      dupes=$((dupes + (RANDOM % 20)))
-      dupes=$((dupes + (RANDOM % 20)))
-      dupes=$((dupes + (RANDOM % 20)))
-      dupes=$((dupes + (RANDOM % 20)))
+      for i in {1..10}; do
+        dupes=$((dupes + (RANDOM % 10)))
+      done
       ;;
     1)
       start_time=$((start_time + (RANDOM % 45)))
@@ -30,19 +27,15 @@ for i in {1..6}; do
       start_time=$((start_time + (RANDOM % 45)))
       ;;
     2)
-      secs=$((RANDOM % 5 + $secs))
-      secs=$((RANDOM % 5 + $secs))
-      while [[ $((RANDOM % 2)) -eq 0 ]]; do
-        secs=$((secs + 1))
-      done
+      secs=$((RANDOM % 2 + $secs))
+      secs=$((RANDOM % 2 + $secs))
       ;;
     3|4|5)
-      dupes=$((dupes + (RANDOM % 30)))
+      dupes=$((dupes + (RANDOM % 10)))
+      dupes=$((dupes + (RANDOM % 10)))
+      dupes=$((dupes + (RANDOM % 10)))
       start_time=$((start_time + (RANDOM % 45)))
-      secs=$((RANDOM % 5 + $secs))
-      while [[ $((RANDOM % 2)) -eq 0 ]]; do
-        secs=$((secs + 1))
-      done
+      secs=$((RANDOM % 2 + $secs))
       ;;
   esac
 done
