@@ -59,7 +59,10 @@ sub check_cooldown {
   my $dbh     = shift;
   my $user_id = shift;
 
+  # Get the session_id for the most recent session
   my $session_id  = get_session_id($dbh, $user_id);
+
+  # If a session_id was returned (there /was/ a 'most recent' session...
   if ($session_id) {
     my $user        = read_data($dbh, $user_id, 'user', 10);
     my $session     = read_data($dbh, $session_id, 'session', 10);
@@ -67,11 +70,12 @@ sub check_cooldown {
     if ($$session{valid} == 1) {
       my $remaining = $$session{time_end} - (time - $$user{cooldown});
       if ($remaining > 0) {
-        printf "Wait %s longer\n", sec_to_human_precise($remaining);
-        exit;
+        return $remaining;
       }
     }
   }
+
+  return 0;
 }
 
 sub db_connect {
@@ -88,7 +92,14 @@ sub do_session {
   my $user_id = get_user_id($dbh, $$options{user});
 
   # See if player has waited long enough to start a new session
-  check_cooldown($dbh, $user_id);
+  my $cold = check_cooldown($dbh, $user_id);
+  if ($cold) {
+    printf "Wait %s longer\n", sec_to_human_precise($cold);
+    my $tweet = sprintf("New session attempted with %s remaining for cooldown.",
+                        sec_to_human_precise($cold));
+    twitters($options, $tweet);
+    exit;
+  }
 
   # Create a new session
   my $session = init_session($dbh, $user_id);
@@ -244,14 +255,15 @@ sub eval_session {
   my $possible  = $$user{slideshow};
   my $penalties = $$user{fail_penalty};
 
-  if ($elapsed < $$user{goal_min}) {
+  if ($elapsed < $$session{goal_min}) {
     # Too fast
     if ($elapsed > $$user{time_min}) {
       # Valid session
-      my $percent = $elapsed / $$user{goal_min} * 100;
+      my $percent = $elapsed / $$session{goal_min} * 100;
 
       foreach my $limit (90, 60, 45, 30, 20, 10, 5) {
         if ($percent < $limit) {
+          printf "percent $percent under limit $limit\n";
           $possible += 5;
           $chance += 5;
         }
@@ -266,6 +278,8 @@ sub eval_session {
     # Increase the chance based on time after the goal window
     $chance += (($elapsed - $$session{goal_max}) / 9) ** 2;
   }
+
+  printf "possible: %s\n", $possible;
 
   if ($elapsed < $$session{goal_min} or $elapsed > $$session{goal_max}) {
     for (1 .. $possible) {
@@ -614,8 +628,6 @@ sub init_session {
   my $user_id = shift;
 
   my $sessions = get_sessions_by_keyval($dbh, 'user_id', $user_id);
-  my $streak = get_win_streak($sessions);
-  my $fails   = get_fails($sessions, 8);
 
   my $session = new_session($dbh, $user_id);
   my $user    = read_data($dbh, $user_id, 'user', 10);
@@ -635,19 +647,30 @@ sub init_session {
   $$session{verbose}      = $$user{verbose};
 
   my $endurance = 0;
+
+  my $streak  = get_win_streak($sessions);
+  my $fails   = get_fails($sessions, 8);
+
   while ($streak >= 2) {
-    if (int(rand(10)) == 0) {
-      $endurance = 1;
+    if (int(rand(6)) == 0) {
+      $endurance++;
     }
     $streak -= 2;
   }
 
+  for (1 .. 5) {
+    if (int(rand(10)) == 0) {
+      $endurance++;
+    }
+  }
+
   if ($endurance) {
     #printf "Endurance Round!\n";
-    my $bonus = rand(4 + int($streak / 2)) * 60;
-    for (1 .. $fails) {
-      $bonus += rand(4) * 60;
+    my $bonus = 0;
+    for (1 .. $endurance + $fails) {
+      $bonus = int(rand(15) + rand(45));
     }
+
     $$session{goal_min} += $bonus;
     $$session{goal_max} += $bonus;
     $$session{time_max} += $bonus;
