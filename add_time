@@ -1,53 +1,66 @@
 #!/bin/bash
 
 image="$1"
-time_file="$2"
-secs="$3"
-start_time="$4"
+pics_count="$2"
+pics="$3"
+start_pics="$4"
+max=$((start_pics * 3))
 
 base_image="${image##*/}"
 
-remains_file=".edge_remains"
+remains_file="$HOME/.edge_remains"
 if [[ ! -e "$remains_file" ]]; then
   echo 0 > "$remains_file"
 fi
 
-edge_after=$(< "$time_file")
-remaining=$(< "$remains_file")
+countdown=10
 
-now=$(date "+%s")
-left=$((edge_after - now))
-max=$((start_time * 3))
+edge_after=$(< "$pics_count")
+remains=$(< "$remains_file")
+
+edge=0
+if [[ "$edge_after" -ge "$max" ]] || [[ "$edge_after" -le 0 ]]; then
+  edge=1
+fi
 
 points=$(echo "$image" | grep -Eo '[0-9]+pts' | sed -e 's/pts$//')
 if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
-  remaining=$((remaining + points))
-  seconds=$((remaining * secs))
-  if [[ "$edge_after" -le "$now" ]] || [[ "$left" -ge "$max" ]]; then
-    remaining=$((remaining * 2))
-    seconds=$((remaining * secs))
-    edge_after=$((now + seconds))
+  new_pics=$(((remains + points) * pics))
+  # images that are worth points
+  if [[ "$edge" -ne 0 ]]; then
+    edge_after=$((new_pics * 2))
   else
-    edge_after=$((edge_after + seconds))
+    edge_after=$((edge_after + new_pics))
   fi
-  printf "time added\n"
 else
-  if [[ "$remaining" -gt 0 ]]; then
-    remaining=$((remaining - 1))
+  points=0
+fi
+
+if [[ "$points" -gt 0 ]]; then
+  if [[ "$edge" -ne 0 ]]; then
+    echo "$(((points * 3) + remains))" > "$remains_file"
+    edge=0
+  else
+    echo "$(((points * 2) + remains))" > "$remains_file"
+  fi
+else
+  if [[ "$edge" -ne 0 ]]; then
+    echo "$((remains + 1))" > "$remains_file"
+  else
+    if [[ "$remains" -gt 0 ]]; then
+      echo "$((remains - 1))" > "$remains_file"
+    fi
   fi
 fi
 
-left=$((edge_after - now))
-
-if [[ "$now" -ge "$edge_after" ]]; then
+if [[ "$edge" -ne 0 ]]; then
   printf "edge\n"
-else
-  if [[ "$left" -ge "$max" ]]; then
-    printf "edge\n"
-  else
-    printf "%s\n" "$left"
-  fi
 fi
 
-echo "$remaining" > "$remains_file"
-echo "$edge_after" > "$time_file"
+if [[ "$points" -gt 0 ]] || \
+  [[ "$edge_after" -le "$countdown" ]] && [[ "$edge_after" -gt 0 ]]; then
+  printf "%4i\n" "$edge_after"
+fi
+
+edge_after=$((edge_after - 1))
+echo "$edge_after" > "$pics_count"
