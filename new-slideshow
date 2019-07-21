@@ -3,18 +3,18 @@
 source $HOME/lib/edgr_funcs.sh
 
 script="$HOME/projects/edgr/add_time"
-time_file="$HOME/.edge_after"
+pics_count="$HOME/.edge_pics"
 images="$HOME/files/images/porn_pics"
 slideshow="$HOME/.slideshow"
 
 now=$(date "+%s")
 
 dupes=120
-start_time=90
-secs=$((RANDOM % 3 + 3))
+start_pics=20
+pics=2
 
 for i in {1..6}; do
-  roll=$((RANDOM%8))
+  roll=$((RANDOM%6))
   case $roll in
     0)
       for i in {1..10}; do
@@ -22,25 +22,22 @@ for i in {1..6}; do
       done
       ;;
     1)
-      start_time=$((start_time + (RANDOM % 45)))
-      start_time=$((start_time + (RANDOM % 45)))
-      start_time=$((start_time + (RANDOM % 45)))
+      start_pics=$((start_pics + (RANDOM % 10)))
+      start_pics=$((start_pics + (RANDOM % 10)))
+      start_pics=$((start_pics + (RANDOM % 10)))
       ;;
-    2)
-      secs=$((RANDOM % 2 + $secs))
-      secs=$((RANDOM % 2 + $secs))
-      ;;
-    3|4|5)
+    2|3)
       dupes=$((dupes + (RANDOM % 10)))
       dupes=$((dupes + (RANDOM % 10)))
       dupes=$((dupes + (RANDOM % 10)))
-      start_time=$((start_time + (RANDOM % 45)))
-      secs=$((RANDOM % 2 + $secs))
+      start_pics=$((start_pics + (RANDOM % 10)))
+      start_pics=$((start_pics + (RANDOM % 10)))
       ;;
   esac
 done
 
-echo $((start_time + now)) > "$time_file"
+echo 0 > "$HOME/.edge_remains"
+echo "$start_pics" > "$pics_count"
 
 random_pic_playlist "$HOME/files/images/porn_pics" 2200 > "$slideshow"
 random_pic_playlist "$HOME/files/images/captions" 1200 >> "$slideshow"
@@ -49,10 +46,10 @@ random_pic_playlist "$HOME/files/images/risky" "$dupes" >> "$slideshow"
 # Shuffle the slideshow list
 shuf "$slideshow" -o "$slideshow"
 
-printf "time: %s\ndupes: %s\nsecs: %s\n" $start_time $dupes $secs
+printf "dupes: %s\npics per point: %s\n" $dupes $pics
 
 $HOME/bin/feh -f "$slideshow" \
-  --info "$script %f $time_file $secs $start_time" \
+  --info "$script %f $pics_count $pics $start_pics" \
   --auto-zoom \
   --hide-pointer \
   --borderless \
