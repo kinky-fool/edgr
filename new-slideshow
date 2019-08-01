@@ -10,7 +10,7 @@ slideshow="$HOME/.slideshow"
 now=$(date "+%s")
 
 dupes=120
-start_pics=20
+start_pics=25
 pics=2
 
 for i in {1..6}; do
@@ -46,7 +46,7 @@ random_pic_playlist "$HOME/files/images/risky" "$dupes" >> "$slideshow"
 # Shuffle the slideshow list
 shuf "$slideshow" -o "$slideshow"
 
-printf "dupes: %s\npics per point: %s\n" $dupes $pics
+printf "dupes: %s\nstart pics: %s\n" $dupes $start_pics
 
 $HOME/bin/feh -f "$slideshow" \
   --info "$script %f $pics_count $pics $start_pics" \
