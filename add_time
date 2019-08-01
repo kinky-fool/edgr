@@ -4,7 +4,7 @@ image="$1"
 pics_count="$2"
 pics="$3"
 start_pics="$4"
-max=$((start_pics * 3))
+max=300
 
 base_image="${image##*/}"
 
@@ -15,6 +15,17 @@ fi
 
 countdown=10
 
+psych_file="$HOME/.edgr_psych"
+psych=0
+
+if [[ -e "$psych_file" ]]; then
+  psych=$(< "$psych_file")
+  if [[ $((edge_after - psych)) -gt 40 ]]; then
+    rm -f "$psych_file"
+    psych=0
+  fi
+fi
+
 edge_after=$(< "$pics_count")
 remains=$(< "$remains_file")
 
@@ -23,43 +34,123 @@ if [[ "$edge_after" -ge "$max" ]] || [[ "$edge_after" -le 0 ]]; then
   edge=1
 fi
 
+counting_down=0
+
+if [[ "$edge_after" -le "$countdown" && "$edge_after" -gt 0 ]]; then
+  counting_down=$edge_after
+fi
+
+fake_edge=0
+if [[ "$edge_after" -le "$((psych + countdown))" && \
+      "$edge_after" -gt "$psych" ]]; then
+  counting_down=$((edge_after - psych))
+  fake_edge=1
+fi
+
 points=$(echo "$image" | grep -Eo '[0-9]+pts' | sed -e 's/pts$//')
 if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
-  new_pics=$(((remains + points) * pics))
-  # images that are worth points
+  multiplier=$pics
+
+  if [[ "$remains" -gt 0 ]]; then
+    multiplier=$((multiplier + 1))
+    for i in {1..3}; do
+      if [[ $((RANDOM%3)) -eq 0 ]]; then
+        multiplier=$((multiplier + 1))
+      fi
+    done
+  fi
+
+  if [[ "$counting_down" -gt 0 ]]; then
+    multiplier=$((multiplier + 2))
+    for i in {1..3}; do
+      if [[ $((RANDOM%2)) -eq 0 ]]; then
+        multiplier=$((multiplier + 1))
+      fi
+    done
+    if [[ "$fake_edge" -ne 0 ]]; then
+      edge_after=$((psych + countdown))
+    else
+      edge_after=$((countdown))
+    fi
+  fi
+
   if [[ "$edge" -ne 0 ]]; then
-    edge_after=$((new_pics * 2))
+    multiplier=$((multiplier + 2))
+    for i in {1..3}; do
+      if [[ $((RANDOM%2)) -eq 0 ]]; then
+        multiplier=$((multiplier + 1))
+      fi
+    done
+  fi
+
+  #printf "+%i * %i\n" $points $multiplier
+  #printf "+%i\n" $((points * multiplier))
+
+  #for i in {1..6}; do
+  #  if [[ $((RANDOM%3)) -eq 0 ]]; then
+  #    multiplier=$((multiplier - 1))
+  #  fi
+
+  #  if [[ $((RANDOM%3)) -eq 0 && $edge -eq 0 && $counting_down -eq 0 ]]; then
+  #    multiplier=$((multiplier - 1))
+  #  fi
+  #done
+
+  chance=2
+  for i in $(seq 1 $((multiplier * 5 / 2))); do
+    if [[ $((RANDOM % chance)) -eq 0 ]]; then
+      multiplier=$((multiplier - 1))
+      chance=$((chance + 1))
+    fi
+  done
+
+  if [[ "$multiplier" -lt 0 ]]; then
+    multiplier=0
+  fi
+
+  #printf "+%i * %i\n" $points $multiplier
+  #printf "+%i\n" $((points * multiplier))
+  add_pics=$((points * multiplier))
+
+  if [[ "$edge" -ne 0 ]]; then
+    edge_after=$((start_pics + add_pics))
   else
-    edge_after=$((edge_after + new_pics))
+    edge_after=$((edge_after + add_pics))
   fi
 else
   points=0
+
+  if [[ "$edge" -ne 0 ]]; then
+    printf "edge\n"
+  elif [[ "$edge_after" -ne 0 && "$edge_after" -eq "$psych" ]]; then
+    printf "psych!\n"
+    rm -f "$psych_file"
+  elif [[ "$counting_down" -gt 0 ]]; then
+    printf "%4i\n" "$counting_down"
+  fi
+fi
+
+
+if [[ $((RANDOM % 15)) -eq 0 && "$psych" -eq 0 ]]; then
+  psych=$((edge_after - (countdown + (RANDOM % 10))))
+  if [[ "$psych" -gt "$countdown" ]]; then
+    echo "$psych" > "$psych_file"
+  fi
 fi
 
 if [[ "$points" -gt 0 ]]; then
+  remains=$((remains + (points * 2)))
   if [[ "$edge" -ne 0 ]]; then
-    echo "$(((points * 3) + remains))" > "$remains_file"
+    remains=$((remains + points))
     edge=0
-  else
-    echo "$(((points * 2) + remains))" > "$remains_file"
+  elif [[ "$counting_down" -gt 0 ]]; then
+    remains=$((remains + points))
   fi
+  echo "$remains" > "$remains_file"
 else
-  if [[ "$edge" -ne 0 ]]; then
-    echo "$((remains + 1))" > "$remains_file"
-  else
-    if [[ "$remains" -gt 0 ]]; then
-      echo "$((remains - 1))" > "$remains_file"
-    fi
+  if [[ "$remains" -gt 0 ]]; then
+    echo "$((remains - 1))" > "$remains_file"
   fi
-fi
-
-if [[ "$edge" -ne 0 ]]; then
-  printf "edge\n"
-fi
-
-if [[ "$points" -gt 0 ]] || \
-  [[ "$edge_after" -le "$countdown" ]] && [[ "$edge_after" -gt 0 ]]; then
-  printf "%4i\n" "$edge_after"
 fi
 
 edge_after=$((edge_after - 1))
