@@ -52,13 +52,17 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
   slap=0
 
   for i in $(seq 1 $points); do
-    if [[ $((RANDOM%3)) -eq 0 ]]; then
+    if [[ $((RANDOM%5)) -lt 3 ]]; then
       slap=$((slap + 1))
     fi
   done
 
   if [[ "$remains" -gt 0 ]]; then
-    slap=$((slap + 1))
+    for i in $(seq 1 $points); do
+      if [[ $((RANDOM%4)) -eq 0 ]]; then
+        slap=$((slap + 1))
+      fi
+    done
     multiplier=$((multiplier + 1))
     for i in {1..6}; do
       if [[ $((RANDOM%3)) -eq 0 ]]; then
@@ -69,7 +73,11 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
   fi
 
   if [[ "$counting_down" -gt 0 ]]; then
-    slap=$((slap + 1))
+    for i in $(seq 1 $points); do
+      if [[ $((RANDOM%3)) -eq 0 ]]; then
+        slap=$((slap + 1))
+      fi
+    done
     pics_done=$((countdown - counting_down + 1))
     multiplier=$((multiplier + 1))
     for i in {1..6}; do
@@ -87,7 +95,11 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
   fi
 
   if [[ "$edge" -ne 0 || "$edge_after" -eq "$psych" ]]; then
-    slap=$((slap + 1))
+    for i in $(seq 1 $points); do
+      if [[ $((RANDOM%3)) -eq 0 ]]; then
+        slap=$((slap + 1))
+      fi
+    done
     points=$((points + 2))
     multiplier=$((multiplier + 2))
     for i in {1..6}; do
