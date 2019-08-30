@@ -4,6 +4,7 @@ image="$1"
 pics_count="$2"
 pics="$3"
 start_pics="$4"
+countdown="$5"
 max=300
 
 base_image="${image##*/}"
@@ -13,17 +14,11 @@ if [[ ! -e "$remains_file" ]]; then
   echo 0 > "$remains_file"
 fi
 
-countdown=10
-
 psych_file="$HOME/.edgr_psych"
 psych=0
 
 if [[ -e "$psych_file" ]]; then
   psych=$(< "$psych_file")
-  if [[ $((edge_after - psych)) -gt 40 ]]; then
-    rm -f "$psych_file"
-    psych=0
-  fi
 fi
 
 edge_after=$(< "$pics_count")
@@ -54,8 +49,16 @@ points=$(echo "$image" | grep -Eo '[0-9]+pts' | sed -e 's/pts$//')
 if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
   multiplier=$pics
   mercy=1
+  slap=0
+
+  for i in $(seq 1 $points); do
+    if [[ $((RANDOM%3)) -eq 0 ]]; then
+      slap=$((slap + 1))
+    fi
+  done
 
   if [[ "$remains" -gt 0 ]]; then
+    slap=$((slap + 1))
     multiplier=$((multiplier + 1))
     for i in {1..6}; do
       if [[ $((RANDOM%3)) -eq 0 ]]; then
@@ -66,6 +69,8 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
   fi
 
   if [[ "$counting_down" -gt 0 ]]; then
+    slap=$((slap + 1))
+    pics_done=$((countdown - counting_down + 1))
     multiplier=$((multiplier + 1))
     for i in {1..6}; do
       if [[ $((RANDOM%3)) -eq 0 ]]; then
@@ -73,23 +78,17 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
         mercy=$((mercy + 1))
       fi
     done
-    if [[ "$fake_edge" -ne 0 ]]; then
-      pics_done=$((countdown - (edge_after - psych)))
-      new_edge=$((new_edge + pics_done))
-      if [[ $((RANDOM%2)) -eq 0 ]]; then
+    for i in {1..4}; do
+      if [[ $((RANDOM % i)) -eq 0 ]]; then
         new_edge=$((new_edge + pics_done))
       fi
-    else
-      pics_done=$((countdown - edge_after))
-      new_edge=$((new_edge + pics_done))
-      if [[ $((RANDOM%2)) -eq 0 ]]; then
-        new_edge=$((new_edge + pics_done))
-      fi
-      remains=$((remains + (new_edge - edge_after)))
-    fi
+    done
+    remains=$((remains + (new_edge - edge_after)))
   fi
 
   if [[ "$edge" -ne 0 || "$edge_after" -eq "$psych" ]]; then
+    slap=$((slap + 1))
+    points=$((points + 2))
     multiplier=$((multiplier + 2))
     for i in {1..6}; do
       if [[ $((RANDOM%3)) -eq 0 ]]; then
@@ -98,8 +97,10 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
       fi
     done
     if [[ "$edge_after" -lt 0 ]]; then
-      new_edge=$((new_edge + (edge_after * -1)))
+      new_edge=$((new_edge + (edge_after * -1 * 3)))
     fi
+
+    new_edge=$((new_edge + countdown))
   fi
 
   chance=2
@@ -119,17 +120,34 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
   fi
 
   add_pics=$((points * multiplier))
+  new_edge=$((new_edge + add_pics))
 
-  if [[ "$edge" -ne 0 || "$edge_after" -eq "$psych" ]]; then
-    new_edge=$((new_edge + add_pics + countdown))
-  else
-    new_edge=$((new_edge + add_pics))
+  if [[ $((RANDOM % 8)) -eq 0 ]]; then
+    new_psych=$((edge_after - 1 - $((RANDOM%4)) - $countdown))
+    if [[ "$new_psych" -gt "$psych" ]]; then
+      psych=$new_psych
+      echo "$psych" > "$psych_file"
+    fi
   fi
+
+  if [[ $((new_edge - edge_after)) -gt 20 && $((RANDOM % 6)) -eq 0 ]]; then
+    psych=$((new_edge - 2 - $((RANDOM%5)) - $countdown ))
+    echo "$psych" > "$psych_file"
+  fi
+
+  if [[ $slap -ne 0 ]]; then
+    if [[ $slap -eq 1 ]]; then
+      printf "   slap balls 1 time\n"
+    else
+      printf "   slap balls %i times\n" "$slap"
+    fi
+  fi
+
+  printf "\n" $((new_edge - edge_after))
 
   remains=$((remains + (points * multiplier) / 2))
-  if [[ "$edge" -ne 0 ]]; then
-    edge=0
-  fi
+
+  edge=0
 else
   points=0
 
@@ -148,7 +166,7 @@ else
 fi
 
 if [[ $((RANDOM % 15)) -eq 0 && "$psych" -eq 0 ]]; then
-  psych=$((edge_after - (countdown + (RANDOM % 10))))
+  psych=$((edge_after - (1 + countdown + (RANDOM % 10))))
   if [[ "$psych" -gt "$countdown" ]]; then
     echo "$psych" > "$psych_file"
   fi

@@ -9,29 +9,27 @@ slideshow="$HOME/.slideshow"
 
 now=$(date "+%s")
 
-dupes=120
-start_pics=25
+dupes=140
+start_pics=30
+countdown=5
 pics=2
 
-for i in {1..6}; do
-  roll=$((RANDOM%6))
+for i in {0..15}; do
+  roll=$((RANDOM%8))
   case $roll in
     0)
-      for i in {1..10}; do
-        dupes=$((dupes + (RANDOM % 10)))
-      done
+      dupes=$((dupes + 10))
       ;;
     1)
-      start_pics=$((start_pics + (RANDOM % 10)))
-      start_pics=$((start_pics + (RANDOM % 10)))
-      start_pics=$((start_pics + (RANDOM % 10)))
+      start_pics=$((start_pics + 5))
       ;;
     2|3)
-      dupes=$((dupes + (RANDOM % 10)))
-      dupes=$((dupes + (RANDOM % 10)))
-      dupes=$((dupes + (RANDOM % 10)))
-      start_pics=$((start_pics + (RANDOM % 10)))
-      start_pics=$((start_pics + (RANDOM % 10)))
+      dupes=$((dupes + 10))
+      start_pics=$((start_pics + 5))
+      countdown=$((countdown + 1))
+      ;;
+    4)
+      countdown=$((countdown + 1))
       ;;
   esac
 done
@@ -39,8 +37,13 @@ done
 echo 0 > "$HOME/.edge_remains"
 echo "$start_pics" > "$pics_count"
 
-random_pic_playlist "$HOME/files/images/porn_pics" 2200 > "$slideshow"
-random_pic_playlist "$HOME/files/images/captions" 1200 >> "$slideshow"
+safe_pics=3400
+porn_pics=$((RANDOM % safe_pics))
+caption_pics=$((safe_pics - porn_pics))
+
+
+random_pic_playlist "$HOME/files/images/porn_pics" $porn_pics > "$slideshow"
+random_pic_playlist "$HOME/files/images/captions" $caption_pics >> "$slideshow"
 random_pic_playlist "$HOME/files/images/risky" "$dupes" >> "$slideshow"
 
 # Shuffle the slideshow list
@@ -49,7 +52,7 @@ shuf "$slideshow" -o "$slideshow"
 printf "dupes: %s\nstart pics: %s\n" $dupes $start_pics
 
 $HOME/bin/feh -f "$slideshow" \
-  --info "$script %f $pics_count $pics $start_pics" \
+  --info "$script %f $pics_count $pics $start_pics $countdown" \
   --auto-zoom \
   --hide-pointer \
   --borderless \
