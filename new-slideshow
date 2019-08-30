@@ -9,16 +9,19 @@ slideshow="$HOME/.slideshow"
 
 now=$(date "+%s")
 
-dupes=140
-start_pics=30
+dupes=170
+start_pics=45
 countdown=5
 pics=2
 
-for i in {0..15}; do
+for i in {0..10}; do
   roll=$((RANDOM%8))
   case $roll in
     0)
       dupes=$((dupes + 10))
+      if [[ $((RANDOM%2)) -eq 0 ]]; then
+        dupes=$((dupes + 5))
+      fi
       ;;
     1)
       start_pics=$((start_pics + 5))
