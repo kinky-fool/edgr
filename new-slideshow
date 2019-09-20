@@ -97,6 +97,7 @@ $HOME/bin/feh -f "$slideshow" \
   --slideshow-delay 4 \
   --slideshow-delay-min 2 \
   --slideshow-delay-max 6 \
+  --action1 "mv %F ~/files/images/rejects/%N" \
   --fontpath /usr/share/fonts/truetype/dejavu/ \
   --font DejaVuSans/18
 
