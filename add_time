@@ -155,6 +155,10 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
     fi
   fi
 
+  slaps=$(< $HOME/.edgr_slaps)
+  slaps=$((slaps + slap))
+  echo "$slaps" > "$HOME/.edgr_slaps"
+
   printf "\n" $((new_edge - edge_after))
 
   remains=$((remains + (points * multiplier) / 2))

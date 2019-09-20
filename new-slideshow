@@ -7,6 +7,8 @@ pics_count="$HOME/.edge_pics"
 images="$HOME/files/images/porn_pics"
 slideshow="$HOME/.slideshow"
 
+echo 0 > "$HOME/.edgr_slaps"
+
 now=$(date "+%s")
 
 dupes=170
@@ -52,7 +54,6 @@ random_pic_playlist "$HOME/files/images/risky" "$dupes" >> "$slideshow"
 # Shuffle the slideshow list
 shuf "$slideshow" -o "$slideshow"
 
-printf "dupes: %s\nstart pics: %s\n" $dupes $start_pics
 
 $HOME/bin/feh -f "$slideshow" \
   --info "$script %f $pics_count $pics $start_pics $countdown" \
@@ -75,3 +76,5 @@ end_time=$(date +"%s")
 stroke_time=$((end_time - now))
 
 printf "\nStroked for %s\n" "$(sec_to_human $stroke_time)"
+printf "dupes: %s\nstart pics: %s\ncountdown: %s\n" $dupes $start_pics $countdown
+printf "slaps: %s\n" $(< "$HOME/.edgr_slaps")
