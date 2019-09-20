@@ -7,6 +7,7 @@ pics_count="$HOME/.edge_pics"
 images="$HOME/files/images/porn_pics"
 slideshow="$HOME/.slideshow"
 
+rm -f "$HOME/.edgr_psych"
 echo 0 > "$HOME/.edgr_slaps"
 
 now=$(date "+%s")
