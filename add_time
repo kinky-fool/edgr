@@ -5,47 +5,63 @@ pics_count="$2"
 pics="$3"
 start_pics="$4"
 countdown_from="$5"
-max=300
 
-base_image="${image##*/}"
+countdown_slaps=25
+
+points=$(echo "$image" | grep -Eo '[0-9]+pts' | sed -e 's/pts$//')
 
 remains_file="$HOME/.edge_remains"
 if [[ ! -e "$remains_file" ]]; then
   echo 0 > "$remains_file"
 fi
 
-psych_file="$HOME/.edgr_psych"
-psych=0
-
-if [[ -e "$psych_file" ]]; then
-  psych=$(< "$psych_file")
-fi
-
 edge_after=$(< "$pics_count")
 edge_after=$((edge_after - 1))
+
+psych_file="$HOME/.edgr_psych"
+count_file="$HOME/.edgr_count"
+
+psych=0
+if [[ -e "$psych_file" ]]; then
+  psych=$(< "$psych_file")
+  if [[ "$psych" -gt "$edge_after" ]]; then
+    psych=0
+  fi
+fi
+
+count=0
+if [[ -e "$count_file" ]]; then
+  count=$(< "$count_file")
+fi
 
 new_edge=$edge_after
 remains=$(< "$remains_file")
 
 edge=0
-if [[ "$edge_after" -ge "$max" ]] || [[ "$edge_after" -le 0 ]]; then
+if [[ "$edge_after" -le 0 ]]; then
   edge=1
 fi
 
-counting_down=0
-
-if [[ "$edge_after" -le "$countdown_from" && "$edge_after" -gt 0 ]]; then
-  counting_down=$edge_after
-fi
-
-fake_edge=0
-if [[ "$edge_after" -le "$((psych + countdown_from))" && \
-      "$edge_after" -gt "$psych" ]]; then
+countdown=0
+counting_down=-1
+if [[ "$edge_after" -le "$((countdown_from + psych))" && \
+      "$edge_after" -ge "$psych" ]]; then
   counting_down=$((edge_after - psych))
-  fake_edge=1
+  if [[ "$counting_down" -ge 0 ]]; then
+    countdown=1
+  fi
 fi
 
-points=$(echo "$image" | grep -Eo '[0-9]+pts' | sed -e 's/pts$//')
+if [[ "$countdown" -ne 0 || "$edge" -ne 0 ]]; then
+  count=$((count + 1))
+else
+  count=0
+fi
+
+if [[ "$count" -gt 0 ]]; then
+  printf "count: %s\n" "$count"
+fi
+
 if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
   multiplier=$pics
   mercy=1
@@ -59,7 +75,7 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
 
   if [[ "$remains" -gt 0 ]]; then
     for i in $(seq 1 $points); do
-      if [[ $((RANDOM%4)) -eq 0 ]]; then
+      if [[ $((RANDOM%3)) -eq 0 ]]; then
         slap=$((slap + 1))
       fi
     done
@@ -72,13 +88,20 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
     done
   fi
 
-  if [[ "$counting_down" -gt 0 ]]; then
-    pics_done=$((countdown_from - counting_down + 1))
-    for i in $(seq 1 $((points + pics_done))); do
+  if [[ "$count" -gt 0 ]]; then
+    bonus=0
+    if [[ "$edge" -ne 0 ]]; then
+      bonus=$((bonus + (edge_after * -1) * countdown_slaps / 10))
+      count=$((count + edge_after))
+    fi
+    bonus=$((bonus + (count * countdown_slaps) / countdown_from))
+
+    for i in $(seq 1 $bonus); do
       if [[ $((RANDOM%3)) -eq 0 ]]; then
         slap=$((slap + 1))
       fi
     done
+
     multiplier=$((multiplier + 1))
     for i in {1..6}; do
       if [[ $((RANDOM%3)) -eq 0 ]]; then
@@ -86,20 +109,17 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
         mercy=$((mercy + 1))
       fi
     done
+
     for i in {1..4}; do
       if [[ $((RANDOM % i)) -eq 0 ]]; then
         new_edge=$((new_edge + pics_done))
       fi
     done
+
     remains=$((remains + (new_edge - edge_after)))
   fi
 
   if [[ "$edge" -ne 0 || "$edge_after" -eq "$psych" ]]; then
-    for i in $(seq 1 $((points + countdown_from))); do
-      if [[ $((RANDOM%3)) -eq 0 ]]; then
-        slap=$((slap + 1))
-      fi
-    done
     points=$((points + 2))
     multiplier=$((multiplier + 2))
     for i in {1..6}; do
@@ -108,7 +128,8 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
         mercy=$((mercy + 1))
       fi
     done
-    if [[ "$edge_after" -lt 0 ]]; then
+
+    if [[ "$edge" -ne 0 ]]; then
       new_edge=$((new_edge + (edge_after * -1 * 3)))
     fi
 
@@ -159,8 +180,6 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
   slaps=$((slaps + slap))
   echo "$slaps" > "$HOME/.edgr_slaps"
 
-  printf "\n" $((new_edge - edge_after))
-
   remains=$((remains + (points * multiplier) / 2))
 
   edge=0
@@ -190,3 +209,4 @@ fi
 
 echo "$remains" > "$remains_file"
 echo "$new_edge" > "$pics_count"
+echo "$count" > "$count_file"
