@@ -2,17 +2,21 @@
 
 image="$1"
 pics_count="$2"
-pics="$3"
+pics_per_point="$3"
 start_pics="$4"
 countdown_from="$5"
 
-countdown_slaps=25
+countdown_slaps=15
 
-points=$(echo "$image" | grep -Eo '[0-9]+pts' | sed -e 's/pts$//')
-
-remains_file="$HOME/.edge_remains"
-if [[ ! -e "$remains_file" ]]; then
-  echo 0 > "$remains_file"
+punish=0
+points=0
+if echo "$image" | grep -E '[0-9]+pts' &>/dev/null; then
+  points=$(echo "$image" | grep -Eo '[0-9]+pts' | sed -e 's/pts$//')
+  if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
+    punish=1
+  else
+    points=0
+  fi
 fi
 
 edge_after=$(< "$pics_count")
@@ -20,6 +24,7 @@ edge_after=$((edge_after - 1))
 
 psych_file="$HOME/.edgr_psych"
 count_file="$HOME/.edgr_count"
+remains_file="$HOME/.edge_remains"
 
 psych=0
 if [[ -e "$psych_file" ]]; then
@@ -35,14 +40,21 @@ if [[ -e "$count_file" ]]; then
 fi
 
 new_edge=$edge_after
-remains=$(< "$remains_file")
 
-edge=0
-if [[ "$edge_after" -le 0 ]]; then
-  edge=1
+remains=0
+if [[ -e "$remains_file" ]]; then
+  remains=$(< "$remains_file")
 fi
 
+old_remains=$remains
+
+edge=0
 countdown=0
+if [[ "$edge_after" -le 0 ]]; then
+  edge=1
+  countdown=1
+fi
+
 counting_down=-1
 if [[ "$edge_after" -le "$((countdown_from + psych))" && \
       "$edge_after" -ge "$psych" ]]; then
@@ -52,94 +64,88 @@ if [[ "$edge_after" -le "$((countdown_from + psych))" && \
   fi
 fi
 
-if [[ "$countdown" -ne 0 || "$edge" -ne 0 ]]; then
+if [[ "$countdown" -ne 0 ]]; then
   count=$((count + 1))
 else
   count=0
 fi
 
-if [[ "$count" -gt 0 ]]; then
-  printf "count: %s\n" "$count"
-fi
+#if [[ "$count" -gt 0 ]]; then
+#  printf "count: %s\n" "$count"
+#fi
 
-if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
-  multiplier=$pics
-  mercy=1
+if [[ "$punish" -ne 0 ]]; then
+  multiplier=$pics_per_point
+  mercy=4
+
+  # Base slaps
   slap=0
-
-  for i in $(seq 1 $points); do
+  for ((i=0; i<points; i++)); do
     if [[ $((RANDOM%5)) -lt 3 ]]; then
       slap=$((slap + 1))
     fi
   done
 
   if [[ "$remains" -gt 0 ]]; then
-    for i in $(seq 1 $points); do
-      if [[ $((RANDOM%3)) -eq 0 ]]; then
-        slap=$((slap + 1))
-      fi
-    done
-    multiplier=$((multiplier + 1))
-    for i in {1..6}; do
-      if [[ $((RANDOM%3)) -eq 0 ]]; then
-        multiplier=$((multiplier + 1))
-        mercy=$((mercy + 1))
-      fi
-    done
-  fi
-
-  if [[ "$count" -gt 0 ]]; then
-    bonus=0
-    if [[ "$edge" -ne 0 ]]; then
-      bonus=$((bonus + (edge_after * -1) * countdown_slaps / 10))
-      count=$((count + edge_after))
-    fi
-    bonus=$((bonus + (count * countdown_slaps) / countdown_from))
-
-    for i in $(seq 1 $bonus); do
-      if [[ $((RANDOM%3)) -eq 0 ]]; then
-        slap=$((slap + 1))
-      fi
-    done
-
-    multiplier=$((multiplier + 1))
-    for i in {1..6}; do
-      if [[ $((RANDOM%3)) -eq 0 ]]; then
-        multiplier=$((multiplier + 1))
-        mercy=$((mercy + 1))
-      fi
-    done
-
-    for i in {1..4}; do
-      if [[ $((RANDOM % i)) -eq 0 ]]; then
-        new_edge=$((new_edge + pics_done))
-      fi
-    done
-
-    remains=$((remains + (new_edge - edge_after)))
-  fi
-
-  if [[ "$edge" -ne 0 || "$edge_after" -eq "$psych" ]]; then
-    points=$((points + 2))
     multiplier=$((multiplier + 2))
-    for i in {1..6}; do
-      if [[ $((RANDOM%3)) -eq 0 ]]; then
-        multiplier=$((multiplier + 2))
-        mercy=$((mercy + 1))
+    mercy=$((mercy + 1))
+  fi
+
+  remains=$((remains + points))
+
+  if [[ "$countdown" -eq 1 ]]; then
+    # Increase penalty duration by adding to remains
+    remains=$((remains + count))
+
+    multiplier=$((multiplier + 1))
+
+    bonus=0
+    count_temp=$count
+    if [[ "$edge" -eq 1 ]]; then
+      # Subtract edge_after by adding, since it is less than zero
+      count_temp=$((count_temp + edge_after))
+    fi
+    bonus=$((bonus + (count_temp * countdown_slaps) / countdown_from))
+
+    for ((i=0; i<bonus; i++)); do
+      if [[ $((RANDOM%5)) -eq 0 ]]; then
+        slap=$((slap + 1))
       fi
     done
 
-    if [[ "$edge" -ne 0 ]]; then
-      new_edge=$((new_edge + (edge_after * -1 * 3)))
-    fi
+    for ((i=0; i<remains; i++)); do
+      if [[ $((RANDOM%6)) -eq 0 ]]; then
+        slap=$((slap + 1))
+      fi
+    done
+
+    # Re-add the pics counted down
+    new_edge=$((new_edge + count))
+  fi
+
+  if [[ "$edge" -eq 1 ]]; then
+    multiplier=$((multiplier + 1))
+    mercy=$((mercy - 1))
+    for i in {1..2}; do
+      if [[ $((RANDOM % 4)) -eq 0 ]]; then
+        # edge_after should be less than 1 in this case
+        new_edge=$((new_edge + (count + edge_after)))
+      fi
+    done
+  fi
+
+  # countdown reached 0; edge or psych
+  if [[ "$counting_down" -eq 0 ]]; then
+    multiplier=$((multiplier + 1))
+    points=$((points * 12 / 10))
 
     new_edge=$((new_edge + countdown_from))
   fi
 
   chance=2
-  for i in $(seq 1 $mercy); do
+  for ((i=0; i<mercy; i++)); do
     assist=0
-    for i in {1..3}; do
+    for foo in {1..3}; do
       if [[ $((RANDOM % chance)) -eq 0 ]]; then
         multiplier=$((multiplier - 1))
         assist=$((assist + 1))
@@ -152,20 +158,14 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
     multiplier=0
   fi
 
-  add_pics=$((points * multiplier))
-  new_edge=$((new_edge + add_pics))
+  new_edge=$((new_edge + (points * multiplier)))
 
   if [[ $((RANDOM % 8)) -eq 0 ]]; then
-    new_psych=$((edge_after - 1 - $((RANDOM%4)) - $countdown_from))
-    if [[ "$new_psych" -gt "$psych" ]]; then
-      psych=$new_psych
-      echo "$psych" > "$psych_file"
+    new_psych=$((new_edge - (countdown_from + (RANDOM%6) + 1)))
+    if [[ "$new_psych" -gt "$psych" && \
+          "$new_psych" -gt "$countdown_from" ]]; then
+      echo "$new_psych" > "$psych_file"
     fi
-  fi
-
-  if [[ $((new_edge - edge_after)) -gt 20 && $((RANDOM % 6)) -eq 0 ]]; then
-    psych=$((new_edge - 2 - $((RANDOM%5)) - $countdown_from))
-    echo "$psych" > "$psych_file"
   fi
 
   if [[ $slap -ne 0 ]]; then
@@ -180,12 +180,8 @@ if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
   slaps=$((slaps + slap))
   echo "$slaps" > "$HOME/.edgr_slaps"
 
-  remains=$((remains + (points * multiplier) / 2))
-
   edge=0
 else
-  points=0
-
   if [[ "$edge" -ne 0 ]]; then
     printf "edge\n"
   elif [[ "$edge_after" -ne 0 && "$edge_after" -eq "$psych" ]]; then
@@ -200,10 +196,15 @@ else
   fi
 fi
 
-if [[ $((RANDOM % 15)) -eq 0 && "$psych" -eq 0 ]]; then
-  psych=$((edge_after - (1 + countdown_from + (RANDOM % 10))))
-  if [[ "$psych" -gt "$countdown_from" ]]; then
-    echo "$psych" > "$psych_file"
+#printf "remains added: %s\n" $((remains - old_remains))
+#printf "pics added: %s\n" $((new_edge - edge_after))
+#printf "pics left: %s\n" "$new_edge"
+
+if [[ $((RANDOM % 20)) && "$psych" -eq 0 ]]; then
+  new_psych=$((new_edge - (countdown_from + (RANDOM % 10) + 1)))
+  if [[ "$new_psych" -gt "$psych" && \
+        "$new_psych" -gt "$countdown_from" ]]; then
+    echo "$new_psych" > "$psych_file"
   fi
 fi
 
