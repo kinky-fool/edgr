@@ -80,11 +80,12 @@ if [[ "$punish" -ne 0 ]]; then
 
   # Base slaps
   slap=0
-  for ((i=0; i<points; i++)); do
-    if [[ $((RANDOM%5)) -lt 3 ]]; then
-      slap=$((slap + 1))
-    fi
-  done
+
+  if [[ "$image" =~ eyes || \
+        $countdown_from -le 5 || \
+        ( $countdown_from -gt 5 && $((RANDOM % (countdown_from - 5))) ) ]]; then
+    slap=$((slap + 2))
+  fi
 
   if [[ "$remains" -gt 0 ]]; then
     multiplier=$((multiplier + 2))
@@ -98,34 +99,20 @@ if [[ "$punish" -ne 0 ]]; then
     remains=$((remains + count))
 
     multiplier=$((multiplier + 1))
+    mercy=$((mercy + 1))
 
     bonus=0
     count_temp=$count
-    if [[ "$edge" -eq 1 ]]; then
-      # Subtract edge_after by adding, since it is less than zero
-      count_temp=$((count_temp + edge_after))
-    fi
-    bonus=$((bonus + (count_temp * countdown_slaps) / countdown_from))
-
-    for ((i=0; i<bonus; i++)); do
-      if [[ $((RANDOM%5)) -eq 0 ]]; then
-        slap=$((slap + 1))
-      fi
-    done
-
-    for ((i=0; i<remains; i++)); do
-      if [[ $((RANDOM%6)) -eq 0 ]]; then
-        slap=$((slap + 1))
-      fi
-    done
 
     # Re-add the pics counted down
     new_edge=$((new_edge + count))
+    slap=$((slap + 2))
   fi
 
   if [[ "$edge" -eq 1 ]]; then
     multiplier=$((multiplier + 1))
     mercy=$((mercy - 1))
+    slap=$((slap + 2))
     for i in {1..2}; do
       if [[ $((RANDOM % 4)) -eq 0 ]]; then
         # edge_after should be less than 1 in this case
@@ -137,28 +124,24 @@ if [[ "$punish" -ne 0 ]]; then
   # countdown reached 0; edge or psych
   if [[ "$counting_down" -eq 0 ]]; then
     multiplier=$((multiplier + 1))
+    mercy=$((mercy + 1))
     points=$((points * 12 / 10))
 
+    slap=$((slap + 2))
     new_edge=$((new_edge + countdown_from))
   fi
 
-  chance=2
-  for ((i=0; i<mercy; i++)); do
-    assist=0
-    for foo in {1..3}; do
-      if [[ $((RANDOM % chance)) -eq 0 ]]; then
-        multiplier=$((multiplier - 1))
-        assist=$((assist + 1))
-      fi
-    done
-    chance=$((chance + assist))
+  for ((i = 0; i < points * multiplier; i++)); do
+    if [[ $((RANDOM % 3)) -ne 0 ]]; then
+      new_edge=$((new_edge + 1))
+    fi
   done
 
-  if [[ "$multiplier" -lt 0 ]]; then
-    multiplier=0
-  fi
-
-  new_edge=$((new_edge + (points * multiplier)))
+  for ((i = 0; i < points * mercy; i++)); do
+    if [[ $((RANDOM % 3)) -eq 0 ]]; then
+      new_edge=$((new_edge - 1))
+    fi
+  done
 
   if [[ $((RANDOM % 8)) -eq 0 ]]; then
     new_psych=$((new_edge - (countdown_from + (RANDOM%6) + 1)))
