@@ -102,7 +102,6 @@ if [[ "$punish" -ne 0 ]]; then
     mercy=$((mercy + 1))
 
     bonus=0
-    count_temp=$count
 
     # Re-add the pics counted down
     new_edge=$((new_edge + count))
@@ -129,6 +128,12 @@ if [[ "$punish" -ne 0 ]]; then
 
     slap=$((slap + 2))
     new_edge=$((new_edge + countdown_from))
+  fi
+
+  edge_chances=$((count - countdown_from))
+  if [[ "$edge_chances" -gt 0 ]]; then
+    bonus=$((edge_chances / 8))
+    multiplier=$((multiplier + bonus))
   fi
 
   for ((i = 0; i < points * multiplier; i++)); do
