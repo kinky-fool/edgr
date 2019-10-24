@@ -76,7 +76,7 @@ porn_pics=$((RANDOM % safe_pics))
 caption_pics=$((safe_pics - porn_pics))
 
 
-random_pic_playlist "$HOME/files/images/porn_pics" $porn_pics > "$slideshow"
+random_pic_playlist "$HOME/files/images/porn_pics/stash $HOME/files/images/porn_pics" $porn_pics > "$slideshow"
 random_pic_playlist "$HOME/files/images/captions" $caption_pics >> "$slideshow"
 random_pic_playlist "$HOME/files/images/risky" "$dupes" >> "$slideshow"
 
