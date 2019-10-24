@@ -85,9 +85,12 @@ random_pic_playlist() {
   src=$1
   count=$2
 
-  shopt -s nullglob
-  images=( "$src"/*.{jpeg,jpg,png,gif} )
-  shopt -u nullglob
+  images=()
+  for dir in $src; do
+    shopt -s nullglob
+    images=( ${images[@]} "$dir"/*.{jpeg,jpg,png,gif} )
+    shopt -u nullglob
+  done
 
   # Make sure we have enough images as requested
   while [[ ${#images[@]} -lt "$count" ]]; do
