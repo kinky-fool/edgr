@@ -8,6 +8,9 @@ countdown_from="$5"
 
 countdown_slaps=15
 
+do_audio=1
+slap_balls=0
+
 punish=0
 points=0
 if echo "$image" | grep -E '[0-9]+pts' &>/dev/null; then
@@ -19,12 +22,19 @@ if echo "$image" | grep -E '[0-9]+pts' &>/dev/null; then
   fi
 fi
 
+
 edge_after=$(< "$pics_count")
 edge_after=$((edge_after - 1))
 
 psych_file="$HOME/.edgr_psych"
 count_file="$HOME/.edgr_count"
 remains_file="$HOME/.edge_remains"
+since_points_file="$HOME/.edgr_since_points"
+
+since_points=0
+if [[ -e "$since_points_file" ]]; then
+  since_points=$(< "$since_points_file")
+fi
 
 psych=0
 if [[ -e "$psych_file" ]]; then
@@ -69,10 +79,6 @@ if [[ "$countdown" -ne 0 ]]; then
 else
   count=0
 fi
-
-#if [[ "$count" -gt 0 ]]; then
-#  printf "count: %s\n" "$count"
-#fi
 
 if [[ "$punish" -ne 0 ]]; then
   multiplier=$pics_per_point
@@ -136,17 +142,37 @@ if [[ "$punish" -ne 0 ]]; then
     multiplier=$((multiplier + bonus))
   fi
 
+  if [[ "$since_points" -eq 0 ]]; then
+    multiplier=$((multiplier + 2))
+    slap=$((slap + 2))
+  fi
+
+  bonus=$((since_points / 15))
+  multiplier=$((multiplier + bonus))
+  slap=$((slap + bonus))
+
+  since_points=0
+
+  add=0
+  sub=0
+
   for ((i = 0; i < points * multiplier; i++)); do
     if [[ $((RANDOM % 3)) -ne 0 ]]; then
-      new_edge=$((new_edge + 1))
+      add=$((add + 1))
     fi
   done
 
   for ((i = 0; i < points * mercy; i++)); do
     if [[ $((RANDOM % 3)) -eq 0 ]]; then
-      new_edge=$((new_edge - 1))
+      sub=$((sub + 1))
     fi
   done
+
+  if [[ "$sub" -gt "$add" ]]; then
+    new_edge=$((new_edge + add))
+  else
+    new_edge=$((new_edge + (add - sub)))
+  fi
 
   if [[ $((RANDOM % 8)) -eq 0 ]]; then
     new_psych=$((new_edge - (countdown_from + (RANDOM%6) + 1)))
@@ -156,11 +182,47 @@ if [[ "$punish" -ne 0 ]]; then
     fi
   fi
 
+  do_slaps=0
+  while [[ "$do_slaps" -eq 0 ]]; do
+    for i in $(seq 1 $slap); do
+      if [[ $((RANDOM % 3)) -gt 0 ]]; then
+        do_slaps=$((do_slaps + 1))
+      fi
+    done
+
+    if [[ "$do_slaps" -eq 0 ]]; then
+      slap=$((slap + 1))
+    fi
+
+    if [[ "$do_slaps" -gt 10 ]]; then
+      do_slaps=0
+      slap=$((slap - 1))
+    fi
+  done
+
+  slap=$do_slaps
+
+  if [[ "$slap_balls" -eq 0 ]]; then
+    slap=0
+  fi
+
   if [[ $slap -ne 0 ]]; then
     if [[ $slap -eq 1 ]]; then
       printf "   slap balls 1 time\n"
     else
       printf "   slap balls %i times\n" "$slap"
+    fi
+    if [[ "$do_audio" -eq 1 ]]; then
+      pad=$(printf "%02i" "$slap")
+      mp3s=( $HOME/lib/audio/slaps/*${pad}.mp3 )
+      mp3=$(shuf -n 1 -e "${mp3s[@]}")
+      /usr/bin/mpg123 -i -o pulse "$mp3" &>/dev/null &
+    fi
+  else
+    if [[ "$do_audio" -eq 1 ]]; then
+      mp3s=( $HOME/lib/audio/laughs/* )
+      mp3=$(shuf -n 1 -e "${mp3s[@]}")
+      /usr/bin/mpg123 -i -o pulse "$mp3" &>/dev/null &
     fi
   fi
 
@@ -172,16 +234,35 @@ if [[ "$punish" -ne 0 ]]; then
 else
   if [[ "$edge" -ne 0 ]]; then
     printf "edge\n"
+    if [[ "$counting_down" -eq 0 ]]; then
+      if [[ "$do_audio" -eq 1 ]]; then
+        mp3s=( $HOME/lib/audio/edges/* )
+        mp3=$(shuf -n 1 -e "${mp3s[@]}")
+        /usr/bin/mpg123 -i -o pulse "$mp3" &>/dev/null &
+      fi
+    fi
   elif [[ "$edge_after" -ne 0 && "$edge_after" -eq "$psych" ]]; then
     printf "psych!\n"
     rm -f "$psych_file"
+    if [[ "$do_audio" -eq 1 ]]; then
+      mp3s=( $HOME/lib/audio/laughs/* )
+      mp3=$(shuf -n 1 -e "${mp3s[@]}")
+      /usr/bin/mpg123 -i -o pulse "$mp3" &>/dev/null &
+    fi
   elif [[ "$counting_down" -gt 0 ]]; then
     printf "%4i\n" "$counting_down"
+    if [[ "$do_audio" -eq 1 ]]; then
+      pad=$(printf "%02i" "$counting_down")
+      mp3s=( $HOME/lib/audio/counting/*${pad}.mp3 )
+      mp3=$(shuf -n 1 -e "${mp3s[@]}")
+      /usr/bin/mpg123 -i -o pulse "$mp3" &>/dev/null &
+    fi
   fi
 
   if [[ "$remains" -gt 0 ]]; then
     remains=$((remains - 1))
   fi
+  since_points=$((since_points + 1))
 fi
 
 #printf "remains added: %s\n" $((remains - old_remains))
@@ -199,3 +280,4 @@ fi
 echo "$remains" > "$remains_file"
 echo "$new_edge" > "$pics_count"
 echo "$count" > "$count_file"
+echo "$since_points" > "$since_points_file"
