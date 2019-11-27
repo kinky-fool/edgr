@@ -5,11 +5,12 @@ pics_count="$2"
 pics_per_point="$3"
 start_pics="$4"
 countdown_from="$5"
+right="$6"
+wrong="$7"
 
 countdown_slaps=15
 
 do_audio=1
-slap_balls=0
 
 punish=0
 points=0
@@ -147,7 +148,7 @@ if [[ "$punish" -ne 0 ]]; then
     slap=$((slap + 2))
   fi
 
-  bonus=$((since_points / 15))
+  bonus=$((since_points / 10))
   multiplier=$((multiplier + bonus))
   slap=$((slap + bonus))
 
@@ -202,7 +203,11 @@ if [[ "$punish" -ne 0 ]]; then
 
   slap=$do_slaps
 
-  if [[ "$slap_balls" -eq 0 ]]; then
+  if [[ "$wrong" -eq 0 ]]; then
+    slap=0
+  elif [[ $(( RANDOM % wrong )) == 0 ]]; then
+    slap=0
+  elif [[ $(( RANDOM % right )) != 0 ]]; then
     slap=0
   fi
 

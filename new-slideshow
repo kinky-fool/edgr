@@ -2,6 +2,9 @@
 
 source $HOME/lib/edgr_funcs.sh
 
+right="$1" || 0
+wrong="$2" || 10
+
 script="$HOME/projects/edgr/add_time"
 pics_count="$HOME/.edge_pics"
 images="$HOME/files/images/porn_pics"
@@ -86,7 +89,7 @@ shuf "$slideshow" -o "$slideshow"
 
 
 $HOME/bin/feh -f "$slideshow" \
-  --info "$script %f $pics_count $pics $start_pics $countdown" \
+  --info "$script %f $pics_count $pics $start_pics $countdown $right $wrong" \
   --auto-zoom \
   --hide-pointer \
   --borderless \
