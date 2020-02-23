@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+
+import time
+import random
+from playsound import playsound
+import os
+
+edge_sound =  "%s/lib/audio/edges/edge-02.mp3" % os.environ['HOME']
+
+edges = input("Number of edges: ")
+
+for i in range(0, int(edges)):
+  countdowns = [ 30, 30,
+                 45, 45, 45, 45,
+                 60, 60, 60, 60, 60, 60,
+                 90, 90, 90,
+                 120, 120,
+                 180 ]
+
+  countdown = random.choice(countdowns)
+
+  time.sleep(countdown)
+
+  start = time.time()
+
+  playsound(edge_sound)
+
+  input("Press Enter once you get to the edge.")
+
+  elapsed = time.time() - start
+
+  print("Edge took %s seconds" % elapsed)
+
+  if elapsed > 30:
+    edges = edges + 1
