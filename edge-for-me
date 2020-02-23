@@ -5,31 +5,51 @@ import random
 from playsound import playsound
 import os
 
-edge_sound =  "%s/lib/audio/edges/edge-02.mp3" % os.environ['HOME']
+audio_dir = "%s/lib/audio" % os.environ['HOME']
 
-edges = input("Number of edges: ")
+def main():
+  edges = input("Number of edges: ")
 
-for i in range(0, int(edges)):
-  countdowns = [ 30, 30,
-                 45, 45, 45, 45,
-                 60, 60, 60, 60, 60, 60,
-                 90, 90, 90,
-                 120, 120,
-                 180 ]
+  warm_ups = [ 5, 5, 10, 10, 10, 15, 15, 15, 20 ]
 
-  countdown = random.choice(countdowns)
+  time.sleep(random.choice(warm_ups) * 60)
 
-  time.sleep(countdown)
+  play_rand_sound("%s/get-ready/" % audio_dir)
 
-  start = time.time()
+  for i in range(0, int(edges)):
+    countdowns = [ 30, 30,
+                   45, 45, 45, 45,
+                   60, 60, 60, 60, 60, 60,
+                   90, 90, 90,
+                   120, 120,
+                   180 ]
 
-  playsound(edge_sound)
+    time.sleep(random.choice(countdowns))
 
-  input("Press Enter once you get to the edge.")
+    start = time.time()
 
-  elapsed = time.time() - start
+    play_rand_sound("%s/edges/" % audio_dir)
 
-  print("Edge took %s seconds" % elapsed)
+    input("Press Enter once you get to the edge.")
 
-  if elapsed > 30:
-    edges = edges + 1
+    elapsed = time.time() - start
+
+    print("Edge took %s seconds" % elapsed)
+
+    if elapsed > 30:
+      edges = edges + 1
+
+def play_rand_sound(directory):
+  if os.path.isdir(directory):
+    filename = ''
+
+    while not os.path.isfile(directory + '/' + filename):
+      filename = random.choice(os.listdir(directory))
+
+    playsound(directory + '/' + filename)
+
+  return
+
+
+if __name__ == '__main__':
+  main()
