@@ -1,0 +1,20 @@
+- Add sqlite back-end for edge-for-me toy
+- Figure out how to do maths / stddev and the like in python
+- Figure out how to take my fuzzy algorithim from thong-game(? n = 5, for 1-n,
+  take n and add or subtract 1. roughly... results in 0-10 mostly on 5... other
+  bits were twiddled in other code to make it "favor" high or low.)
+- Use the fuzzy algorithm to determine pre-edge duration, and edge prep phases
+- Use "bonus" and "malus" integers from command-line to affect number of edges,
+  threshold for being 'too late', number of edges added for being too late,
+etc.
+- ^ the idea here is "thong game" results in a stat, correct guesses in a row,
+  incorrect guesses in a row, and i often use those to affect punishment
+  severity - other bonus/malus values could be used, rolled dice, competitive
+  game scores, wagers, etc.
+- it could be interesting if there was a possibility for the toy(s) to give me
+  'surprise' green lights, perhaps by curling a website or a post from twitter,
+  or whatever.
+- triggers via twitter could be cool; pre-defined #hashtags that the toy could
+  search twitter for to influence what it instructs...
+- website for managing these things, and seeing my statuses?
+
