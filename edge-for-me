@@ -36,7 +36,7 @@ def main():
 
     print("Edge took %s seconds" % elapsed)
 
-    if elapsed > 30:
+    if elapsed > 15:
       play_rand_sound(audio_dir + "/too-slow")
     else:
       edges = edges - 1
