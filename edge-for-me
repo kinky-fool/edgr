@@ -8,15 +8,15 @@ import os
 audio_dir = "%s/lib/audio" % os.environ['HOME']
 
 def main():
-  edges = input("Number of edges: ")
+  edges = int(input("Number of edges: "))
 
   warm_ups = [ 5, 5, 10, 10, 10, 15, 15, 15, 20 ]
 
-  time.sleep(random.choice(warm_ups) * 60)
+  #time.sleep(random.choice(warm_ups) * 60)
 
-  play_rand_sound("%s/get-ready/" % audio_dir)
+  play_rand_sound(audio_dir + "/get-ready")
 
-  for i in range(0, int(edges)):
+  while edges > 0:
     countdowns = [ 30, 30,
                    45, 45, 45, 45,
                    60, 60, 60, 60, 60, 60,
@@ -24,11 +24,12 @@ def main():
                    120, 120,
                    180 ]
 
-    time.sleep(random.choice(countdowns))
+    #time.sleep(random.choice(countdowns))
+    time.sleep(10)
 
     start = time.time()
 
-    play_rand_sound("%s/edges/" % audio_dir)
+    play_rand_sound(audio_dir + "/edges")
 
     input("Press Enter once you get to the edge.")
 
@@ -37,8 +38,9 @@ def main():
     print("Edge took %s seconds" % elapsed)
 
     if elapsed > 30:
-      play_rand_sound("%s/too-slow/" % audio_dir)
-      edges = edges + 1
+      play_rand_sound(audio_dir + "/too-slow")
+    else:
+      edges = edges - 1
 
 def play_rand_sound(directory):
   if os.path.isdir(directory):
