@@ -12,7 +12,7 @@ def main():
 
   warm_ups = [ 5, 5, 10, 10, 10, 15, 15, 15, 20 ]
 
-  #time.sleep(random.choice(warm_ups) * 60)
+  time.sleep(random.choice(warm_ups) * 60)
 
   play_rand_sound(audio_dir + "/get-ready")
 
@@ -24,8 +24,7 @@ def main():
                    120, 120,
                    180 ]
 
-    #time.sleep(random.choice(countdowns))
-    time.sleep(10)
+    time.sleep(random.choice(countdowns))
 
     start = time.time()
 
