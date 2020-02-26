@@ -10,7 +10,7 @@ audio_dir = "%s/lib/audio" % os.environ['HOME']
 def main():
   edges = int(input("Number of edges: "))
 
-  warm_ups = [ 5, 5, 10, 10, 10, 15, 15, 15, 20 ]
+  warm_ups = [ 6, 6, 6, 6, 6, 9, 9, 9, 9, 12, 12, 15 ]
 
   time.sleep(random.choice(warm_ups) * 60)
 
@@ -20,9 +20,7 @@ def main():
     countdowns = [ 30, 30,
                    45, 45, 45, 45,
                    60, 60, 60, 60, 60, 60,
-                   90, 90, 90,
-                   120, 120,
-                   180 ]
+                   90, 90, 90 ]
 
     time.sleep(random.choice(countdowns))
 
