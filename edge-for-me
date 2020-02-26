@@ -46,7 +46,11 @@ def main():
     if elapsed > 15:
       play_rand_sound(audio_dir + "/too-slow")
     else:
+      play_rand_sound(audio_dir + '/good-boy')
       edges = edges - 1
+
+  # Done!
+  play_rand_sound(audio_dir + '/stop')
 
 def play_rand_sound(directory):
   if os.path.isdir(directory):
