@@ -22,6 +22,15 @@ def main():
                    60, 60, 60, 60, 60, 60,
                    90, 90, 90 ]
 
+    if random.randint(1,50) == 1:
+      countdowns = [ x + 30 for x in countdowns ]
+
+    if random.randint(1,50) == 1:
+      countdowns = [ x + 30 for x in countdowns ]
+
+    if random.randint(1,100) == 1:
+      countdowns = [ x + 60 for x in countdowns ]
+
     time.sleep(random.choice(countdowns))
 
     start = time.time()
