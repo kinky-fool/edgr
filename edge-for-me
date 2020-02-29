@@ -6,6 +6,8 @@ from playsound import playsound
 import os
 
 audio_dir = "%s/lib/audio" % os.environ['HOME']
+edge_min = 7
+edge_max = 60
 
 def main():
   edges = int(input("Number of edges: "))
@@ -15,6 +17,7 @@ def main():
   time.sleep(random.choice(warm_ups) * 60)
 
   play_rand_sound(audio_dir + "/get-ready")
+  print("Get ready!")
 
   while edges > 0:
     countdowns = [ 30, 30,
@@ -33,23 +36,29 @@ def main():
 
     time.sleep(random.choice(countdowns))
 
-    start = time.time()
-
     play_rand_sound(audio_dir + "/edges")
+
+    start = time.time()
 
     input("Press Enter once you get to the edge.")
 
     elapsed = time.time() - start
 
-    print("Edge took %s seconds" % elapsed)
-
-    if elapsed > 15:
+    if elapsed > edge_max:
       play_rand_sound(audio_dir + "/too-slow")
+      print("Too slow, try again.")
     else:
+      if elapsed > (edge_max - 1):
+        print("That was close!")
+      if elapsed > edge_min:
+        edge_max = elapsed
       play_rand_sound(audio_dir + '/good-boy')
+      print("Good boy.")
       edges = edges - 1
 
   # Done!
+  time.sleep(10)
+  print("You may stop stroking your cock.")
   play_rand_sound(audio_dir + '/stop')
 
 def play_rand_sound(directory):
