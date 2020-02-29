@@ -6,33 +6,42 @@ from playsound import playsound
 import os
 
 audio_dir = "%s/lib/audio" % os.environ['HOME']
-edge_min = 7
-edge_max = 60
 
 def main():
+  edge_min = 7
+  edge_max = 60
+
   edges = int(input("Number of edges: "))
 
   warm_ups = [ 6, 6, 6, 6, 6, 9, 9, 9, 9, 12, 12, 15 ]
 
   time.sleep(random.choice(warm_ups) * 60)
 
-  play_rand_sound(audio_dir + "/get-ready")
-  print("Get ready!")
 
   while edges > 0:
-    countdowns = [ 30, 30,
-                   45, 45, 45, 45,
-                   60, 60, 60, 60, 60, 60,
-                   90, 90, 90 ]
+    print("Hands off your cock.")
+    play_rand_sound(audio_dir + "/hands-off")
 
-    if random.randint(1,50) == 1:
-      countdowns = [ x + 30 for x in countdowns ]
+    time.sleep(30)
 
-    if random.randint(1,50) == 1:
-      countdowns = [ x + 30 for x in countdowns ]
+    print("Get ready!")
+    play_rand_sound(audio_dir + "/get-ready")
 
-    if random.randint(1,100) == 1:
-      countdowns = [ x + 60 for x in countdowns ]
+    countdowns = [ 15, 15,
+                   30, 30, 30,
+                   45, 45, 45, 45, 45,
+                   60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60,
+                   90, 90, 90,
+                   120 ]
+
+    laugh = 0
+    for foo in range(0,3):
+      if random.randint(1,30) == 1:
+        countdowns = [ x + 30 for x in countdowns ]
+        laugh = 1
+
+    if laugh != 0:
+      play_rand_sound(audio_dir + "/laughs")
 
     time.sleep(random.choice(countdowns))
 
@@ -45,19 +54,20 @@ def main():
     elapsed = time.time() - start
 
     if elapsed > edge_max:
-      play_rand_sound(audio_dir + "/too-slow")
       print("Too slow, try again.")
+      play_rand_sound(audio_dir + "/too-slow")
     else:
-      if elapsed > (edge_max - 1):
+      if elapsed > edge_max - 1:
         print("That was close!")
       if elapsed > edge_min:
         edge_max = elapsed
-      play_rand_sound(audio_dir + '/good-boy')
       print("Good boy.")
+      play_rand_sound(audio_dir + '/good-boy')
       edges = edges - 1
 
+    time.sleep(10)
+
   # Done!
-  time.sleep(10)
   print("You may stop stroking your cock.")
   play_rand_sound(audio_dir + '/stop')
 
