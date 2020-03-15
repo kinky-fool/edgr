@@ -11,8 +11,8 @@ import threading
 
 audio_dir = "%s/lib/audio" % os.environ['HOME']
 
-edge_min = 7
-edge_max = 60
+edge_min = 15
+edge_max = 90
 
 def main():
   global edge_max, edge_min
