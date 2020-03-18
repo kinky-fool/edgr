@@ -12,64 +12,70 @@ slideshow="$HOME/.slideshow"
 
 rm -f "$HOME/.edgr_psych"
 rm -f "$HOME/.edgr_since_points"
-echo 0 > "$HOME/.edgr_slaps"
+echo "$wrong" > "$HOME/.edgr_slaps"
+echo 25 > "$HOME/.edgr_slapchance"
 
 now=$(date "+%s")
 
-dupes=180
-start_pics=55
-countdown=5
 pics=2
 
-for i in {0..10}; do
-  roll=$((RANDOM%7))
-  case $roll in
-    0)
-      dupes=$((dupes + 10))
-      if [[ $((RANDOM%2)) -eq 0 ]]; then
-        dupes=$((dupes + 5))
-        start_pics=$((start_pics - 10))
-        countdown=$((countdown - 1))
-      fi
-      ;;
-    1)
-      start_pics=$((start_pics + 10))
-      if [[ $((RANDOM%2)) -eq 0 ]]; then
-        start_pics=$((start_pics + 5))
-        countdown=$((countdown - 1))
-        dupes=$((dupes - 10))
-      fi
-      ;;
-    2|3)
-      start_pics=$((start_pics + 10))
-      if [[ $((RANDOM%2)) -eq 0 ]]; then
-        start_pics=$((start_pics + 5))
-      fi
-      dupes=$((dupes + 10))
-      if [[ $((RANDOM%2)) -eq 0 ]]; then
-        dupes=$((dupes + 5))
-      fi
-      countdown=$((countdown + 1))
+start_pics=0
+start_pics_min=50
 
-      if [[ $((RANDOM%3)) -eq 0 ]]; then
-        start_pics=$((start_pics - 10))
-      fi
-      if [[ $((RANDOM%3)) -eq 0 ]]; then
-        dupes=$((dupes - 10))
-      fi
-      if [[ $((RANDOM%3)) -eq 0 ]]; then
-        countdown=$((countdown - 1))
-      fi
-      ;;
-    4)
+while [[ "$start_pics" -lt "$start_pics_min" ]]; do
+  start_pics=$((RANDOM % 50 + start_pics_min))
+
+  for i in $(seq 1 $right); do
+    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
+      start_pics=$((start_pics - RANDOM % 5))
+    fi
+  done
+
+  for i in $(seq 1 $((wrong * 2))); do
+    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
+      start_pics=$((start_pics + RANDOM % 5))
+    fi
+  done
+done
+
+dupes=0
+dupes_min=140
+
+while [[ "$dupes" -lt "$dupes_min" ]]; do
+  dupes=$((RANDOM % 40 + dupes_min))
+
+  for i in $(seq 1 $right); do
+    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
+      dupes=$((dupes - RANDOM % 10))
+    fi
+  done
+
+  for i in $(seq 1 $((wrong * 2))); do
+    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
+      dupes=$((dupes + RANDOM % 10))
+    fi
+  done
+done
+
+countdown=0
+countdown_min=5
+countdown_max=7
+
+while [[ "$countdown" -lt "$countdown_min" ]] || \
+      [[ "$countdown" -gt "$countdown_max" ]]; do
+  countdown=$((RANDOM % 3 + countdown_min))
+
+  for i in $(seq 1 $right); do
+    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
+      countdown=$((countdown - 1))
+    fi
+  done
+
+  for i in $(seq 1 $((wrong * 2))); do
+    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
       countdown=$((countdown + 1))
-      if [[ $((RANDOM%2)) -eq 0 ]]; then
-        countdown=$((countdown + 1))
-        start_pics=$((start_pics - 10))
-        dupes=$((dupes - 10))
-      fi
-      ;;
-  esac
+    fi
+  done
 done
 
 echo 0 > "$HOME/.edge_remains"
@@ -79,14 +85,12 @@ safe_pics=3400
 porn_pics=$((RANDOM % safe_pics))
 caption_pics=$((safe_pics - porn_pics))
 
-
 random_pic_playlist "$HOME/files/images/porn_pics/stash $HOME/files/images/porn_pics" $porn_pics > "$slideshow"
 random_pic_playlist "$HOME/files/images/captions" $caption_pics >> "$slideshow"
 random_pic_playlist "$HOME/files/images/risky" "$dupes" >> "$slideshow"
 
 # Shuffle the slideshow list
 shuf "$slideshow" -o "$slideshow"
-
 
 $HOME/bin/feh -f "$slideshow" \
   --info "$script %f $pics_count $pics $start_pics $countdown $right $wrong" \
