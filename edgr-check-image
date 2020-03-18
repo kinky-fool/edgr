@@ -10,7 +10,7 @@ wrong="$7"
 
 countdown_slaps=15
 
-do_audio=1
+do_audio=0
 
 punish=0
 points=0
@@ -23,9 +23,11 @@ if echo "$image" | grep -E '[0-9]+pts' &>/dev/null; then
   fi
 fi
 
-
 edge_after=$(< "$pics_count")
 edge_after=$((edge_after - 1))
+
+file_sc="$HOME/.edgr_slapchance"
+slap_chance=$(< "$file_sc")
 
 psych_file="$HOME/.edgr_psych"
 count_file="$HOME/.edgr_count"
@@ -203,13 +205,25 @@ if [[ "$punish" -ne 0 ]]; then
 
   slap=$do_slaps
 
-  if [[ "$wrong" -eq 0 ]]; then
-    slap=0
-  elif [[ $(( RANDOM % wrong )) == 0 ]]; then
-    slap=0
-  elif [[ $(( RANDOM % right )) != 0 ]]; then
+  if [[ $(( RANDOM % 500 )) == 0 ]]; then
+    slap=$((slap + 4))
+  fi
+
+  if [[ $(( RANDOM % 100 )) > "$slap_chance" ]]; then
     slap=0
   fi
+
+  if [[ "$wrong" -eq 0 ]]; then
+    slap=0
+  elif [[ $(( RANDOM % (wrong * 2) )) == 0 ]]; then
+    slap=0
+  fi
+
+  for save in $(seq 1 $right); do
+    if [[ "$((RANDOM % 6))" -eq 0 ]]; then
+      slap=0
+    fi
+  done
 
   if [[ $slap -ne 0 ]]; then
     if [[ $slap -eq 1 ]]; then
@@ -234,6 +248,9 @@ if [[ "$punish" -ne 0 ]]; then
   slaps=$(< $HOME/.edgr_slaps)
   slaps=$((slaps + slap))
   echo "$slaps" > "$HOME/.edgr_slaps"
+
+  slap_chance=$((slap_chance + wrong))
+  echo "$slap_chance" > "$file_sc"
 
   edge=0
 else
@@ -265,7 +282,9 @@ else
   fi
 
   if [[ "$remains" -gt 0 ]]; then
-    remains=$((remains - 1))
+    if [[ $((RAND%100)) -lt 85 ]]; then
+      remains=$((remains - 1))
+    fi
   fi
   since_points=$((since_points + 1))
 fi
