@@ -18,7 +18,7 @@ edge_max = 90
 def main():
   global edge_max, edge_min
 
-  edges = int(input("Number of edges: "))
+  edges = roll_dice(3,4,2)
 
   print("Stroke yourself!")
   play_rand_sound(f'{audio_dir}/stroke')
@@ -94,7 +94,20 @@ def main():
   print("You may stop stroking your cock.")
   play_rand_sound(f'{audio_dir}/stop')
 
-def play_rand_sound(directory):
+def roll_dice(count, sides, rc):
+  dice = []
+  for i in range(0, count):
+    dice.append(random.randint(1,sides))
+  dice.sort(reverse=True)
+  paired = dice.count(dice[0])
+  if paired == count:
+    return sum(dice) * 2
+  elif paired > 1:
+    return sum(dice)
+  else:
+    return sum(dice[0:rc])
+
+def play_rand_sound(directory, blocking):
   if os.path.isdir(directory):
     filename = ''
 
