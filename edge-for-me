@@ -12,44 +12,33 @@ import threading
 home_dir = os.environ['HOME']
 audio_dir = f'{home_dir}/lib/audio'
 
+# Set here for referencing when signal caught
 edges = 0
-edge_min = 15
-edge_max = 90
 
-grade = 20
+edge_min = 30
+edge_max = 120
+
+slap_die = {'1': 1}
+slap_die_sides = 8
 
 def main():
-  global edge_max, edge_min, edges, grade
+  global edge_max, edge_min
+  global slap_die
+  global edges
 
   edges = roll_dice(3,4,2)
 
-  print("Stroke yourself!")
+  print("Get ready to edge yourself.")
   play_rand_sound(f'{audio_dir}/stroke',0)
 
-  # Sleep for 5-10 minutes.
-  time.sleep(random.randint(300,600))
-
-  print("Hands off your cock.")
-  play_rand_sound(f'{audio_dir}/hands-off',0)
-
-  time.sleep(random.randint(5,10))
-  time.sleep(random.randint(5,10))
-  time.sleep(random.randint(5,10))
+  # Sleep for 2-5 minutes.
+  time.sleep(random.randint(30,300))
 
   while edges > 0:
-    print("Get ready to edge, stroke yourself!")
-    play_rand_sound(f'{audio_dir}/stroke',0)
-
-    time.sleep(int(random.choices(
-      population  = [15, 30, 45, 60, 90, 120, 180, 300],
-      weights     = [10, 20, 40, 40, 30,  15,   8,   1],
-      k           = 1
-    )[0]))
-
     for foo in range(0,5):
-      if random.randint(1,grade) == 1:
+      if random.randint(1,6) == 1:
         play_rand_sound(f'{audio_dir}/laughs',0)
-        time.sleep(random.randint(15,40))
+        time.sleep(random.randint(10,40))
 
     print("Edge for me.")
     play_rand_sound(f'{audio_dir}/edges',0)
@@ -62,55 +51,66 @@ def main():
 
     print("Hands off your cock.")
     play_rand_sound(f'{audio_dir}/laughs',0)
-    time.sleep(random.randint(15,60))
 
-    time.sleep(random.randint(10,20))
-
-    num_dice = 3
+    time.sleep(random.randint(15,30))
 
     if elapsed > edge_max:
       print("Too slow, try again.")
       play_rand_sound(f'{audio_dir}/too-slow',0)
-      grade = 4
-      num_dice = 5
+      slap_die[str(random.randint(1,slap_die_sides))] = 1
     else:
       print("Good boy.")
       play_rand_sound(f'{audio_dir}/good-boy',0)
+      roll = str(random.randint(1,slap_die_sides))
+      if roll in slap_die:
+        del slap_die[roll]
+
       if elapsed > edge_max - 5:
         print("That was close!")
-        num_dice = 5
+        slap_die[str(random.randint(1,slap_die_sides))] = 1
+        roll = str(random.randint(1,slap_die_sides))
+        if roll in slap_die:
+          del slap_die[roll]
+
+      if elapsed > 15:
+        slap_die[str(random.randint(1,slap_die_sides))] = 1
+
+      if elapsed > 30:
+        slap_die[str(random.randint(1,slap_die_sides))] = 1
 
       if elapsed > 60:
-        grade = 6
-        num_dice = 4
-      elif elapsed > 45:
-        grade = 8
-        num_dice = 4
-      elif elapsed > 30:
-        grade = 10
-      elif elapsed > 15:
-        grade = 12
-      else:
-        num_dice = 2
-        grade = 20
+        slap_die[str(random.randint(1,slap_die_sides))] = 1
 
       if elapsed > edge_min:
         edge_max = elapsed
+
       edges = edges - 1
 
     time.sleep(5)
 
-    if random.randint(1,grade) == 1:
+    roll = str(random.randint(1,slap_die_sides))
+
+    if roll in slap_die:
       time.sleep(random.randint(2,8))
       time.sleep(random.randint(2,8))
-      count = roll_dice(num_dice,3,2)
+      count = roll_dice(4,3,2)
       for i in range(0, count):
         play_rand_sound(f'{audio_dir}/hurt',1)
-        time.sleep(random.randint(2,5))
+        time.sleep(random.randint(3,7))
       time.sleep(random.randint(3,10))
     else:
       time.sleep(random.randint(5,10))
       time.sleep(random.randint(5,10))
+
+    if edges > 0:
+      print("Get ready to edge, stroke yourself!")
+      play_rand_sound(f'{audio_dir}/stroke',0)
+
+      time.sleep(int(random.choices(
+        population  = [15, 30, 45, 60, 90, 120],
+        weights     = [10, 20, 40, 40, 30,  20],
+        k           = 1
+      )[0]))
 
   print("You may stop stroking your cock.")
   play_rand_sound(f'{audio_dir}/stop',0)
