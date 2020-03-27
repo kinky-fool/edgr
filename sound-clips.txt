@@ -1,118 +1,219 @@
-good puppy.
-good pup.
-bad dog.
-bad puppy.
-begin stroking for me.
-i want you to stroke your cock for me.
-stroke your cock for me.
-take your hands off your cock.
-heads.
-tails.
-you win.
-you lose.
-i win.
-faster.
-slower.
-take a moment to rest.
-you may have a break.
-keep yourself on the edge.
-just a bit longer.
-edge too slowly again, and you'll owe me five more edges.
-i ought to punish you for that.
-but not this time.
-but this time I'm feeling kind.
-and i will. if it happens again.
-so i will. edge yourself again for me.
-edge yourself for me.
-edge for me.
-you've earned another edge.
-good boy.
-too slow, try again.
-too slow.
-stroke yourself faster.
-stroke yourself slower.
-slap your balls.
-hit your nuts hard.
-paddle your balls.
-paddle your nuts.
-make your boys hurt for me.
-make your boys hurt.
-enjoy the blue balls.
-enjoy the ache in your blue balls.
-make your balls blue for me.
-make your balls ache with another edge.
-slap your bollocks for me.
-squeeze your nuts hard.
-squeeze your nuts hard for me.
-squeeze your nuts.
-crush your nuts.
-make yourself hurt for me.
-hurt yourself for me.
-slap your balls hard.
-slap your nuts hard for me.
-smack your balls for me.
-slap your balls a few times.
-your tardiness earned you another edge.
-pick up the pace.
-i will be less forgiving next time.
-edge again.
-stroke your cock.
-ride that edge until i tell you to stop.
-continue stroking your cock.
-resume stroking.
-continue stroking.
-stroke your cock.
-you may stop edging.
-you may take your hand off your cock.
-you may stop stroking.
-hands off your cock.
-1. 2. 3. 4. 5. 6. 7. 8. 9. 10. 11. 12. 13. 14. 15. 16. 17. 18. 19. 20.
-stop stroking your cock.
-lick up your come?
-eat your come for me?
-too bad, maybe next time.
-are you ready to edge for me?
-are you ready to do some edging for me?
-ready to make your balls blue?
-be a good boy and clean up for me?
-be a good boy and lick up your come for me?
-get ready to make your balls blue.
-stroke.
-stroke?
-blow your load if you can.
-you may come.
-come for me.
-ruin your orgasm.
-ruin your orgasm for me.
-stroke slower.
-stroke slower for me.
-stroke yourself slower.
-stroke yourself slower for me.
-stroke faster.
-stroke faster for me.
-stroke yourself faster.
-stroke yourself faster for me.
-use icy hot.
-apply some lube.
-apply lube.
-apply icy hot.
-apply icyhot.
-apply icy hot to your balls.
-apply icy hot to your nuts.
-lick up your come.
-eat your come for me.
-be a good boy and clean up for me.
-be a good boy.
-stay calm and be a good boy.
-looks like you owe me some edges.
-make your balls ache.
-how do your balls feel now?
-i think you owe me some edges.
-get to work.
-get yourself hard.
-make yourself drip for me.
-make your cock drip for me.
-taste your precum.
-i rolled a four.
-get ready to bring yourself to the edge for me.
-get ready to edge for me.
+start::
+  get to work, you owe me some fucking edges.
+  i'm going to make your balls so fucking blue.
+  ready to do some edging for me?
+  make your balls ache.
+  make your balls blue.
+  make your balls ache for me.
+  make your balls blue for me.
+  ready to make your balls ache for me?
+  ready to make your balls blue for me?
+  ready to do some edging?
+  ready to make your balls blue?
+  ready to make your balls ache?
+  ready to make your balls fucking blue?
+  ready to make your balls fucking ache?
+  ready to edge for me?
+  get ready to make your balls blue for me.
+  get ready to make your balls ache for me.
+  get ready to make your balls blue.
+  get ready to make your balls ache.
+  get yourself hard and ready to edge.
+  get your baby dick hard and ready to edge.
+  get your cock hard and ready to edge.
+  get your cock hard for me.
+  get your baby dick hard for me.
+  get your cock ready to edge.
+  begin stroking for me.
+  start stroking your cock.
+  i want you to stroke your cock for me.
+  stroke your cock for me.
+  stroke your baby dick for me.
+  stroke your tiny dick for me.
+  stroke your cock.
+  make yourself drip fucking precum for me.
+  make your cock fucking drip for me.
+  you owe me some fucking edges.
+
+pause::
+  take a moment to rest.
+  you may have a break.
+  you may stop edging.
+  you may take your hands off your cock.
+  you may stop stroking.
+  you've earned a short break, pet.
+  stop fucking stroking your cock.
+
+resume::
+  resume stroking.
+
+edge::
+  edge yourself for me.
+  edge for me.
+  try edging faster, this time.
+  try to edge faster this time.
+  okay, you may stop when you get to the edge.
+  you may stop stroking once you edge for me.
+  you may stop stroking yourself, after you edge for me.
+  edge for me, and you can have a break.
+  get ready to bring yourself to the edge for me.
+  get ready to edge for me.
+  get to the edge for me!
+  quick. get to the edge for me!
+
+
+stop::
+  take your hands off your cock.
+  hands off your cock.
+  stop stroking your cock.
+
+hurt::
+  slap your balls.
+  hit your nuts hard.
+  paddle your balls.
+  paddle your nuts.
+  make your boys hurt for me.
+  make your boys hurt.
+  enjoy the blue balls.
+  enjoy the ache in your blue balls.
+  make your balls blue for me.
+  make your balls ache with another edge.
+  slap your bollocks for me.
+  squeeze your nuts hard.
+  squeeze your nuts hard for me.
+  squeeze your nuts.
+  crush your nuts.
+  make yourself hurt for me.
+  hurt yourself for me.
+  slap your balls hard.
+  slap your nuts hard for me.
+  smack your balls for me.
+  slap your balls a few times.
+  paddle your fucking balls.
+  paddle the fuck out of your balls.
+
+good boy::
+  good boy.
+  good dog.
+  good doggy.
+  good puppy.
+
+bad::
+  bad dog.
+  bad doggy.
+  bad puppy.
+  edge too slowly again, and you'll owe me five more edges.
+  i ought to punish you for that.
+  but not this time.
+  but this time I'm feeling kind.
+  and i will. if it happens again.
+  so i will. edge yourself again for me.
+  you've earned another edge.
+  too slow, try again.
+  too slow.
+  your tardiness earned you another edge.
+  i will be less forgiving next time.
+  have another fucking edge.
+
+misc::
+  heads.
+  tails.
+  you win.
+  you lose.
+  i win.
+  faster.
+  slower.
+  stroke yourself faster.
+  stroke yourself slower.
+  1. 2. 3. 4. 5. 6. 7. 8. 9. 10. 11. 12. 13. 14. 15. 16. 17. 18. 19. 20.
+  stroke slower.
+  stroke slower for me.
+  stroke yourself slower.
+  stroke yourself slower for me.
+  stroke faster.
+  stroke faster for me.
+  stroke yourself faster.
+  stroke yourself faster for me.
+  too bad, maybe next time.
+  how do your balls feel now?
+  taste your precum.
+  i rolled a four.
+  you fucking love it.
+  don't even fucking think about it.
+  don't even fucking think about coming.
+  okay? okay.
+  i'm going to make you paddle the fuck out of your balls.
+
+hold_edge::
+  keep yourself on the edge.
+  just a bit longer.
+  edge again.
+  ride that edge until i tell you to stop.
+  continue stroking your cock.
+  continue stroking.
+  too late... ... keep stroking yourself.
+  don't stop stroking your cock.
+  don't fucking stop.
+  i will let you know when you can stop.
+
+hurry_up::
+  pick up the pace.
+  almost out of time.
+  only a few more seconds to get to the edge.
+  get to the fucking edge already.
+  hurry the fuck up, or you'll be edging for me again.
+  pick up the fucking pace.
+  is your little prick not up to the fucking challenge?
+  don't think, just edge.
+  stroke your cock like you fucking mean it.
+  hurry up, or you'll be edging for awhile.
+  Hurry up!
+  hurry up, or else.
+  you're running out of time!
+  quickly!...
+  pick up the pace!
+  edge faster!
+
+eat_cum::
+  be a good boy, clean up for me?
+  be a good boy, lick your come up for me?
+  lick up your come?
+  lick your come for me.
+  eat your come for me?
+  lick up your come.
+  eat your come for me.
+  be a good boy and clean up for me.
+  i want you to eat your fucking come for me.
+
+cum::
+  blow your load, if you can.
+  you may come.
+  come for me.
+  ruin your orgasm.
+  ruin your orgasm for me.
+
+lube::
+  apply some lube.
+  apply lube.
+  use some lube.
+  icy_hot::
+    use icy hot.
+    apply icy hot.
+    apply icy hot to your balls.
+    apply icy hot to your nuts.
+    enjoy the fucking icy hot.
+
+names::
+  slave.
+  pet.
+  boy.
+  doggy.
+  puppy.
+  bitch.
+  pussy.
+  cunt.
+  slut.
+  loser.
+  cuck.
+  sweetheart.
+  darling.
