@@ -1,0 +1,117 @@
+#!/bin/bash
+
+normal_dir="$HOME/files/downloads/images/game"
+bonus_dir="$HOME/files/images/risky"
+special_dir="$HOME/files/images/activate"
+caption_dir="$HOME/files/images/captions"
+slide_dir="$HOME/files/images/slideshow"
+
+rm -rf "$slide_dir"
+mkdir -p "$slide_dir"
+
+user_id=1
+
+add_pics() {
+  src=$1
+  dst=$2
+  count=$3
+  prefix=$4
+
+  # avoid '*.jpe?g from literally expanding to *.jpg, etc
+  shopt -s nullglob
+  images=( "$src"/*.{jpeg,jpg,png,gif} )
+  shopt -u nullglob
+
+  while [[ ${#images[@]} -lt "$count" ]]; do
+    images=( ${images[@]} ${images[@]} )
+  done
+
+  selected=( $(for image in ${images[@]}; do echo "$image"; done | sort -R | tail -n "$count") )
+
+  for image in ${selected[@]}; do
+    suffix="${image##*.}"
+
+    points=$(echo "$image" | grep -Eo '[0-9]+pts' | sed -e 's/pts//')
+
+    template="$prefix-XXXXXXXXXX.$suffix"
+    if [[ $points =~ ^[0-9]+$ ]]; then
+      template="$prefix-$points-XXXXXXXXXX.$suffix"
+    fi
+
+    new_image=$(mktemp "$dst/$template")
+    if [[ $? -ne 0 ]]; then
+      echo "mktemp failed; image = $image"
+    fi
+    cp -f "$image" "$new_image"
+  done
+
+  return
+}
+
+get_session_val() {
+  session_id=$1
+  key=$2
+  db=$3
+
+  sql="select val from session_data where key='$key' and session_id=$session_id"
+  return $(printf "%0.0f" "$(sqlite3 "$db" "$sql")")
+}
+
+db="$HOME/.config/edgr.sqlite"
+
+# get the current set_id
+sql="select id from sets where user_id=$user_id order by id desc limit 1"
+set=$(sqlite3 "$db" "$sql")
+
+# get the session ids that are in the current set
+sql="select session_id from session_data where key = 'valid' and val = 1 and session_id in (select id from sessions where set_id=$set) order by session_id"
+session_ids=( $(sqlite3 "$db" "$sql") )
+
+pass=0
+streak_fail=0
+streak_pass=0
+streak_fail_max=0
+streak_pass_max=0
+passes=0
+fails=0
+
+if [[ ${#session_ids[@]} -gt 0 ]]; then
+  for session_id in ${session_ids[@]}; do
+    pass=0
+    start=$(get_session_val "$session_id" 'time_start' "$db")
+    end=$(get_session_val "$session_id" 'time_end' "$db")
+    goal_min=$(get_session_val "$session_id" 'goal_min' "$db")
+    goal_max=$(get_session_val "$session_id" 'goal_max' "$db")
+
+    length=$((end - start))
+
+    if [[ "$length" < "$goal_min" && "$length" > "$goal_max" ]]; then
+      pass=1
+      streak_pass=$((streak_pass + 1))
+      if [[ $streak_pass > $streak_pass_max ]]; then
+        streak_pass_max=$streak_pass
+      fi
+      streak_fail=0
+      passes=$((passes + 1))
+    else
+      streak_fail=$((streak_fail + 1))
+      if [[ $streak_fail > $streak_fail_max ]]; then
+        streak_fail_max=$streak_fail
+      fi
+      streak_pass=0
+      fails=$((fails + 1))
+    fi
+  done
+fi
+
+normal=$((400 + (20 * passes)))
+bonus=$((50 + (100 * fails)))
+caption=400
+special=$((5 + (10 * fails)))
+
+# TODO ... write functions to copy pics and set point values.
+
+add_pics "$normal_dir" "$slide_dir" "$normal" 'norm'
+add_pics "$bonus_dir" "$slide_dir" "$bonus" 'bonus'
+add_pics "$caption_dir" "$slide_dir" "$caption" 'caption'
+add_pics "$special_dir" "$slide_dir" "$special" 'special'
