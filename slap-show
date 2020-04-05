@@ -1,0 +1,28 @@
+#!/bin/bash
+
+source $HOME/lib/edgr_funcs.sh
+
+right="$1" || 0
+wrong="$2" || 10
+
+images="$HOME/files/images/porn_pics"
+slideshow="$HOME/.slideshow"
+
+porn_pics=$((RANDOM % 20 + RANDOM%20 + RANDOM%20 + RANDOM%20 + 20));
+
+random_pic_playlist "$HOME/files/images/porn_pics/stash $HOME/files/images/porn_pics" $porn_pics > "$slideshow"
+
+# Shuffle the slideshow list
+shuf "$slideshow" -o "$slideshow"
+
+$HOME/bin/feh -f "$slideshow" \
+  --auto-zoom \
+  --hide-pointer \
+  --borderless \
+  --scale-down \
+  --image-bg black \
+  --geometry 1500x1080+0+0 \
+  --action1 "mv %F ~/files/images/rejects/%N" \
+  --action2 "~/toys/set_image_comment %F" \
+  --fontpath /usr/share/fonts/truetype/dejavu/ \
+  --font DejaVuSans/18
