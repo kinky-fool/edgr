@@ -1,0 +1,45 @@
+#!/bin/bash
+
+db="$HOME/.config/edgr.sqlite"
+
+day=$(date +"%u")
+hour=$(date +"%k")
+
+increment_penalty() {
+  sql="update user_data set val=val+1 where user_id=1 and key='fail_penalty'"
+  sqlite3 "$db" "$sql"
+}
+
+reset_penalty() {
+  sql="update user_data set val=(select val from user_data where user_id=1 and key='fail_default') where user_id=1 and key='fail_penalty'"
+  sqlite3 "$db" "$sql"
+}
+
+vacation=$(sqlite3 "$db" "select val from user_data where user_id=1 and key='vacation'")
+
+# Saturday and Sunady (after midnight)
+if [[ "$day" == 6 || "$day" == 7 || $vacation -gt 0 ]]; then
+  if [[ "$hour" -ge 1 && "$hour" -le 5 ]]; then
+    increment_penalty
+  fi
+fi
+
+# Sunday through Thursday (before midnight)
+if [[ "$vacation" -eq 0 ]]; then
+  if [[ "$day" == 7 || "$day" -le 4 ]]; then
+    if [[ "$hour" -ge 23 ]]; then
+      increment_penalty
+    fi
+  fi
+
+  # Monday through Friday (AM)
+  if [[ "$day" -ge 1 && "$day" -le 5 ]]; then
+    if [[ "$hour" -lt 6 ]]; then
+      increment_penalty
+    fi
+  fi
+fi
+
+if [[ "$hour" -ge 6 && "$hour" -le 10 ]]; then
+  reset_penalty
+fi
