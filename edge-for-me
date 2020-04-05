@@ -29,7 +29,7 @@ def main():
   edges = roll_dice(3,4,2)
 
   print("Get ready to edge yourself.")
-  play_rand_sound(f'{audio_dir}/stroke',0)
+  play_rand_sound(f'{audio_dir}/start',0)
 
   # Sleep for 2-5 minutes.
   time.sleep(random.randint(30,300))
