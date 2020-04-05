@@ -105,11 +105,13 @@ def main():
       print("Get ready to edge, stroke yourself!")
       play_rand_sound(f'{audio_dir}/stroke',0)
 
-      time.sleep(int(random.choices(
+      prep_time = int(random.choices(
         population  = [15, 30, 45, 60, 90, 120],
         weights     = [10, 20, 40, 40, 30,  20],
         k           = 1
-      )[0]))
+      )[0])
+
+      time.sleep(prep_time)
 
   print("You may stop stroking your cock.")
   play_rand_sound(f'{audio_dir}/stop',0)
