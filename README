@@ -1,3 +1,34 @@
-A fun little program that generates a hypnotic metronomic beat for self-abuse.
+A series of programs designed to "automate" tease and denial.
 
-Currently a work in progress. If you have questions or suggestions, open an issue.
+v1.0 of edgr uses ctronome (plus a patch) to generate metronomic beat for self-abuse. This, coupled with a slideshow was how I tortured myself for a long time.
+
+v2.0 is focusing on moving away from a slideshow, and using my mind to fantasize a little more while torturing my cock.
+
+A work in progress, always.
+
+The goal is to train myself to cum on command, and only on command, within a 10 second window.
+
+edgr is a cli python tool that will pause for random periods of time before playing audio clips from specific directories to create a sort of "Jerk off instruction" (JOI) session.
+
+Audio clips are sourced from Google Cloud Text-to-Speech (I am getting a kick out of running sound-clips.txt through that, and can only imagine what the "AI" is learning from my inputs...)
+
+https://cloud.google.com/text-to-speech/
+
+Female english voices on that site are (subject to change):
+
+English:
+  Australia:
+    en-AU-Wavenet-A
+    en-AU-Wavenet-C
+  Great Britain:
+    en-GB-Wavenet-A
+    en-GB-Wavenet-C
+  India:
+    en-IN-Wavenet-A
+    en-IN-Wavenet-D
+  United States:
+    en-US-Wavenet-C
+    en-US-Wavenet-E
+    en-US-Wavenet-F
+
+If you have questions or suggestions, open an issue.
