@@ -31,8 +31,7 @@ def main():
   print("Get ready to edge yourself.")
   play_rand_sound(f'{audio_dir}/start',0)
 
-  # Sleep for 2-5 minutes.
-  time.sleep(random.randint(30,300))
+  time.sleep(random.randint(60,300))
 
   while edges > 0:
     for foo in range(0,5):
