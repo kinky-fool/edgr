@@ -4,6 +4,7 @@ import time
 import random
 from playsound import playsound
 import os
+import argparse
 
 from signal import signal, SIGINT
 from sys import exit
@@ -19,7 +20,34 @@ edge_min = 30
 edge_max = 120
 
 slap_die = {'1': 1}
-slap_die_sides = 8
+slap_die_sides = 20
+
+green_die = {'1': 1}
+green_die_sides = 20
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+  '--green',
+  action='store_true',
+  help='Enable green light'
+)
+
+parser.add_argument(
+  '--noslaps',
+  action='store_true',
+  help='Disable slap instructions'
+)
+
+args = parser.parse_args()
+
+green = 0
+if args.green == 1:
+  if random.randint(0,20) != 0:
+    green = 1
+
+noslaps = 0
+if args.noslaps == 1:
+  noslaps = 1
 
 def main():
   global edge_max, edge_min
@@ -39,8 +67,17 @@ def main():
         play_rand_sound(f'{audio_dir}/laughs',0)
         time.sleep(random.randint(10,40))
 
-    print("Edge for me.")
-    play_rand_sound(f'{audio_dir}/edges',0)
+    roll = str(random.randint(1,green_die_sides))
+
+    if roll in green_die and green == 1:
+      print("Cum for me! (KIDDING - TESTING!)")
+      play_rand_sound(f'{audio_dir}/edges',0)
+      # TODO: figure out how to have it stop after X seconds, and play a clip
+      #       "hands off your cock" or something, instead of waiting for user
+      #       to hit enter (like edging)
+    else:
+      print("Edge for me.")
+      play_rand_sound(f'{audio_dir}/edges',0)
 
     start = time.time()
 
@@ -57,9 +94,14 @@ def main():
       print("Too slow, try again.")
       play_rand_sound(f'{audio_dir}/too-slow',0)
       slap_die[str(random.randint(1,slap_die_sides))] = 1
+      for i in range(0,2):
+        roll = str(random.randint(1,green_die_sides))
+        if roll in green_die:
+          del green_die[roll]
     else:
       print("Good boy.")
       play_rand_sound(f'{audio_dir}/good-boy',0)
+      green_die[str(random.randint(1,green_die_sides))] = 1
       roll = str(random.randint(1,slap_die_sides))
       if roll in slap_die:
         del slap_die[roll]
@@ -67,18 +109,31 @@ def main():
       if elapsed > edge_max - 5:
         print("That was close!")
         slap_die[str(random.randint(1,slap_die_sides))] = 1
+        green_die[str(random.randint(1,green_die_sides))] = 1
         roll = str(random.randint(1,slap_die_sides))
         if roll in slap_die:
           del slap_die[roll]
+
+      if elapsed < (edge_max / 2):
+        green_die[str(random.randint(1,green_die_sides))] = 1
+
+      if elapsed < (edge_max / 4):
+        green_die[str(random.randint(1,green_die_sides))] = 1
 
       if elapsed > 15:
         slap_die[str(random.randint(1,slap_die_sides))] = 1
 
       if elapsed > 30:
         slap_die[str(random.randint(1,slap_die_sides))] = 1
+        roll = str(random.randint(1,green_die_sides))
+        if roll in green_die:
+          del green_die[roll]
 
       if elapsed > 60:
         slap_die[str(random.randint(1,slap_die_sides))] = 1
+        roll = str(random.randint(1,green_die_sides))
+        if roll in green_die:
+          del green_die[roll]
 
       if elapsed > edge_min:
         edge_max = elapsed
@@ -89,7 +144,7 @@ def main():
 
     roll = str(random.randint(1,slap_die_sides))
 
-    if roll in slap_die:
+    if roll in slap_die and noslaps != 1:
       time.sleep(random.randint(2,8))
       time.sleep(random.randint(2,8))
       count = roll_dice(4,3,2)
