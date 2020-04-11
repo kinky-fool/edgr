@@ -13,11 +13,43 @@ import threading
 home_dir = os.environ['HOME']
 audio_dir = f'{home_dir}/lib/audio'
 
-# Set here for referencing when signal caught
-edges = 0
+# Minimum seconds that edge_time_max can be reduced to
+edge_time_min = 30
 
-edge_min = 30
-edge_max = 120
+# Initial max seconds to count for a successful edge; if an edge is reached
+# within edge_time_max, it is successful. If edge_time_max becomes the new
+# shorter time, unless it is less than edge_time_min.
+edge_time_max = 120
+
+# Number of dice, sides and chosen dice for selecting edges
+# For example; 4 sides, 3 count, 2 pick you roll:
+# 3 2 3 - 3 and 3 are chosen, they match so 2 is added as well
+# 4 2 1 - 4 and 2 are chosen, 1 is ignored.
+edge_dice_sides = 4
+edge_dice_count = 3
+edge_dice_pick  = 2
+
+# Number of dice, sides and chosen dice for number of ball slaps
+# when / if ball slapping is activated
+slaps_dice_sides  = 4
+slaps_dice_count  = 3
+slaps_dice_pick   = 2
+
+# When starting a session, how long to stroke before the first edging
+start_stroke_min = 60
+start_stroke_max = 300
+
+# After normal stroke time, if there are delays, a laugh is played
+# and more time for stroking before edging is added.
+extra_stroke_min = 10
+extra_stroke_max = 40
+
+# Seconds in between edges, hands off cock for this time.
+cooldown_min = 10
+cooldown_max = 30
+
+# Seconds before edge_time_max that counts as a 'close call'
+close_call = 5
 
 slap_die = {'1': 1}
 slap_die_sides = 20
@@ -44,28 +76,34 @@ green = 0
 if args.green == 1:
   if random.randint(0,20) != 0:
     green = 1
+    edge_dice_sides += 1
+    edge_dice_count += 1
 
 noslaps = 0
 if args.noslaps == 1:
   noslaps = 1
+  edge_dice_pick += 1
+  edge_dice_count += 2
+
+# Set here for referencing when signal caught
+edges = 0
 
 def main():
-  global edge_max, edge_min
+  global edge_time_max, edge_time_min
   global slap_die
   global edges
-
-  edges = roll_dice(3,4,2)
+  edges = roll_dice(edge_dice_count,edge_dice_sides,edge_dice_pick)
 
   print("Get ready to edge yourself.")
   play_rand_sound(f'{audio_dir}/start',0)
 
-  time.sleep(random.randint(60,300))
+  time.sleep(random.randint(start_stroke_min,start_stroke_max))
 
   while edges > 0:
     for foo in range(0,5):
       if random.randint(1,6) == 1:
         play_rand_sound(f'{audio_dir}/laughs',0)
-        time.sleep(random.randint(10,40))
+        time.sleep(random.randint(extra_stroke_min,extra_stroke_max))
 
     roll = str(random.randint(1,green_die_sides))
 
@@ -88,9 +126,9 @@ def main():
     print("Hands off your cock.")
     play_rand_sound(f'{audio_dir}/laughs',0)
 
-    time.sleep(random.randint(15,30))
+    time.sleep(random.randint(cooldown_min,cooldown_max))
 
-    if elapsed > edge_max:
+    if elapsed > edge_time_max:
       print("Too slow, try again.")
       play_rand_sound(f'{audio_dir}/too-slow',0)
       slap_die[str(random.randint(1,slap_die_sides))] = 1
@@ -106,7 +144,7 @@ def main():
       if roll in slap_die:
         del slap_die[roll]
 
-      if elapsed > edge_max - 5:
+      if elapsed > edge_time_max - close_call:
         print("That was close!")
         slap_die[str(random.randint(1,slap_die_sides))] = 1
         green_die[str(random.randint(1,green_die_sides))] = 1
@@ -114,10 +152,10 @@ def main():
         if roll in slap_die:
           del slap_die[roll]
 
-      if elapsed < (edge_max / 2):
+      if elapsed < (edge_time_max / 2):
         green_die[str(random.randint(1,green_die_sides))] = 1
 
-      if elapsed < (edge_max / 4):
+      if elapsed < (edge_time_max / 4):
         green_die[str(random.randint(1,green_die_sides))] = 1
 
       if elapsed > 15:
@@ -135,8 +173,8 @@ def main():
         if roll in green_die:
           del green_die[roll]
 
-      if elapsed > edge_min:
-        edge_max = elapsed
+      if elapsed > edge_time_min:
+        edge_time_max = elapsed
 
       edges = edges - 1
 
@@ -145,21 +183,21 @@ def main():
     roll = str(random.randint(1,slap_die_sides))
 
     if roll in slap_die and noslaps != 1:
-      time.sleep(random.randint(2,8))
-      time.sleep(random.randint(2,8))
-      count = roll_dice(4,3,2)
-      for i in range(0, count):
-        play_rand_sound(f'{audio_dir}/hurt',1)
-        time.sleep(random.randint(3,7))
       time.sleep(random.randint(3,10))
+      slaps = roll_dice(slaps_dice_sides,slaps_dice_count,slaps_dice_pick)
+      for i in range(0, slaps):
+        time.sleep(random.randint(2,14))
+        play_rand_sound(f'{audio_dir}/hurt',1)
+      time.sleep(random.randint(2,14))
     else:
-      time.sleep(random.randint(5,10))
-      time.sleep(random.randint(5,10))
+      time.sleep(random.randint(5,20))
 
     if edges > 0:
       print("Get ready to edge, stroke yourself!")
       play_rand_sound(f'{audio_dir}/stroke',0)
 
+      # TODO: Figure out how to better randomize 15 - 120 favoring ~70%
+      #       and make it easier to configure as 3 vars (min, max, mean?)
       prep_time = int(random.choices(
         population  = [15, 30, 45, 60, 90, 120],
         weights     = [10, 20, 40, 40, 30,  20],
