@@ -71,6 +71,12 @@ parser.add_argument(
 )
 
 parser.add_argument(
+  '--cruel',
+  action='store_true',
+  help='More edges. More slapping.'
+)
+
+parser.add_argument(
   '--edges',
   default=0,
   type=int,
@@ -95,6 +101,14 @@ if args.noslaps == 1:
   edge_dice_count += 2
   green_dice_sides += 10
 
+cruel = 1
+if args.cruel == 1:
+  cruel = 1
+  edge_dice_pick += 2
+  edge_dice_count += 2
+  slap_dice_pick += 1
+  slap_dice_count += 2
+
 # Set here for referencing when signal caught
 edges = args.edges
 
@@ -104,8 +118,14 @@ def main():
   global green_die
   global edges
 
+  if cruel == 1:
+    slap_die_sides = 15
+    for i in range(0,4):
+      slap_die  = die_sides_add(slap_die, slap_die_sides)
+
   if edges == 0:
     edges = dice_picker(edge_dice_count, edge_dice_sides, edge_dice_pick)
+
   slap_die  = die_sides_add(slap_die, slap_die_sides)
   green_die = die_sides_add(green_die, green_die_sides)
 
