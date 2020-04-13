@@ -31,9 +31,9 @@ edge_dice_pick  = 2
 
 # Number of dice, sides and chosen dice for number of ball slaps
 # when / if ball slapping is activated
-slaps_dice_sides  = 4
-slaps_dice_count  = 3
-slaps_dice_pick   = 2
+slap_dice_sides  = 4
+slap_dice_count  = 3
+slap_dice_pick   = 2
 
 # When starting a session, how long to stroke before the first edging
 start_stroke_min = 60
@@ -139,7 +139,7 @@ def main():
 def slap_your_balls():
   if die_roll(slap_die, slap_die_sides):
     time.sleep(random.randint(3, 10))
-    slaps = dice_picker(slaps_dice_sides, slaps_dice_count, slaps_dice_pick)
+    slaps = dice_picker(slap_dice_sides, slap_dice_count, slap_dice_pick)
     for i in range(0, slaps):
       time.sleep(random.randint(2, 14))
       play_rand_sound(f'{audio_dir}/hurt', 1)
