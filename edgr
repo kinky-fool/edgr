@@ -70,6 +70,13 @@ parser.add_argument(
   help='Disable slap instructions'
 )
 
+parser.add_argument(
+  '--edges',
+  default=0,
+  type=int,
+  help='Specify the number of edges'
+)
+
 args = parser.parse_args()
 
 green = 0
@@ -89,7 +96,7 @@ if args.noslaps == 1:
   green_dice_sides += 10
 
 # Set here for referencing when signal caught
-edges = 0
+edges = args.edges
 
 def main():
   global edge_time_max, edge_time_maxmin
@@ -97,7 +104,8 @@ def main():
   global green_die
   global edges
 
-  edges = dice_picker(edge_dice_count, edge_dice_sides, edge_dice_pick)
+  if edges == 0:
+    edges = dice_picker(edge_dice_count, edge_dice_sides, edge_dice_pick)
   slap_die  = die_sides_add(slap_die, slap_die_sides)
   green_die = die_sides_add(green_die, green_die_sides)
 
