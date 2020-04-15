@@ -168,6 +168,8 @@ def main():
         k           = 1
       )[0])
 
+      prep_time = fuzzy_weight(15, 120, 70)
+
       time.sleep(prep_time)
 
   print("You may stop stroking your cock.")
@@ -252,6 +254,22 @@ def edge_for_me(edge_time_maxmin, edge_time_max):
       edge_time_max = elapsed
 
     return 1
+
+def fuzzy_weight(minimum, maximum, favor):
+  target = int(abs(maximum - minimum) * favor / 100)
+
+  skew = 1
+  if random.randint(0,2) == 0:
+    skew = -1
+
+  result = target
+  for i in range(0, target):
+    if random.randint(0, 3) == 0:
+      result += skew
+    else:
+      result -= skew
+
+  return result
 
 def die_sides_add(die, sides):
   die[str(random.randint(1, sides))] = 1
