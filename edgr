@@ -71,9 +71,9 @@ parser.add_argument(
 )
 
 parser.add_argument(
-  '--cruel',
-  action='store_true',
-  help='More edges. More slapping.'
+  '-c', '--cruel',
+  action='count',
+  help='More edges. More slapping. Can be used multiple times.'
 )
 
 parser.add_argument(
@@ -102,12 +102,29 @@ if args.noslaps == 1:
   green_dice_sides += 10
 
 cruel = 1
-if args.cruel == 1:
+if args.cruel != None and args.cruel > 0:
   cruel = 1
-  edge_dice_pick += 2
-  edge_dice_count += 2
-  slap_dice_pick += 1
-  slap_dice_count += 2
+
+  for i in range(0, args.cruel):
+    options = [ 'sides', 'count', 'pick' ]
+    for j in range(0, random.randint(2, 3)):
+      opt = random.choice(options)
+      modifier = random.randint(0, 1) + random.randint(0, 2)
+      if opt == 'sides':
+        if random.randint(0, 1) == 0:
+          slap_dice_sides += modifier
+        else:
+          edge_dice_sides += modifier
+      elif opt == 'count':
+        if random.randint(0, 1) == 0:
+          slap_dice_count += modifier
+        else:
+          edge_dice_count += modifier
+      elif opt == 'pick':
+        if random.randint(0, 1) == 0:
+          slap_dice_pick += modifier
+        else:
+          edge_dice_pick += modifier
 
 # Set here for referencing when signal caught
 edges = args.edges
