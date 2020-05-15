@@ -99,7 +99,7 @@ if args.noslaps == 1:
   noslaps = 1
   edge_dice_pick += 1
   edge_dice_count += 2
-  green_dice_sides += 10
+  green_die_sides += int(green_die_sides * 0.5)
 
 cruel = 1
 if args.cruel != None and args.cruel > 0:
@@ -112,9 +112,12 @@ if args.cruel != None and args.cruel > 0:
       modifier = random.randint(0, 1) + random.randint(0, 2)
       if opt == 'sides':
         if random.randint(0, 1) == 0:
-          slap_dice_sides += modifier
+          slap_die_sides -= 1
         else:
-          edge_dice_sides += modifier
+          if random.randint(0, 1) == 0:
+            slap_dice_sides += modifier
+          else:
+            edge_dice_sides += modifier
       elif opt == 'count':
         if random.randint(0, 1) == 0:
           slap_dice_count += modifier
