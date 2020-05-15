@@ -131,12 +131,13 @@ if args.cruel != None and args.cruel > 0:
 
 # Set here for referencing when signal caught
 edges = args.edges
+edges_completed = 0
 
 def main():
   global edge_time_max, edge_time_maxmin
   global slap_die
   global green_die
-  global edges
+  global edges, edges_completed
 
   if cruel == 1:
     slap_die_sides = 15
@@ -157,6 +158,7 @@ def main():
   while edges > 0:
     if edge_for_me(edge_time_maxmin, edge_time_max):
       edges -= 1
+      edges_completed += 1
     time.sleep(5)
     slap_your_balls()
     if edges > 0:
@@ -176,6 +178,8 @@ def main():
       time.sleep(prep_time)
 
   print("You may stop stroking your cock.")
+  completed_plural = 'edge' if edges_completed == 1 else 'edges'
+  print(f'You completed {edges_completed} {completed_plural} this session.')
   play_rand_sound(f'{audio_dir}/stop', 0)
 
 def slap_your_balls():
@@ -190,11 +194,13 @@ def slap_your_balls():
     time.sleep(random.randint(5, 20))
 
 def edge_for_me(edge_time_maxmin, edge_time_max):
+  # TODO: Fix this so it's ordered properly, and used 'edges_completed' to
+  #       determine if this is the first edge (different sound clip)
+  # TODO: Add a countdown from rand 3-7 to edge - fake edges, laughs
   for foo in range(0, 5):
     if random.randint(1, 6) == 1:
       play_rand_sound(f'{audio_dir}/laughs', 0)
       time.sleep(random.randint(extra_stroke_min, extra_stroke_max))
-
 
   if die_roll(green_die, green_die_sides) and green == 1:
     print("Cum for me! (KIDDING - TESTING!)")
@@ -319,8 +325,11 @@ def play_rand_sound(directory, blocking):
   return
 
 def handler(signal_received, frame):
+  remain_plural = 'edge' if edges == 1 else 'edges'
+  complete_plural = 'edge' if edges_completed == 1 else 'edges'
   print()
-  print(f'Aborted with {edges} edges remaining.')
+  print(f'Aborted with {edges} {remain_plural} remaining.')
+  print(f'{edges_completed} {complete_plural} completed.')
   exit(0)
 
 if __name__ == '__main__':
