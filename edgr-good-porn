@@ -1,0 +1,37 @@
+#!/bin/bash
+
+file="$1"
+
+db="$HOME/.config/edgr.sqlite"
+good_porn_dir="$HOME/files/images/good_porn"
+
+
+if [[ -z "$file" ]]; then
+  echo "Please pass path of image to move to $good_porn_dir"
+  exit 1;
+fi
+
+query="select value from settings where name == 'save_pics'"
+saves=$(/usr/bin/sqlite3 "$db" "$query")
+
+# Add a punishment for trying to save after running out of saves
+if [[ "$saves" -le 0 ]]; then
+  $HOME/projects/edgr/edgr-add-slaps --min 3 --max 10
+  exit
+fi
+
+# Decrement number of saves.
+query="update settings set value = value - 1 where name == 'save_pics'"
+/usr/bin/sqlite3 "$db" "$query"
+
+if [[ -e "$file" ]]; then
+  mv "$file" "$good_porn_dir"
+
+  query="select count from seen_images where filename == '$file'"
+  seen=$(sqlite3 "$db" "$query")
+  if [[ "$seen" -gt 1 ]]; then
+    $HOME/projects/edgr/edgr-add-slaps --min "$seen" --max "$((seen * seen))"
+  else
+    $HOME/projects/edgr/edgr-add-slaps --min 0 --max 2
+  fi
+fi
