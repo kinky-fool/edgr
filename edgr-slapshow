@@ -2,18 +2,20 @@
 
 source $HOME/lib/edgr_funcs.sh
 
-right="$1" || 0
-wrong="$2" || 10
+right="${1:-2}"
+wrong="${2:-4}"
 
 script="$HOME/projects/edgr/edgr-check-image"
 pics_count="$HOME/.edge_pics"
-images="$HOME/files/images/porn_pics"
+images="$HOME/files/images/porn_pics/pool"
 slideshow="$HOME/.slideshow"
 
 rm -f "$HOME/.edgr_psych"
 rm -f "$HOME/.edgr_since_points"
 echo "$wrong" > "$HOME/.edgr_slaps"
 echo 25 > "$HOME/.edgr_slapchance"
+
+/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" "update settings set value = 0 where name = 'risk'"
 
 now=$(date "+%s")
 
@@ -39,20 +41,20 @@ while [[ "$start_pics" -lt "$start_pics_min" ]]; do
 done
 
 dupes=0
-dupes_min=140
+dupes_min=40
 
 while [[ "$dupes" -lt "$dupes_min" ]]; do
-  dupes=$((RANDOM % 40 + dupes_min))
+  dupes=$((RANDOM % 10 + dupes_min))
 
   for i in $(seq 1 $right); do
     if [[ "$((RANDOM % 3))" -eq 0 ]]; then
-      dupes=$((dupes - RANDOM % 20))
+      dupes=$((dupes - RANDOM % 10))
     fi
   done
 
   for i in $(seq 1 $((wrong * 2))); do
     if [[ "$((RANDOM % 3))" -eq 0 ]]; then
-      dupes=$((dupes + RANDOM % 15))
+      dupes=$((dupes + RANDOM % 10))
     fi
   done
 done
@@ -81,9 +83,8 @@ done
 echo 0 > "$HOME/.edge_remains"
 echo "$start_pics" > "$pics_count"
 
-safe_pics=3400
-porn_pics=$((RANDOM % safe_pics))
-caption_pics=$((safe_pics - porn_pics))
+porn_pics=500
+caption_pics=125
 
 random_pic_playlist "$HOME/files/images/porn_pics/stash $HOME/files/images/porn_pics" $porn_pics > "$slideshow"
 random_pic_playlist "$HOME/files/images/captions" $caption_pics >> "$slideshow"
@@ -93,7 +94,7 @@ random_pic_playlist "$HOME/files/images/risky" "$dupes" >> "$slideshow"
 shuf "$slideshow" -o "$slideshow"
 
 $HOME/bin/feh -f "$slideshow" \
-  --info "$script %f $pics_count $pics $start_pics $countdown $right $wrong" \
+  --info "$script --file %f --right $right --wrong $wrong" \
   --auto-zoom \
   --hide-pointer \
   --borderless \
@@ -101,13 +102,13 @@ $HOME/bin/feh -f "$slideshow" \
   --randomize \
   --scale-down \
   --image-bg black \
-  --geometry 1500x1080+0+0 \
+  --geometry 1500x1050+15+15 \
   --slideshow-delay 4 \
   --slideshow-delay-min 2 \
   --slideshow-delay-max 6 \
   --action1 "mv %F ~/files/images/rejects/%N" \
-  --fontpath /usr/share/fonts/truetype/dejavu/ \
-  --font DejaVuSans/18
+  --fontpath "$HOME/.local/share/fonts/Lexend_Giga/" \
+  --font "LexendGiga-Regular/24"
 
 end_time=$(date +"%s")
 

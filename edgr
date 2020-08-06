@@ -10,6 +10,8 @@ from signal import signal, SIGINT
 from sys import exit
 import threading
 
+import sqlite3
+
 home_dir = os.environ['HOME']
 audio_dir = f'{home_dir}/lib/audio'
 
@@ -21,20 +23,6 @@ edge_time_max = 120
 # Minimum seconds that edge_time_max can be reduced to
 edge_time_maxmin = 30
 
-# Number of dice, sides and chosen dice for selecting edges
-# For example; 4 sides, 3 count, 2 pick you roll:
-# 3 2 3 - 3 and 3 are chosen, they match so 2 is added as well
-# 4 2 1 - 4 and 2 are chosen, 1 is ignored.
-edge_dice_sides = 4
-edge_dice_count = 3
-edge_dice_pick  = 2
-
-# Number of dice, sides and chosen dice for number of ball slaps
-# when / if ball slapping is activated
-slap_dice_sides  = 4
-slap_dice_count  = 3
-slap_dice_pick   = 2
-
 # When starting a session, how long to stroke before the first edging
 start_stroke_min = 60
 start_stroke_max = 300
@@ -45,17 +33,11 @@ extra_stroke_min = 10
 extra_stroke_max = 40
 
 # Seconds in between edges, hands off cock for this time.
-cooldown_min = 10
-cooldown_max = 30
+cooldown_min = 15
+cooldown_max = 40
 
 # Seconds before edge_time_max that counts as a 'close call'
-close_call = 5
-
-slap_die_sides  = 20
-slap_die        = {}
-
-green_die_sides = 20
-green_die       = {}
+close_call = 10
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -67,7 +49,7 @@ parser.add_argument(
 parser.add_argument(
   '--noslaps',
   action='store_true',
-  help='Disable slap instructions'
+  help='Disable slaps for slowness'
 )
 
 parser.add_argument(
@@ -87,68 +69,48 @@ args = parser.parse_args()
 
 green = 0
 if args.green == 1:
+  # Small chance a specified green light never happens
   if random.randint(0, 20) != 0:
     green = 1
-    edge_dice_sides += 1
-    edge_dice_count += 1
-    slap_dice_pick += 1
-    slap_dice_count += 2
 
-noslaps = 0
+
+extra_edges = 0
+
+slapx = 2
+
+dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
+sth = dbh.cursor()
+query = """ select value from settings where name = ? """
+sth.execute(query,('risk',))
+risk = sth.fetchone()[0]
+dbh.commit()
+dbh.close()
+
+if risk > 0:
+  for i in range(1, risk):
+    if random.randint(0, 2) == 0:
+      slapx = slapx + random.randint(1, 2)
+      if random.randint(0, 2) == 0:
+        extra_edges = extra_edges + random.randint(0, 1)
+    else:
+      extra_edges = extra_edges + random.randint(0, 2)
+
 if args.noslaps == 1:
-  noslaps = 1
-  edge_dice_pick += 1
-  edge_dice_count += 2
-  green_die_sides += int(green_die_sides * 0.5)
+  slapx = 0
 
-cruel = 1
-if args.cruel != None and args.cruel > 0:
-  cruel = 1
-
-  for i in range(0, args.cruel):
-    options = [ 'sides', 'count', 'pick' ]
-    for j in range(0, random.randint(2, 3)):
-      opt = random.choice(options)
-      modifier = random.randint(0, 1) + random.randint(0, 2)
-      if opt == 'sides':
-        if random.randint(0, 1) == 0:
-          slap_die_sides -= 1
-        else:
-          if random.randint(0, 1) == 0:
-            slap_dice_sides += modifier
-          else:
-            edge_dice_sides += modifier
-      elif opt == 'count':
-        if random.randint(0, 1) == 0:
-          slap_dice_count += modifier
-        else:
-          edge_dice_count += modifier
-      elif opt == 'pick':
-        if random.randint(0, 1) == 0:
-          slap_dice_pick += modifier
-        else:
-          edge_dice_pick += modifier
+edges = args.edges # default is 0
+if edges == 0:
+  edges = random.randint(3, 5)
+edges += extra_edges
 
 # Set here for referencing when signal caught
-edges = args.edges
 edges_completed = 0
+fails = 0
 
 def main():
   global edge_time_max, edge_time_maxmin
-  global slap_die
-  global green_die
   global edges, edges_completed
-
-  if cruel == 1:
-    slap_die_sides = 15
-    for i in range(0,4):
-      slap_die  = die_sides_add(slap_die, slap_die_sides)
-
-  if edges == 0:
-    edges = dice_picker(edge_dice_count, edge_dice_sides, edge_dice_pick)
-
-  slap_die  = die_sides_add(slap_die, slap_die_sides)
-  green_die = die_sides_add(green_die, green_die_sides)
+  global fails
 
   print("Get ready to edge yourself.")
   play_rand_sound(f'{audio_dir}/start', 0)
@@ -156,11 +118,51 @@ def main():
   time.sleep(random.randint(start_stroke_min, start_stroke_max))
 
   while edges > 0:
-    if edge_for_me(edge_time_maxmin, edge_time_max):
+    for foo in range(0, 5):
+      if random.randint(1, 8) == 1:
+        play_rand_sound(f'{audio_dir}/laughs', 0)
+        time.sleep(random.randint(extra_stroke_min, extra_stroke_max))
+
+    elapsed = edge_for_me()
+    edges_completed += 1
+
+    time.sleep(random.randint(3, 10))
+
+    if elapsed > edge_time_max:
+      print("Too slow, try again.")
+      play_rand_sound(f'{audio_dir}/too-slow', 0)
+
+      fails += 1
+
+      if elapsed > (edge_time_max * 1.5):
+        fails += 1
+
+      if elapsed > (edge_time_max * 2):
+        print("OUCH.")
+        fails += 1
+        edges += 1
+
+      slaps = random.randint(0, slapx) + random.randint(0, fails)
+      add_slaps(slaps)
+
+    else:
       edges -= 1
-      edges_completed += 1
-    time.sleep(5)
-    slap_your_balls()
+      if elapsed > edge_time_max - close_call:
+        print("That was close!")
+
+      if elapsed > 30:
+        slaps = random.randint(0, slapx)
+        add_slaps(slaps)
+
+      print("Good boy.")
+      play_rand_sound(f'{audio_dir}/good-boy', 0)
+
+      # Reduce edge window... dun dun duuuuunnnnnn!
+      if elapsed > edge_time_maxmin and elapsed < edge_time_max:
+        edge_time_max = elapsed
+
+    time.sleep(random.randint(cooldown_min, cooldown_max))
+
     if edges > 0:
       print("Get ready to edge, stroke yourself!")
       play_rand_sound(f'{audio_dir}/stroke', 0)
@@ -182,28 +184,20 @@ def main():
   print(f'You completed {edges_completed} {completed_plural} this session.')
   play_rand_sound(f'{audio_dir}/stop', 0)
 
-def slap_your_balls():
-  if die_roll(slap_die, slap_die_sides):
-    time.sleep(random.randint(3, 10))
-    slaps = dice_picker(slap_dice_sides, slap_dice_count, slap_dice_pick)
-    for i in range(0, slaps):
-      time.sleep(random.randint(2, 14))
-      play_rand_sound(f'{audio_dir}/hurt', 1)
-    time.sleep(random.randint(2, 14))
-  else:
-    time.sleep(random.randint(5, 20))
 
-def edge_for_me(edge_time_maxmin, edge_time_max):
-  # TODO: Fix this so it's ordered properly, and used 'edges_completed' to
-  #       determine if this is the first edge (different sound clip)
-  # TODO: Add a countdown from rand 3-7 to edge - fake edges, laughs
-  for foo in range(0, 5):
-    if random.randint(1, 6) == 1:
-      play_rand_sound(f'{audio_dir}/laughs', 0)
-      time.sleep(random.randint(extra_stroke_min, extra_stroke_max))
+def add_slaps(slaps):
+  dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
+  sth = dbh.cursor()
+  query = """ update settings set value = value + ? where name = ? """
+  sth.execute(query,(slaps,'slaps'))
+  dbh.commit()
+  dbh.close()
 
-  if die_roll(green_die, green_die_sides) and green == 1:
-    print("Cum for me! (KIDDING - TESTING!)")
+def edge_for_me():
+  if green == 1 and random.randint(0,42) == 42:
+    print("Cum for me!")
+    time.sleep(random.randint(3,6))
+    print("Kidding!")
     play_rand_sound(f'{audio_dir}/edges', 0)
     # TODO: figure out how to have it stop after X seconds, and play a clip
     #       "hands off your cock" or something, instead of waiting for user
@@ -219,50 +213,10 @@ def edge_for_me(edge_time_maxmin, edge_time_max):
   elapsed = time.time() - start
 
   print("Hands off your cock.")
+
   play_rand_sound(f'{audio_dir}/laughs', 0)
 
-  time.sleep(random.randint(cooldown_min, cooldown_max))
-
-  if elapsed > edge_time_max:
-    print("Too slow, try again.")
-    play_rand_sound(f'{audio_dir}/too-slow', 0)
-    die_sides_add(slap_die, slap_die_sides)
-    die_sides_sub(green_die, green_die_sides)
-    die_sides_sub(green_die, green_die_sides)
-    return 0
-  else:
-    print("Good boy.")
-    play_rand_sound(f'{audio_dir}/good-boy', 0)
-    die_sides_add(green_die, green_die_sides)
-    die_sides_sub(slap_die, slap_die_sides)
-
-    if elapsed > edge_time_max - close_call:
-      print("That was close!")
-      die_sides_sub(slap_die, slap_die_sides)
-      die_sides_add(slap_die, slap_die_sides)
-      die_sides_add(green_die, green_die_sides)
-
-    if elapsed < (edge_time_max / 2):
-      die_sides_add(green_die, green_die_sides)
-
-    if elapsed < (edge_time_max / 4):
-      die_sides_add(green_die, green_die_sides)
-
-    if elapsed > 15:
-      die_sides_add(slap_die, slap_die_sides)
-
-    if elapsed > 30:
-      die_sides_add(slap_die, slap_die_sides)
-      die_sides_sub(green_die, green_die_sides)
-
-    if elapsed > 60:
-      die_sides_add(slap_die, slap_die_sides)
-      die_sides_sub(green_die, green_die_sides)
-
-    if elapsed > edge_time_maxmin:
-      edge_time_max = elapsed
-
-    return 1
+  return elapsed
 
 def fuzzy_weight(minimum, maximum, favor):
   target = int(abs(maximum - minimum) * favor / 100)
@@ -279,35 +233,6 @@ def fuzzy_weight(minimum, maximum, favor):
       result -= skew
 
   return result
-
-def die_sides_add(die, sides):
-  die[str(random.randint(1, sides))] = 1
-  return die
-
-def die_sides_sub(die, sides):
-  roll = str(random.randint(1, sides))
-  if roll in die:
-    del die[roll]
-  return die
-
-def die_roll(die, sides):
-  roll = str(random.randint(1, sides))
-  if roll in die:
-    return 1
-  return 0
-
-def dice_picker(count, sides, rc):
-  dice = []
-  for i in range(0, count):
-    dice.append(random.randint(1, sides))
-  dice.sort(reverse=True)
-  paired = dice.count(dice[0])
-  if paired == count:
-    return sum(dice) * 2
-  elif paired > 1:
-    return sum(dice)
-  else:
-    return sum(dice[0:rc])
 
 def play_rand_sound(directory, blocking):
   if os.path.isdir(directory):
