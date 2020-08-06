@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+
+import threading
+import random
+import time
+import sys
+import os
+
+import sqlite3
+
+from playsound import playsound
+
+
+def main():
+  home_dir = os.environ['HOME']
+  #print(f'Seen {count}x')
+  print('Listening for slaps, CTRL-C to stop.')
+  dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
+
+  while True:
+    time.sleep(2)
+    sth = dbh.cursor()
+    query = 'select value from settings where name = ?'
+    sth.execute(query,(f'slaps',))
+
+    slaps = sth.fetchone()
+
+    if slaps != None and slaps[0] > 0:
+      query = 'update settings set value = value - 1 where name = ?'
+      sth.execute(query, (f'slaps',))
+      dbh.commit()
+
+      audio_dir = f'{home_dir}/lib/audio'
+
+      time.sleep(random.randint(0,10))
+      play_rand_sound(f'{audio_dir}/hurt', 1)
+
+  dbh.close()
+  sys.exit()
+
+def play_rand_sound(directory, blocking):
+  if os.path.isdir(directory):
+    filename = ''
+
+    while not os.path.isfile(f'{directory}/{filename}'):
+      filename = random.choice(os.listdir(directory))
+
+    mp3 = f'{directory}/{filename}'
+    if blocking == 1:
+      playsound(mp3)
+    else:
+      sound_thread = threading.Thread(target=playsound, args=(mp3,))
+      sound_thread.start()
+  return
+
+if __name__ == '__main__':
+  main()
