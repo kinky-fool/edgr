@@ -1,307 +1,115 @@
-#!/bin/bash
+#!/usr/bin/env python3
 
-image="$1"
-pics_count="$2"
-pics_per_point="$3"
-start_pics="$4"
-countdown_from="$5"
-right="$6"
-wrong="$7"
+import os
+import time
+import random
+import re
+import sqlite3
+import argparse
+import subprocess
 
-countdown_slaps=15
+home_dir = os.environ['HOME']
 
-do_audio=0
+def main():
+  user_id = 1
 
-punish=0
-points=0
-if echo "$image" | grep -E '[0-9]+pts' &>/dev/null; then
-  points=$(echo "$image" | grep -Eo '[0-9]+pts' | sed -e 's/pts$//')
-  if [[ "$points" =~ ^[0-9]+$ ]] && [[ "$points" -gt 0 ]]; then
-    punish=1
-  else
-    points=0
-  fi
-fi
+  dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
+  sth = dbh.cursor()
+  args = do_cli_args()
 
-edge_after=$(< "$pics_count")
-edge_after=$((edge_after - 1))
+  count = 0
+  slap  = 0
+  risk  = 0
 
-file_sc="$HOME/.edgr_slapchance"
-slap_chance=$(< "$file_sc")
+  image = str(args.file[0])
 
-psych_file="$HOME/.edgr_psych"
-count_file="$HOME/.edgr_count"
-remains_file="$HOME/.edge_remains"
-since_points_file="$HOME/.edgr_since_points"
+  if image.find('porn_pics') > 0:
+    query = 'select count from seen_images where user_id=? and filename=?'
+    sth.execute(query,(user_id, image))
+    dbh.commit()
+    count = sth.fetchone()
+    if count != None:
+      count = count[0] + 1
+      query = 'update seen_images set count=? where user_id=? and filename=?'
+      sth.execute(query,(count, user_id, image))
+      dbh.commit()
+      print(f'Seen {count}x')
+    else:
+      query = """insert into seen_images ('user_id', 'filename', 'count')
+                  values (?,?,?)"""
+      sth.execute(query, (user_id, image, 1))
+      dbh.commit()
+      count = 1
 
-since_points=0
-if [[ -e "$since_points_file" ]]; then
-  since_points=$(< "$since_points_file")
-fi
+    if count > 1:
+      high_die = int(4 + int(args.right))
+      for i in range(2, int(args.wrong) + count):
+        if random.randint(1, high_die) == 1:
+          slap = slap + 1
 
-psych=0
-if [[ -e "$psych_file" ]]; then
-  psych=$(< "$psych_file")
-  if [[ "$psych" -gt "$edge_after" ]]; then
-    psych=0
-  fi
-fi
+  if (image.find('risky')) > 0:
+    query = """ update settings set value = value + ? where name = ? """
+    sth.execute(query,(1,'risk'))
+    dbh.commit()
 
-count=0
-if [[ -e "$count_file" ]]; then
-  count=$(< "$count_file")
-fi
+    query = """ select value from settings where name = ? """
+    sth.execute(query, ('slaps',))
+    current = int(sth.fetchone()[0])
 
-new_edge=$edge_after
+    if current > 0:
+      query = """ update settings set value = value + ? where name = ? """
+      sth.execute(query, (random.randint(0, 2), 'slaps',))
+      dbh.commit()
 
-remains=0
-if [[ -e "$remains_file" ]]; then
-  remains=$(< "$remains_file")
-fi
+    query = """ select value from settings where name = ? """
+    sth.execute(query, ('risk',))
+    risk = sth.fetchone()[0]
 
-old_remains=$remains
+    for i in range(1, 3):
+      if risk > random.randint(0, 100):
+        slap = slap + 1
 
-edge=0
-countdown=0
-if [[ "$edge_after" -le 0 ]]; then
-  edge=1
-  countdown=1
-fi
+  if slap > 0:
+    slaps = random.randint(1, slap)
+    query = """ update settings set value = value + ? where name = ? """
+    sth.execute(query,(slaps,'slaps'))
+    dbh.commit()
 
-counting_down=-1
-if [[ "$edge_after" -le "$((countdown_from + psych))" && \
-      "$edge_after" -ge "$psych" ]]; then
-  counting_down=$((edge_after - psych))
-  if [[ "$counting_down" -ge 0 ]]; then
-    countdown=1
-  fi
-fi
+  query = """ select value from settings where name = ? """
+  sth.execute(query,('save_pics',))
+  saves = int(sth.fetchone()[0])
 
-if [[ "$countdown" -ne 0 ]]; then
-  count=$((count + 1))
-else
-  count=0
-fi
+  if saves > 1:
+    print(f'Saves: {saves}x')
+  elif saves == 1:
+    print(f'Save: {saves}x')
 
-if [[ "$punish" -ne 0 ]]; then
-  multiplier=$pics_per_point
-  mercy=4
+  dbh.close()
 
-  # Base slaps
-  slap=0
+def do_cli_args():
+  parser = argparse.ArgumentParser()
 
-  if [[ "$image" =~ eyes || \
-        $countdown_from -le 5 || \
-        ( $countdown_from -gt 5 && $((RANDOM % (countdown_from - 5))) ) ]]; then
-    slap=$((slap + 2))
-  fi
+  parser.add_argument(
+    '-r', '--right',
+    default=2,
+    type=int,
+    help='Number pictures in a row right from Thong Game',
+  )
 
-  if [[ "$remains" -gt 0 ]]; then
-    multiplier=$((multiplier + 2))
-    mercy=$((mercy + 1))
-  fi
+  parser.add_argument(
+    '-w', '--wrong',
+    default=4,
+    type=int,
+    help='Number pictures in a row wrong from Thong Game',
+  )
 
-  remains=$((remains + points))
+  parser.add_argument(
+    '-f', '--file',
+    nargs='+',
+    help='Full path of file',
+  )
 
-  if [[ "$countdown" -eq 1 ]]; then
-    # Increase penalty duration by adding to remains
-    remains=$((remains + count))
+  return parser.parse_args()
 
-    multiplier=$((multiplier + 1))
-    mercy=$((mercy + 1))
-
-    bonus=0
-
-    # Re-add the pics counted down
-    new_edge=$((new_edge + count))
-    slap=$((slap + 2))
-  fi
-
-  if [[ "$edge" -eq 1 ]]; then
-    multiplier=$((multiplier + 1))
-    mercy=$((mercy - 1))
-    slap=$((slap + 2))
-    for i in {1..2}; do
-      if [[ $((RANDOM % 4)) -eq 0 ]]; then
-        # edge_after should be less than 1 in this case
-        new_edge=$((new_edge + (count + edge_after)))
-      fi
-    done
-  fi
-
-  # countdown reached 0; edge or psych
-  if [[ "$counting_down" -eq 0 ]]; then
-    multiplier=$((multiplier + 1))
-    mercy=$((mercy + 1))
-    points=$((points * 12 / 10))
-
-    slap=$((slap + 2))
-    new_edge=$((new_edge + countdown_from))
-  fi
-
-  edge_chances=$((count - countdown_from))
-  if [[ "$edge_chances" -gt 0 ]]; then
-    bonus=$((edge_chances / 8))
-    multiplier=$((multiplier + bonus))
-  fi
-
-  if [[ "$since_points" -eq 0 ]]; then
-    multiplier=$((multiplier + 2))
-    slap=$((slap + 2))
-  fi
-
-  bonus=$((since_points / 10))
-  multiplier=$((multiplier + bonus))
-  slap=$((slap + bonus))
-
-  since_points=0
-
-  add=0
-  sub=0
-
-  for ((i = 0; i < points * multiplier; i++)); do
-    if [[ $((RANDOM % 3)) -ne 0 ]]; then
-      add=$((add + 1))
-    fi
-  done
-
-  for ((i = 0; i < points * mercy; i++)); do
-    if [[ $((RANDOM % 3)) -eq 0 ]]; then
-      sub=$((sub + 1))
-    fi
-  done
-
-  if [[ "$sub" -gt "$add" ]]; then
-    new_edge=$((new_edge + add))
-  else
-    new_edge=$((new_edge + (add - sub)))
-  fi
-
-  if [[ $((RANDOM % 8)) -eq 0 ]]; then
-    new_psych=$((new_edge - (countdown_from + (RANDOM%6) + 1)))
-    if [[ "$new_psych" -gt "$psych" && \
-          "$new_psych" -gt "$countdown_from" ]]; then
-      echo "$new_psych" > "$psych_file"
-    fi
-  fi
-
-  do_slaps=0
-  while [[ "$do_slaps" -eq 0 ]]; do
-    for i in $(seq 1 $slap); do
-      if [[ $((RANDOM % 3)) -gt 0 ]]; then
-        do_slaps=$((do_slaps + 1))
-      fi
-    done
-
-    if [[ "$do_slaps" -eq 0 ]]; then
-      slap=$((slap + 1))
-    fi
-
-    if [[ "$do_slaps" -gt 10 ]]; then
-      do_slaps=0
-      slap=$((slap - 1))
-    fi
-  done
-
-  slap=$do_slaps
-
-  if [[ $(( RANDOM % 500 )) == 0 ]]; then
-    slap=$((slap + 4))
-  fi
-
-  if [[ $(( RANDOM % 100 )) > "$slap_chance" ]]; then
-    slap=0
-  fi
-
-  if [[ "$wrong" -eq 0 ]]; then
-    slap=0
-  elif [[ $(( RANDOM % (wrong * 2) )) == 0 ]]; then
-    slap=0
-  fi
-
-  for save in $(seq 1 $right); do
-    if [[ "$((RANDOM % 6))" -eq 0 ]]; then
-      slap=0
-    fi
-  done
-
-  if [[ $slap -ne 0 ]]; then
-    if [[ $slap -eq 1 ]]; then
-      printf "   slap balls 1 time\n"
-    else
-      printf "   slap balls %i times\n" "$slap"
-    fi
-    if [[ "$do_audio" -eq 1 ]]; then
-      pad=$(printf "%02i" "$slap")
-      mp3s=( $HOME/lib/audio/slaps/*${pad}.mp3 )
-      mp3=$(shuf -n 1 -e "${mp3s[@]}")
-      /usr/bin/mpg123 -i -o pulse "$mp3" &>/dev/null &
-    fi
-  else
-    if [[ "$do_audio" -eq 1 ]]; then
-      mp3s=( $HOME/lib/audio/laughs/* )
-      mp3=$(shuf -n 1 -e "${mp3s[@]}")
-      /usr/bin/mpg123 -i -o pulse "$mp3" &>/dev/null &
-    fi
-  fi
-
-  slaps=$(< $HOME/.edgr_slaps)
-  slaps=$((slaps + slap))
-  echo "$slaps" > "$HOME/.edgr_slaps"
-
-  slap_chance=$((slap_chance + wrong))
-  echo "$slap_chance" > "$file_sc"
-
-  edge=0
-else
-  if [[ "$edge" -ne 0 ]]; then
-    printf "edge\n"
-    if [[ "$counting_down" -eq 0 ]]; then
-      if [[ "$do_audio" -eq 1 ]]; then
-        mp3s=( $HOME/lib/audio/edges/* )
-        mp3=$(shuf -n 1 -e "${mp3s[@]}")
-        /usr/bin/mpg123 -i -o pulse "$mp3" &>/dev/null &
-      fi
-    fi
-  elif [[ "$edge_after" -ne 0 && "$edge_after" -eq "$psych" ]]; then
-    printf "psych!\n"
-    rm -f "$psych_file"
-    if [[ "$do_audio" -eq 1 ]]; then
-      mp3s=( $HOME/lib/audio/laughs/* )
-      mp3=$(shuf -n 1 -e "${mp3s[@]}")
-      /usr/bin/mpg123 -i -o pulse "$mp3" &>/dev/null &
-    fi
-  elif [[ "$counting_down" -gt 0 ]]; then
-    printf "%4i\n" "$counting_down"
-    if [[ "$do_audio" -eq 1 ]]; then
-      pad=$(printf "%02i" "$counting_down")
-      mp3s=( $HOME/lib/audio/counting/*${pad}.mp3 )
-      mp3=$(shuf -n 1 -e "${mp3s[@]}")
-      /usr/bin/mpg123 -i -o pulse "$mp3" &>/dev/null &
-    fi
-  fi
-
-  if [[ "$remains" -gt 0 ]]; then
-    if [[ $((RAND%100)) -lt 85 ]]; then
-      remains=$((remains - 1))
-    fi
-  fi
-  since_points=$((since_points + 1))
-fi
-
-#printf "remains added: %s\n" $((remains - old_remains))
-#printf "pics added: %s\n" $((new_edge - edge_after))
-#printf "pics left: %s\n" "$new_edge"
-
-if [[ $((RANDOM % 20)) && "$psych" -eq 0 ]]; then
-  new_psych=$((new_edge - (countdown_from + (RANDOM % 10) + 1)))
-  if [[ "$new_psych" -gt "$psych" && \
-        "$new_psych" -gt "$countdown_from" ]]; then
-    echo "$new_psych" > "$psych_file"
-  fi
-fi
-
-echo "$remains" > "$remains_file"
-echo "$new_edge" > "$pics_count"
-echo "$count" > "$count_file"
-echo "$since_points" > "$since_points_file"
+if __name__ == '__main__':
+  main()
