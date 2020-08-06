@@ -1,0 +1,123 @@
+#!/bin/bash
+
+source $HOME/lib/edgr_funcs.sh
+
+right="${1:-4}"
+wrong="${2:-0}"
+saves="${3:-20}"
+
+script="$HOME/projects/edgr/edgr-check-image"
+pics_count="$HOME/.edge_pics"
+images="$HOME/files/images/porn_pics/pool"
+slideshow="$HOME/.slideshow"
+
+$HOME/projects/edgr/edgr-slappr &
+
+/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
+          "update settings set value = 0 where name = 'risk'"
+/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
+          "update settings set value = $saves where name = 'save_pics'"
+
+now=$(date "+%s")
+
+pics=2
+
+start_pics=0
+start_pics_min=50
+
+while [[ "$start_pics" -lt "$start_pics_min" ]]; do
+  start_pics=$((RANDOM % 50 + start_pics_min))
+
+  for i in $(seq 1 $right); do
+    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
+      start_pics=$((start_pics - RANDOM % 5))
+    fi
+  done
+
+  for i in $(seq 1 $((wrong * 2))); do
+    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
+      start_pics=$((start_pics + RANDOM % 5))
+    fi
+  done
+done
+
+dupes=0
+dupes_min=40
+
+while [[ "$dupes" -lt "$dupes_min" ]]; do
+  dupes=$((RANDOM % 10 + dupes_min))
+
+  for i in $(seq 1 $right); do
+    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
+      dupes=$((dupes - RANDOM % 10))
+    fi
+  done
+
+  for i in $(seq 1 $((wrong * 2))); do
+    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
+      dupes=$((dupes + RANDOM % 10))
+    fi
+  done
+done
+
+countdown=0
+countdown_min=5
+countdown_max=7
+
+while [[ "$countdown" -lt "$countdown_min" ]] || \
+      [[ "$countdown" -gt "$countdown_max" ]]; do
+  countdown=$((RANDOM % 3 + countdown_min))
+
+  for i in $(seq 1 $right); do
+    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
+      countdown=$((countdown - 1))
+    fi
+  done
+
+  for i in $(seq 1 $((wrong * 2))); do
+    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
+      countdown=$((countdown + 1))
+    fi
+  done
+done
+
+echo 0 > "$HOME/.edge_remains"
+echo "$start_pics" > "$pics_count"
+
+porn_pics=500
+caption_pics=125
+
+random_pic_playlist "$HOME/files/images/porn_pics/pool" $porn_pics > "$slideshow"
+#random_pic_playlist "$HOME/files/images/captions" $caption_pics >> "$slideshow"
+random_pic_playlist "$HOME/files/images/risky" "$dupes" >> "$slideshow"
+
+# Shuffle the slideshow list
+shuf "$slideshow" -o "$slideshow"
+
+$HOME/bin/feh -f "$slideshow" \
+  --info "$script --file %f --right $right --wrong $wrong" \
+  --auto-zoom \
+  --hide-pointer \
+  --borderless \
+  --no-jump-on-resort \
+  --fullscreen \
+  --randomize \
+  --scale-down \
+  --image-bg black \
+  --geometry 1500x1050+15+15 \
+  --slideshow-delay 10 \
+  --slideshow-delay-min 10 \
+  --slideshow-delay-max 10 \
+  --action "$HOME/projects/edgr/edgr-good-porn %F" \
+  --fontpath "$HOME/.local/share/fonts/Lexend_Giga/" \
+  --font "LexendGiga-Regular/22"
+
+pkill -f edgr-slappr
+
+end_time=$(date +"%s")
+
+stroke_time=$((end_time - now))
+
+printf "\nStroked for %s\n" "$(sec_to_human $stroke_time)"
+printf "dupes: %s\nstart pics: %s\ncountdown: %s\n" $dupes $start_pics $countdown
+printf "slaps: %s\n" $(< "$HOME/.edgr_slaps")
