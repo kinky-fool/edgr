@@ -11,8 +11,6 @@ pics_count="$HOME/.edge_pics"
 images="$HOME/files/images/porn_pics/pool"
 slideshow="$HOME/.slideshow"
 
-$HOME/projects/edgr/edgr-slappr &
-
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
           "update settings set value = 0 where name = 'risk'"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
@@ -112,12 +110,10 @@ $HOME/bin/feh -f "$slideshow" \
   --fontpath "$HOME/.local/share/fonts/Lexend_Giga/" \
   --font "LexendGiga-Regular/22"
 
-pkill -f edgr-slappr
-
 end_time=$(date +"%s")
 
 stroke_time=$((end_time - now))
 
 printf "\nStroked for %s\n" "$(sec_to_human $stroke_time)"
-printf "dupes: %s\nstart pics: %s\ncountdown: %s\n" $dupes $start_pics $countdown
-printf "slaps: %s\n" $(< "$HOME/.edgr_slaps")
+
+$HOME/projects/edgr/edgr-slappr
