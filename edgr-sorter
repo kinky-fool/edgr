@@ -88,8 +88,8 @@ porn_pics=500
 caption_pics=125
 
 random_pic_playlist "$HOME/files/images/porn_pics/pool" $porn_pics > "$slideshow"
-#random_pic_playlist "$HOME/files/images/captions" $caption_pics >> "$slideshow"
-random_pic_playlist "$HOME/files/images/risky" "$dupes" >> "$slideshow"
+random_pic_playlist "$HOME/files/images/captions" $caption_pics >> "$slideshow"
+random_pic_playlist "$HOME/files/images/risky-old" "$dupes" >> "$slideshow"
 
 # Shuffle the slideshow list
 shuf "$slideshow" -o "$slideshow"
