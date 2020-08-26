@@ -126,6 +126,14 @@ def main():
     elapsed = edge_for_me()
     edges_completed += 1
 
+    # Log the edge
+    dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
+    sth = dbh.cursor()
+    query = 'insert into edges (to_edge, max, max_min) values (?, ?, ?)'
+    sth.execute(query,(elapsed, edge_time_max, edge_time_maxmin))
+    dbh.commit()
+    dbh.close()
+
     time.sleep(random.randint(3, 10))
 
     if elapsed > edge_time_max:
