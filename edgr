@@ -152,34 +152,28 @@ def main():
 
     time.sleep(random.randint(3, 10))
 
+    print("Good boy.")
+    play_rand_sound(f'{audio_dir}/good-boy', 0)
+
     if elapsed > edge_time_max:
       print("Too slow, try again.")
-      play_rand_sound(f'{audio_dir}/too-slow', 0)
+      edges += random.randint(0, 2)
 
       fails += 1
 
-      if elapsed > (edge_time_max * 1.5):
+      if elapsed > 30:
+        edges += random.randint(1, 2)
         fails += 1
-
-      if elapsed > (edge_time_max * 2):
-        print("OUCH.")
-        fails += 1
-        edges += 1
 
       slaps = random.randint(0, slapx) + random.randint(0, fails)
       add_slaps(slaps)
 
     else:
       edges -= 1
-      if elapsed > edge_time_max - close_call:
-        print("That was close!")
 
       if elapsed > 30:
         slaps = random.randint(0, slapx)
         add_slaps(slaps)
-
-      print("Good boy.")
-      play_rand_sound(f'{audio_dir}/good-boy', 0)
 
       # Reduce edge window... dun dun duuuuunnnnnn!
       if elapsed > edge_time_maxmin and elapsed < edge_time_max:
