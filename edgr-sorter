@@ -14,6 +14,8 @@ slideshow="$HOME/.slideshow"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
           "update settings set value = 0 where name = 'risk'"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
+          "update settings set value = 0 where name = 'slaps'"
+/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
           "update settings set value = $saves where name = 'save_pics'"
 
 now=$(date "+%s")
@@ -87,10 +89,12 @@ caption_pics=125
 
 random_pic_playlist "$HOME/files/images/porn_pics/pool" $porn_pics > "$slideshow"
 random_pic_playlist "$HOME/files/images/captions" $caption_pics >> "$slideshow"
-random_pic_playlist "$HOME/files/images/risky-old" "$dupes" >> "$slideshow"
+random_pic_playlist "$HOME/files/images/risky" "$dupes" >> "$slideshow"
 
 # Shuffle the slideshow list
 shuf "$slideshow" -o "$slideshow"
+
+$HOME/projects/edgr/edgr-slappr &
 
 $HOME/bin/feh -f "$slideshow" \
   --info "$script --file %f --right $right --wrong $wrong" \
@@ -107,6 +111,7 @@ $HOME/bin/feh -f "$slideshow" \
   --slideshow-delay-min 10 \
   --slideshow-delay-max 10 \
   --action "$HOME/projects/edgr/edgr-good-porn %F" \
+  --action1 "$HOME/projects/edgr/edgr-good-porn %F 1" \
   --fontpath "$HOME/.local/share/fonts/Lexend_Giga/" \
   --font "LexendGiga-Regular/22"
 
@@ -116,4 +121,4 @@ stroke_time=$((end_time - now))
 
 printf "\nStroked for %s\n" "$(sec_to_human $stroke_time)"
 
-$HOME/projects/edgr/edgr-slappr
+pkill -f edgr-slappr
