@@ -1,40 +1,66 @@
 #!/bin/bash
 
 file="$1"
+trash="${2:-0}"
 
 db="$HOME/.config/edgr.sqlite"
+bad_porn_dir="$HOME/files/images/bad_porn"
+bad_caps_dir="$HOME/files/images/bad_caps"
 good_porn_dir="$HOME/files/images/good_porn"
 good_caps_dir="$HOME/files/images/good_caps"
 
 if [[ -z "$file" ]]; then
   echo "Please pass path of image to move to $good_porn_dir"
-  exit 1;
+  exit 1
 fi
 
-query="select value from settings where name == 'save_pics'"
-saves=$(/usr/bin/sqlite3 "$db" "$query")
-
-# Add a punishment for required saves
-if [[ "$saves" -ge 0 ]]; then
-  $HOME/projects/edgr/edgr-add-slaps --min 0 --max 3
+if [[ ! -f "$file" ]]; then
+  echo "File does not exist or is not a file; $file"
+  exit 2
 fi
 
-# Decrement number of saves.
-query="update settings set value = value - 1 where name == 'save_pics'"
-/usr/bin/sqlite3 "$db" "$query"
+if [[ "$file" =~ risky ]]; then
+  echo "Not touching risky file; $file"
+  exit 3
+fi
 
-if [[ -e "$file" ]]; then
-  if [[ "$file" =~ captions ]]; then
+if [[ "$file" =~ captions ]]; then
+  if [[ "$trash" -eq 0 ]]; then
     mv "$file" "$good_caps_dir"
   else
-    mv "$file" "$good_porn_dir"
+    mv "$file" "$bad_caps_dir"
   fi
-
+else
   query="select count from seen_images where filename == '$file'"
-  seen=$(sqlite3 "$db" "$query")
-  if [[ "$seen" -eq 1 ]]; then
-    $HOME/projects/edgr/edgr-add-slaps --min 2 --max 3
+  seen=$(/usr/bin/sqlite3 "$db" "$query")
+
+  query="select value from settings where name == 'save_pics'"
+  saves=$(/usr/bin/sqlite3 "$db" "$query")
+
+  if [[ "$trash" -eq 0 ]]; then
+    if [[ "$saves" -ge 0 ]]; then
+      # Decrement number of saves.
+      query="update settings set value = value - 1 where name == 'save_pics'"
+      /usr/bin/sqlite3 "$db" "$query"
+      $HOME/projects/edgr/edgr-add-slaps --min 0 --max $((seen * 2))
+    else
+      $HOME/projects/edgr/edgr-add-slaps --min 3 --max $((seen * 3 + 1))
+    fi
+
+    mv "$file" "$good_porn_dir"
   else
-    $HOME/projects/edgr/edgr-add-slaps --min 0 --max $((seen + 2))
+    if [[ "$saves" -gt 0 ]]; then
+
+      mv "$file" "$bad_porn_dir"
+
+      if [[ "$seen" -eq 1 ]]; then
+        $HOME/projects/edgr/edgr-add-slaps --min "-1" --max "0"
+      else
+        $HOME/projects/edgr/edgr-add-slaps --min "$seen" --max "$((seen * 2))"
+      fi
+
+    else
+      $HOME/projects/edgr/edgr-add-slaps --min "$seen" --max "$((seen * 3))"
+    fi
   fi
 fi
