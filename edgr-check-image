@@ -23,48 +23,63 @@ def main():
 
   image = str(args.file[0])
 
+  query = """ select value from settings where name = ? """
+  sth.execute(query,('save_pics',))
+  saves = int(sth.fetchone()[0])
+
   if (image.find('risky')) > 0:
     query = """ update settings set value = value + ? where name = ? """
     sth.execute(query,(1,'risk'))
     dbh.commit()
 
     query = """ select value from settings where name = ? """
-    sth.execute(query, ('slaps',))
-    current = int(sth.fetchone()[0])
-
-    if current > 0:
-      query = """ update settings set value = value + ? where name = ? """
-      sth.execute(query, (random.randint(0, 2), 'slaps',))
-      dbh.commit()
-
-    query = """ select value from settings where name = ? """
     sth.execute(query, ('risk',))
     risk = sth.fetchone()[0]
 
+    query = 'select value from settings where name=?'
+    sth.execute(query,('slaps',))
+    dbh.commit()
+    active_slaps = sth.fetchone()[0]
+
+    if active_slaps < 0:
+      query = """ update settings set value = ? where name = ? """
+      sth.execute(query,(0,'slaps'))
+      dbh.commit()
+
+    if active_slaps > 0:
+      for i in range(1,int(args.wrong)):
+        if risk > random.randint(0, 150):
+          slap = slap + 1
+
+    # Up to 3 slaps per 'risky' picture
     for i in range(1, 3):
       if risk > random.randint(0, 100):
         slap = slap + 1
+
   else:
     query = 'select count from seen_images where user_id=? and filename=?'
     sth.execute(query,(user_id, image))
     dbh.commit()
     count = sth.fetchone()
-    if count != None:
-      count = count[0] + 1
-      query = 'update seen_images set count=? where user_id=? and filename=?'
-      sth.execute(query,(count, user_id, image))
-      dbh.commit()
-      print(f'Seen {count}x')
-    else:
+
+    if count == None:
+      count = 1
       query = """insert into seen_images ('user_id', 'filename', 'count')
                   values (?,?,?)"""
       sth.execute(query, (user_id, image, 1))
       dbh.commit()
-      count = 1
+    else:
+      count = count[0] + 1
 
-    if count > 1:
-      high_die = int(4 + int(args.right))
-      for i in range(2, int(args.wrong) + count):
+      if saves <= 0:
+        print(f'Seen {count}x')
+
+      query = 'update seen_images set count=? where user_id=? and filename=?'
+      sth.execute(query,(count, user_id, image))
+      dbh.commit()
+
+      high_die = int(3 + int(args.right))
+      for i in range(1, int(args.wrong) + count):
         if random.randint(1, high_die) == 1:
           slap = slap + 1
 
@@ -73,10 +88,6 @@ def main():
     query = """ update settings set value = value + ? where name = ? """
     sth.execute(query,(slaps,'slaps'))
     dbh.commit()
-
-  query = """ select value from settings where name = ? """
-  sth.execute(query,('save_pics',))
-  saves = int(sth.fetchone()[0])
 
   if saves > 1:
     print(f'Saves: {saves}')
