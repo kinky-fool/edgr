@@ -18,10 +18,10 @@ audio_dir = f'{home_dir}/lib/audio'
 # Initial max seconds to count for a successful edge; if an edge is reached
 # within edge_time_max, it is successful. If edge_time_max becomes the new
 # shorter time, unless it is less than edge_time_maxmin.
-edge_time_max = 120
+edge_time_max = 60
 
 # Minimum seconds that edge_time_max can be reduced to
-edge_time_maxmin = 30
+edge_time_maxmin = 10
 
 # When starting a session, how long to stroke before the first edging
 start_stroke_min = 60
