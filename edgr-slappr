@@ -13,7 +13,6 @@ from playsound import playsound
 
 def main():
   home_dir = os.environ['HOME']
-  #print(f'Seen {count}x')
   print('Listening for slaps, CTRL-C to stop.')
   dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
 
