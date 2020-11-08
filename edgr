@@ -86,7 +86,6 @@ if args.green == 1:
   if random.randint(0, 20) != 0:
     green = 1
 
-
 extra_edges = 0
 
 slapx = 2
@@ -113,7 +112,7 @@ if args.noslaps == 1:
 
 edges = args.edges # default is 0
 if edges == 0:
-  for i in range(1, args.rounds):
+  for i in range(0, args.rounds):
     edges += random.randint(3, 5)
 
 if args.extras == 1:
