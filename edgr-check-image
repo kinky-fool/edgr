@@ -28,8 +28,15 @@ def main():
   saves = int(sth.fetchone()[0])
 
   if (image.find('risky')) > 0:
+    add_risk = 1
+    if (image.find('key')) > 0:
+      add_risk = 10
+
+    if (image.find('mags')) > 0:
+      add_risk = add_risk * 5
+
     query = """ update settings set value = value + ? where name = ? """
-    sth.execute(query,(1,'risk'))
+    sth.execute(query,(add_risk,'risk'))
     dbh.commit()
 
     query = """ select value from settings where name = ? """
