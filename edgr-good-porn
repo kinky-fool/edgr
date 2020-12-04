@@ -42,25 +42,12 @@ else
       # Decrement number of saves.
       query="update settings set value = value - 1 where name == 'save_pics'"
       /usr/bin/sqlite3 "$db" "$query"
-      $HOME/projects/edgr/edgr-add-slaps --min 0 --max $((seen * 2))
     else
-      $HOME/projects/edgr/edgr-add-slaps --min 3 --max $((seen * 3 + 1))
+      $HOME/projects/edgr/edgr-add-slaps --min 1 --max $((seen + 1))
     fi
 
     mv "$file" "$good_porn_dir"
   else
-    if [[ "$saves" -gt 0 ]]; then
-
-      mv "$file" "$bad_porn_dir"
-
-      if [[ "$seen" -eq 1 ]]; then
-        $HOME/projects/edgr/edgr-add-slaps --min "-1" --max "0"
-      else
-        $HOME/projects/edgr/edgr-add-slaps --min "$seen" --max "$((seen * 2))"
-      fi
-
-    else
-      $HOME/projects/edgr/edgr-add-slaps --min "$seen" --max "$((seen * 3))"
-    fi
+    mv "$file" "$bad_porn_dir"
   fi
 fi
