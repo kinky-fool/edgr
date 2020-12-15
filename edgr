@@ -161,21 +161,33 @@ def main():
 
     time.sleep(random.randint(3, 10))
 
+    # Increment completed edges
+    query = ''' update sessions set edges_completed = edges_completed + 1
+                where id = ? '''
+    sth.execute(query, (session_id,))
+
     print("Good boy.")
     play_rand_sound(f'{audio_dir}/good-boy', 0)
 
     if elapsed > edge_time_max:
+      query = ''' update sessions set edges_penalty = edges_penalty + ?
+                  where id = ? '''
       print("Too slow, try again.")
-      edges += random.randint(0, 2)
+      penalty = random.randint(0, 2)
+      edges += penalty
+      sth.execute(query, (penalty, session_id))
 
       fails += 1
 
       if elapsed > 30:
-        edges += random.randint(1, 2)
+        penalty = random.randint(1, 2)
+        sth.execute(query, (penalty, session_id))
+        edges += penalty
         fails += 1
 
       slaps = random.randint(0, slapx) + random.randint(0, fails)
       add_slaps(slaps)
+      dbh.commit()
 
     else:
       edges -= 1
