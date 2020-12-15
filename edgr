@@ -128,6 +128,7 @@ def main():
   global edge_time_max, edge_time_maxmin
   global edges, edges_completed
   global fails
+  global dbh, sth
 
   dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
   sth = dbh.cursor()
@@ -213,12 +214,9 @@ def main():
   dbh.close()
 
 def add_slaps(slaps):
-  dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
-  sth = dbh.cursor()
   query = """ update settings set value = value + ? where name = ? """
-  sth.execute(query,(slaps,'slaps'))
+  sth.execute(query,(slaps, 'slaps'))
   dbh.commit()
-  dbh.close()
 
 def edge_for_me():
   if green == 1 and random.randint(0,42) == 42:
