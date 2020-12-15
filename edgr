@@ -12,6 +12,8 @@ import threading
 
 import sqlite3
 
+import shelve
+
 home_dir = os.environ['HOME']
 audio_dir = f'{home_dir}/lib/audio'
 
@@ -21,11 +23,11 @@ audio_dir = f'{home_dir}/lib/audio'
 edge_time_max = 60
 
 # Minimum seconds that edge_time_max can be reduced to
-edge_time_maxmin = 10
+edge_time_maxmin = 15
 
 # When starting a session, how long to stroke before the first edging
 start_stroke_min = 60
-start_stroke_max = 300
+start_stroke_max = 240
 
 # After normal stroke time, if there are delays, a laugh is played
 # and more time for stroking before edging is added.
@@ -92,7 +94,7 @@ slapx = 2
 
 dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
 sth = dbh.cursor()
-query = """ select value from settings where name = ? """
+query = ''' select value from settings where name = ? '''
 sth.execute(query,('risk',))
 risk = sth.fetchone()[0]
 dbh.commit()
@@ -127,6 +129,15 @@ def main():
   global edges, edges_completed
   global fails
 
+  dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
+  sth = dbh.cursor()
+  query = ''' insert into sessions (user_id,edges_start)
+                values (?, ?) '''
+  sth.execute(query,(1, edges))
+  # Get the session id
+  session_id = sth.lastrowid
+  dbh.commit()
+
   print("Get ready to edge yourself.")
   play_rand_sound(f'{audio_dir}/start', 0)
 
@@ -142,12 +153,10 @@ def main():
     edges_completed += 1
 
     # Log the edge
-    dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
-    sth = dbh.cursor()
-    query = 'insert into edges (to_edge, max, max_min) values (?, ?, ?)'
-    sth.execute(query,(elapsed, edge_time_max, edge_time_maxmin))
+    query = ''' insert into edges (session_id, to_edge, max, max_min, session)
+                values (?, ?, ?, ?) '''
+    sth.execute(query,(session_id, elapsed, edge_time_max, edge_time_maxmin))
     dbh.commit()
-    dbh.close()
 
     time.sleep(random.randint(3, 10))
 
@@ -201,6 +210,7 @@ def main():
   print(f'You completed {edges_completed} {completed_plural} this session.')
   play_rand_sound(f'{audio_dir}/stop', 0)
 
+  dbh.close()
 
 def add_slaps(slaps):
   dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
