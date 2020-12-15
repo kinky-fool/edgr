@@ -154,7 +154,7 @@ def main():
     edges_completed += 1
 
     # Log the edge
-    query = ''' insert into edges (session_id, to_edge, max, max_min, session)
+    query = ''' insert into edges (session_id, to_edge, max, max_min)
                 values (?, ?, ?, ?) '''
     sth.execute(query,(session_id, elapsed, edge_time_max, edge_time_maxmin))
     dbh.commit()
