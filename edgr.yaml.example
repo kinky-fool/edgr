@@ -1,0 +1,30 @@
+---
+# User ID, experimental
+user_id:          1
+
+edges:
+  min:            4       # Min edges per session
+  max:            6       # Max initial edges per session
+  penalty:
+    min:          0       # Min edges to add for failure
+    max:          2       # Max edges to add for failure
+
+goal:
+  min:            15      # Min time max can be reduced to
+  max:            60      # Max time to reach edge
+
+stroke:
+  min:            20      # Min time for stroking
+  max:            120     # Max time for stroking
+  skew:           70      # How to skew the random time (percent)
+  extra:
+    min:          10      # Min extra stroke time to add randomly
+    max:          40      # Max extra stroke time to add randomly
+  cooldown:
+    min:          10      # Min time between edge and stroking
+    max:          40      # Max time between edge and stroking
+
+green:
+  min:            5       # Min time for green light
+  max:            30      # Max time for green light
+  chances:        0       # Chances to get a green light
