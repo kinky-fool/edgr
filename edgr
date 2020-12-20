@@ -1,235 +1,97 @@
 #!/usr/bin/env python3
 
+import os
+import sys
 import time
 import random
-from playsound import playsound
-import os
+import signal
 import argparse
-
-from signal import signal, SIGINT
-from sys import exit
+import playsound
 import threading
 
 import sqlite3
-
-import shelve
+import yaml
 
 home_dir = os.environ['HOME']
-audio_dir = f'{home_dir}/lib/audio'
+config_file = f'{home_dir}/.config/edgr.yaml'
+audio_dir   = f'{home_dir}/lib/audio'
+db_file     = f'{home_dir}/.config/edgr.sqlite'
 
-# Initial max seconds to count for a successful edge; if an edge is reached
-# within edge_time_max, it is successful. If edge_time_max becomes the new
-# shorter time, unless it is less than edge_time_maxmin.
-edge_time_max = 60
+def main(config_file, audio_dir, db_file):
+  # Read command-line args
+  args = cli_args()
 
-# Minimum seconds that edge_time_max can be reduced to
-edge_time_maxmin = 15
+  if args.config is not None:
+    config_file = args.config
 
-# When starting a session, how long to stroke before the first edging
-start_stroke_min = 60
-start_stroke_max = 240
+  # Read config file
+  config = read_config(config_file)
 
-# After normal stroke time, if there are delays, a laugh is played
-# and more time for stroking before edging is added.
-extra_stroke_min = 10
-extra_stroke_max = 40
+  # Set the green light status
+  green = 0
+  if "green" in config:
+    if "chances" in config['green']:
+      green = config['green']['chances']
+  if args.green > 0:
+    green = args.green
 
-# Seconds in between edges, hands off cock for this time.
-cooldown_min = 15
-cooldown_max = 40
+  # Set the number of edges for this session
+  edges = random.randint(config['edges']['min'],
+                         config['edges']['max'])
+  if args.edges > 0:
+    edges = args.edges
 
-# Seconds before edge_time_max that counts as a 'close call'
-close_call = 10
+  session_id = new_session(db_file, config['user_id'], edges, green)
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-  '--green',
-  action='store_true',
-  help='Enable green light'
-)
+  config['session_id']        = session_id
+  config['edges']['remain']   = edges
+  config['edges']['failed']   = 0
+  config['edges']['complete'] = 0
+  config['green']['chances']  = green
 
-parser.add_argument(
-  '--noslaps',
-  action='store_true',
-  help='Disable slaps for slowness'
-)
+  # Local signal handler function - avoid need for global vars
+  def sig_handler(*args):
+    remain = config['edges']['remain']
+    complete = config['edges']['complete']
+    remain_plural = 'edge' if remain == 1 else 'edges'
+    complete_plural = 'edge' if complete == 1 else 'edges'
+    print()
+    print(f'Aborted with {remain} {remain_plural} remaining.')
+    print(f'{complete} {complete_plural} completed.')
+    sys.exit(1)
 
-parser.add_argument(
-  '-c', '--cruel',
-  action='count',
-  help='More edges. More slapping. Can be used multiple times.'
-)
+  signal.signal(signal.SIGINT, sig_handler)
 
-parser.add_argument(
-  '--edges',
-  default=0,
-  type=int,
-  help='Specify the number of edges'
-)
+  while config['edges']['remain'] > 0:
+    stroke(config, audio_dir, db_file)
 
-parser.add_argument(
-  '--extras',
-  action='store_true',
-  help='Add more edges based on "risk" level'
-)
-
-parser.add_argument(
-  '--rounds',
-  default=1,
-  type=int,
-  help='Number of rounds (default 1) to run.'
-)
-
-args = parser.parse_args()
-
-green = 0
-if args.green == 1:
-  # Small chance a specified green light never happens
-  if random.randint(0, 20) != 0:
-    green = 1
-
-extra_edges = 0
-
-slapx = 2
-
-dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
-sth = dbh.cursor()
-query = ''' select value from settings where name = ? '''
-sth.execute(query,('risk',))
-risk = sth.fetchone()[0]
-dbh.commit()
-dbh.close()
-
-if risk > 0:
-  for i in range(1, risk):
-    if random.randint(0, 2) == 0:
-      slapx = slapx + random.randint(1, 2)
-      if random.randint(0, 2) == 0:
-        extra_edges = extra_edges + random.randint(0, 1)
-    else:
-      extra_edges = extra_edges + random.randint(0, 2)
-
-if args.noslaps == 1:
-  slapx = 0
-
-edges = args.edges # default is 0
-if edges == 0:
-  for i in range(0, args.rounds):
-    edges += random.randint(3, 5)
-
-if args.extras == 1:
-  edges += extra_edges
-
-# Set here for referencing when signal caught
-edges_completed = 0
-fails = 0
-
-def main():
-  global edge_time_max, edge_time_maxmin
-  global edges, edges_completed
-  global fails
-  global dbh, sth
-
-  dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
-  sth = dbh.cursor()
-  query = ''' insert into sessions (user_id,edges_start)
-                values (?, ?) '''
-  sth.execute(query,(1, edges))
-  # Get the session id
-  session_id = sth.lastrowid
-  dbh.commit()
-
-  print("Get ready to edge yourself.")
-  play_rand_sound(f'{audio_dir}/start', 0)
-
-  time.sleep(random.randint(start_stroke_min, start_stroke_max))
-
-  while edges > 0:
-    for foo in range(0, 5):
-      if random.randint(1, 8) == 1:
-        play_rand_sound(f'{audio_dir}/laughs', 0)
-        time.sleep(random.randint(extra_stroke_min, extra_stroke_max))
-
-    elapsed = edge_for_me()
-    edges_completed += 1
-
-    # Log the edge
-    query = ''' insert into edges (session_id, to_edge, max, max_min)
-                values (?, ?, ?, ?) '''
-    sth.execute(query,(session_id, elapsed, edge_time_max, edge_time_maxmin))
-    dbh.commit()
-
-    time.sleep(random.randint(3, 10))
-
-    print("Good boy.")
-    play_rand_sound(f'{audio_dir}/good-boy', 0)
-
-    if elapsed > edge_time_max:
-      print("Too slow, try again.")
-      edges += random.randint(0, 2)
-
-      fails += 1
-
-      if elapsed > 30:
-        edges += random.randint(1, 2)
-        fails += 1
-
-      slaps = random.randint(0, slapx) + random.randint(0, fails)
-      add_slaps(slaps)
-
-    else:
-      edges -= 1
-
-      if elapsed > 30:
-        slaps = random.randint(0, slapx)
-        add_slaps(slaps)
-
-      # Reduce edge window... dun dun duuuuunnnnnn!
-      if elapsed > edge_time_maxmin and elapsed < edge_time_max:
-        edge_time_max = elapsed
-
-    time.sleep(random.randint(cooldown_min, cooldown_max))
-
-    if edges > 0:
-      print("Get ready to edge, stroke yourself!")
-      play_rand_sound(f'{audio_dir}/stroke', 0)
-
-      # TODO: Figure out how to better randomize 15 - 120 favoring ~70%
-      #       and make it easier to configure as 3 vars (min, max, mean?)
-      prep_time = int(random.choices(
-        population  = [15, 30, 45, 60, 90, 120],
-        weights     = [10, 20, 40, 40, 30,  20],
-        k           = 1
-      )[0])
-
-      prep_time = fuzzy_weight(15, 120, 70)
-
-      time.sleep(prep_time)
-
+  edges_completed = config['edges']['complete']
   print("You may stop stroking your cock.")
   completed_plural = 'edge' if edges_completed == 1 else 'edges'
   print(f'You completed {edges_completed} {completed_plural} this session.')
   play_rand_sound(f'{audio_dir}/stop', 0)
 
-  dbh.close()
-
-def add_slaps(slaps):
-  query = """ update settings set value = value + ? where name = ? """
-  sth.execute(query,(slaps, 'slaps'))
-  dbh.commit()
-
-def edge_for_me():
-  if green == 1 and random.randint(0,42) == 42:
-    print("Cum for me!")
-    time.sleep(random.randint(3,6))
-    print("Kidding!")
-    play_rand_sound(f'{audio_dir}/edges', 0)
-    # TODO: figure out how to have it stop after X seconds, and play a clip
-    #       "hands off your cock" or something, instead of waiting for user
-    #       to hit enter (like edging)
+def stroke(config, audio_dir, db_file):
+  if config['edges']['complete'] == 0:
+    print("Get ready to edge yourself.")
+    play_rand_sound(f'{audio_dir}/start', 0)
   else:
-    print("Edge for me.")
-    play_rand_sound(f'{audio_dir}/edges', 0)
+    print("Get ready to edge, stroke yourself!")
+    play_rand_sound(f'{audio_dir}/stroke', 0)
+
+  time.sleep(fuzzy_weight(config['stroke']['min'],
+                          config['stroke']['max'],
+                          config['stroke']['skew']))
+
+  # Potentially add stroke time
+  for foo in range(0, 5):
+    if random.randint(1, 8) == 1:
+      play_rand_sound(f'{audio_dir}/laughs', 0)
+      time.sleep(random.randint(config['stroke']['extra']['min'],
+                                config['stroke']['extra']['max']))
+
+  print("Edge for me.")
+  play_rand_sound(f'{audio_dir}/edges', 0)
 
   start = time.time()
 
@@ -238,10 +100,118 @@ def edge_for_me():
   elapsed = time.time() - start
 
   print("Hands off your cock.")
-
   play_rand_sound(f'{audio_dir}/laughs', 0)
 
-  return elapsed
+  dbh = sqlite3.connect(db_file)
+  sth = dbh.cursor()
+  # Log the edge
+  query = ''' insert into edges (session_id, to_edge, max, max_min)
+              values (?, ?, ?, ?) '''
+  sth.execute(query,(config['session_id'],
+                     elapsed,
+                     config['goal']['max'],
+                     config['goal']['min']))
+  dbh.commit()
+  dbh.close()
+
+  time.sleep(4)
+
+  config['edges']['complete'] += 1
+
+  print("Good boy.")
+  play_rand_sound(f'{audio_dir}/good-boy', 0)
+
+  if elapsed > config['goal']['max']:
+    penalty_min = config['edges']['penalty']['min']
+    penalty_max = config['edges']['penalty']['max']
+    print("Too slow, try again.")
+    config['edges']['remain'] += random.randint(penalty_min, penalty_max)
+    config['edges']['failed'] += 1
+
+    if elapsed > (2 * config['goal']['min']):
+      config['edges']['remain'] += random.randint(penalty_min, penalty_max)
+
+  else:
+    config['edges']['remain'] -= 1
+
+    # Reduce edge window... dun dun duuuuunnnnnn!
+    if elapsed > config['goal']['min'] and elapsed < config['goal']['max']:
+      config['goal']['max'] = elapsed
+
+  # Cool down after edging
+  time.sleep(random.randint(config['stroke']['cooldown']['min'],
+                            config['stroke']['cooldown']['max']))
+
+  if config['edges']['remain'] == 0 and config['green']['chances'] > 0:
+    config['green']['chances'] -= 1
+
+    # Flip 3 coins
+    head1 = random.randint(0, 1)
+    head2 = random.randint(0, 1)
+    head3 = random.randint(0, 1)
+
+    # If HHH, green light
+    if head1 and head2 and head3:
+      green_light(config['green']['min'], config['green']['max'])
+    else:
+      config['edges']['remain'] += head1 + head2 + head3
+
+      # Penalty for TTT
+      if config['edges']['remain'] == 0:
+        config['edges']['remain'] = random.randint(3, 5)
+
+def cli_args():
+  parser = argparse.ArgumentParser()
+
+  parser.add_argument(
+    '--green',
+    action='count',
+    help='Enable green light'
+  )
+
+  parser.add_argument(
+    '--edges',
+    default=0,
+    type=int,
+    help='Specify the number of edges'
+  )
+
+  parser.add_argument(
+    '--config',
+    default=None,
+    help='Path to config file'
+  )
+
+  return parser.parse_args()
+
+def green_light(time_min, time_max):
+  print("Green light! Cum for me!")
+  time.sleep(random.randint(time_min, time_max))
+  print
+  print("Hands off your cock.")
+  print
+
+def read_config(config_file):
+  with open(config_file) as file:
+    config = yaml.full_load(file)
+
+  return config
+
+def add_slaps(slaps):
+  query = """ update settings set value = value + ? where name = ? """
+  sth.execute(query,(slaps, 'slaps'))
+  dbh.commit()
+
+def new_session(db_file, user_id, edges, green):
+  dbh = sqlite3.connect(db_file)
+  sth = dbh.cursor()
+  query = 'insert into sessions (user_id, edges, green_light) values (?, ?, ?)'
+  sth.execute(query,(user_id, edges, green))
+  # Get the session id
+  session_id = sth.lastrowid
+  dbh.commit()
+
+  return session_id
 
 def fuzzy_weight(minimum, maximum, favor):
   target = int(abs(maximum - minimum) * favor / 100)
@@ -259,7 +229,7 @@ def fuzzy_weight(minimum, maximum, favor):
 
   return result
 
-def play_rand_sound(directory, blocking):
+def play_rand_sound(directory, blocking = 0):
   if os.path.isdir(directory):
     filename = ''
 
@@ -268,22 +238,12 @@ def play_rand_sound(directory, blocking):
 
     mp3 = f'{directory}/{filename}'
     if blocking == 1:
-      playsound(mp3)
+      playsound.playsound(mp3)
     else:
-      sound_thread = threading.Thread(target=playsound, args=(mp3,))
+      sound_thread = threading.Thread(target=playsound.playsound, args=(mp3,))
       sound_thread.start()
   return
 
-def handler(signal_received, frame):
-  remain_plural = 'edge' if edges == 1 else 'edges'
-  complete_plural = 'edge' if edges_completed == 1 else 'edges'
-  print()
-  print(f'Aborted with {edges} {remain_plural} remaining.')
-  print(f'{edges_completed} {complete_plural} completed.')
-  exit(0)
-
 if __name__ == '__main__':
   # Run handler() when SIGINT received
-  signal(SIGINT, handler)
-
-  main()
+  main(config_file, audio_dir, db_file)
