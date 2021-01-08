@@ -32,7 +32,7 @@ def main(config_file, audio_dir, db_file):
   if "green" in config:
     if "chances" in config['green']:
       green = config['green']['chances']
-  if args.green > 0:
+  if args.green is not None and args.green > 0:
     green = args.green
 
   # Set the number of edges for this session
@@ -186,6 +186,7 @@ def cli_args():
 
 def green_light(time_min, time_max):
   print("Green light! Cum for me!")
+  play_rand_sound(f'{audio_dir}/finish', 0)
   time.sleep(random.randint(time_min, time_max))
   print
   print("Hands off your cock.")
