@@ -27,6 +27,8 @@ def main(config_file, audio_dir, db_file):
   # Read config file
   config = read_config(config_file)
 
+  owed = get_val(db_file, config['user_id'], 'sessions_owed')
+
   # Set the green light status
   green = 0
   if "green" in config:
@@ -40,6 +42,12 @@ def main(config_file, audio_dir, db_file):
                          config['edges']['max'])
   if args.edges > 0:
     edges = args.edges
+
+  if owed > 0:
+    green = 0
+
+  # Ante up.
+  set_val(db_file, config['user_id'], 'sessions_owed', owed + edges)
 
   session_id = new_session(db_file, config['user_id'], edges, green)
 
@@ -65,8 +73,14 @@ def main(config_file, audio_dir, db_file):
   while config['edges']['remain'] > 0:
     stroke(config, audio_dir, db_file)
 
+  # Completed session!
+  owed = get_val(db_file, config['user_id'], 'sessions_owed')
+  set_val(db_file, config['user_id'], 'sessions_owed', owed - 1)
+
   edges_completed = config['edges']['complete']
+
   print("You may stop stroking your cock.")
+
   completed_plural = 'edge' if edges_completed == 1 else 'edges'
   print(f'You completed {edges_completed} {completed_plural} this session.')
   play_rand_sound(f'{audio_dir}/stop', 0)
@@ -125,14 +139,14 @@ def stroke(config, audio_dir, db_file):
     penalty_min = config['edges']['penalty']['min']
     penalty_max = config['edges']['penalty']['max']
     print("Too slow, try again.")
-    config['edges']['remain'] += random.randint(penalty_min, penalty_max)
     config['edges']['failed'] += 1
-
-    if elapsed > (2 * config['goal']['min']):
-      config['edges']['remain'] += random.randint(penalty_min, penalty_max)
-
+    if config['edges']['failed'] > 2:
+      owed = get_val(db_file, config['user_id'], 'sessions_owed')
+      set_val(db_file, config['user_id'], 'sessions_owed', owed + 1)
   else:
     config['edges']['remain'] -= 1
+    owed = get_val(db_file, config['user_id'], 'sessions_owed')
+    set_val(db_file, config['user_id'], 'sessions_owed', owed - 1)
 
     # Reduce edge window... dun dun duuuuunnnnnn!
     if elapsed > config['goal']['min'] and elapsed < config['goal']['max']:
@@ -197,6 +211,24 @@ def read_config(config_file):
     config = yaml.full_load(file)
 
   return config
+
+def get_val(db_file, user_id, key):
+  dbh = sqlite3.connect(db_file)
+  sth = dbh.cursor()
+  query = 'select val from user_data where user_id = ? and key = ?'
+  sth.execute(query,(user_id, key))
+  val = int(sth.fetchone()[0])
+  dbh.close()
+
+  return val
+
+def set_val(db_file, user_id, key, val):
+  dbh = sqlite3.connect(db_file)
+  sth = dbh.cursor()
+  query = 'update user_data set val = ? where user_id = ? and key = ?'
+  sth.execute(query,(val, user_id, key))
+  dbh.commit()
+  dbh.close()
 
 def add_slaps(slaps):
   query = """ update settings set value = value + ? where name = ? """
