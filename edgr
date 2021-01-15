@@ -195,12 +195,16 @@ def stroke(config, audio_dir, db_file):
       set_val(db_file, config['user_id'], 'session_owed', try_again)
 
 def cli_args():
-  parser = argparse.ArgumentParser()
+  parser = argparse.ArgumentParser(
+            description='A script to do edging sessions',
+            epilog='-=-= Have fun. :D =-=-',
+            formatter_class=argparse.MetavarTypeHelpFormatter)
 
   parser.add_argument(
-    '--green',
-    action='count',
-    help='Enable green light'
+    '--nogreen',
+    default=0,
+    type=int,
+    help='Disable green light'
   )
 
   parser.add_argument(
@@ -213,7 +217,29 @@ def cli_args():
   parser.add_argument(
     '--config',
     default=None,
+    type=str,
     help='Path to config file'
+  )
+
+  parser.add_argument(
+    'right',
+    default=None,
+    type=int,
+    help='Longest streak of right guesses from Thong Game',
+  )
+
+  parser.add_argument(
+    'wrong',
+    default=None,
+    type=int,
+    help='Longest streak of wrong guesses from Thong Gmae',
+  )
+
+  parser.add_argument(
+    'percent',
+    default=None,
+    type=float,
+    help='Combined percent score from Thong Game',
   )
 
   return parser.parse_args()
