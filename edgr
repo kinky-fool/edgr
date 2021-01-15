@@ -27,82 +27,99 @@ def main(config_file, audio_dir, db_file):
   # Read config file
   config = read_config(config_file)
 
-  owed = get_val(db_file, config['user_id'], 'sessions_owed')
+  # Is green light active?
+  green = get_val(db_file, config['user_id'], 'enable_green')
 
-  # Set the green light status
-  green = 0
-  if "green" in config:
-    if "chances" in config['green']:
-      green = config['green']['chances']
-  if args.green is not None and args.green > 0:
-    green = args.green
+  edges_min = get_val(db_file, config['user_id'], 'edges_min')
+  edges_max = get_val(db_file, config['user_id'], 'edges_max')
 
   # Set the number of edges for this session
-  edges = random.randint(config['edges']['min'],
-                         config['edges']['max'])
-  if args.edges > 0:
+  edges = random.randint(edges_min, edges_max)
+
+  # Allow --edges to override rolled edges; but only if more are requested
+  if args.edges > edges:
     edges = args.edges
 
+  # Get number of edges user owes
+  owed = get_val(db_file, config['user_id'], 'sessions_owed')
+
+  # Disable the green light if any sessions are still owed
   if owed > 0:
     green = 0
 
-  # Ante up.
+  # --nogreen disables green light
+  if args.nogreen > 0:
+    green = 0
+
+  # Ante up -- add sessions to be removed when the edges are completed
   set_val(db_file, config['user_id'], 'sessions_owed', owed + edges)
 
   session_id = new_session(db_file, config['user_id'], edges, green)
 
-  config['session_id']        = session_id
-  config['edges']['remain']   = edges
-  config['edges']['failed']   = 0
-  config['edges']['complete'] = 0
-  config['green']['chances']  = green
+  config['session_id']    = session_id
+
+  config['edges_left']    = edges
+  config['edges_done']    = 0
+  config['edges_failed']  = 0
+
+  config['cooldown_min']  = get_val(db_file, config['user_id'], 'cooldown_min')
+  config['cooldown_max']  = get_val(db_file, config['user_id'], 'cooldown_max')
+
+  config['goal_min']      = get_val(db_file, config['user_id'], 'goal_min')
+  config['goal_max']      = get_val(db_file, config['user_id'], 'goal_max')
+
+  config['enable_green']  = green
 
   # Local signal handler function - avoid need for global vars
   def sig_handler(*args):
-    remain = config['edges']['remain']
-    complete = config['edges']['complete']
-    remain_plural = 'edge' if remain == 1 else 'edges'
-    complete_plural = 'edge' if complete == 1 else 'edges'
+    left = config['edges_left']
+    done = config['edges_done']
+    left_plural = 'edge' if left == 1 else 'edges'
+    done_plural = 'edge' if done == 1 else 'edges'
     print()
-    print(f'Aborted with {remain} {remain_plural} remaining.')
-    print(f'{complete} {complete_plural} completed.')
+    print(f'Aborted Session!')
+    print(f'{left} {left_plural} left')
+    print(f'{done} {done_plural} done')
     sys.exit(1)
 
   signal.signal(signal.SIGINT, sig_handler)
 
-  while config['edges']['remain'] > 0:
+  while config['edges_left'] > 0:
     stroke(config, audio_dir, db_file)
 
   # Completed session!
   owed = get_val(db_file, config['user_id'], 'sessions_owed')
   set_val(db_file, config['user_id'], 'sessions_owed', owed - 1)
 
-  edges_completed = config['edges']['complete']
+  edges_done = config['edges_done']
 
   print("You may stop stroking your cock.")
 
-  completed_plural = 'edge' if edges_completed == 1 else 'edges'
-  print(f'You completed {edges_completed} {completed_plural} this session.')
+  done_plural = 'edge' if edges_done == 1 else 'edges'
+  print(f'You completed {edges_done} {done_plural} this session.')
   play_rand_sound(f'{audio_dir}/stop', 0)
 
 def stroke(config, audio_dir, db_file):
-  if config['edges']['complete'] == 0:
+  if config['edges_done'] == 0:
     print("Get ready to edge yourself.")
     play_rand_sound(f'{audio_dir}/start', 0)
   else:
     print("Get ready to edge, stroke yourself!")
     play_rand_sound(f'{audio_dir}/stroke', 0)
 
-  time.sleep(fuzzy_weight(config['stroke']['min'],
-                          config['stroke']['max'],
-                          config['stroke']['skew']))
+  stroke_min  = get_val(db_file, config['user_id'], 'stroke_min')
+  stroke_max  = get_val(db_file, config['user_id'], 'stroke_max')
+  stroke_skew = get_val(db_file, config['user_id'], 'stroke_skew')
+
+  time.sleep(fuzzy_weight(stroke_min, stroke_max, stroke_skew))
 
   # Potentially add stroke time
   for foo in range(0, 5):
     if random.randint(1, 8) == 1:
+      stroke_add_min = get_val(db_file, config['user_id'], 'stroke_add_min')
+      stroke_add_max = get_val(db_file, config['user_id'], 'stroke_add_max')
       play_rand_sound(f'{audio_dir}/laughs', 0)
-      time.sleep(random.randint(config['stroke']['extra']['min'],
-                                config['stroke']['extra']['max']))
+      time.sleep(random.randint(stroke_add_min, stroke_add_max))
 
   print("Edge for me.")
   play_rand_sound(f'{audio_dir}/edges', 0)
@@ -118,61 +135,64 @@ def stroke(config, audio_dir, db_file):
 
   dbh = sqlite3.connect(db_file)
   sth = dbh.cursor()
+
   # Log the edge
-  query = ''' insert into edges (session_id, to_edge, max, max_min)
+  query = ''' insert into edges (session_id, to_edge, max_min, max)
               values (?, ?, ?, ?) '''
-  sth.execute(query,(config['session_id'],
-                     elapsed,
-                     config['goal']['max'],
-                     config['goal']['min']))
+
+  sth.execute(query, (
+                      config['session_id'],
+                      elapsed,
+                      config['goal_min'],
+                      config['goal_max'],
+                    )
+              )
+
   dbh.commit()
   dbh.close()
 
   time.sleep(4)
 
-  config['edges']['complete'] += 1
+  config['edges_done'] += 1
 
   print("Good boy.")
   play_rand_sound(f'{audio_dir}/good-boy', 0)
 
-  if elapsed > config['goal']['max']:
-    penalty_min = config['edges']['penalty']['min']
-    penalty_max = config['edges']['penalty']['max']
+  if elapsed > config['goal_max']:
     print("Too slow, try again.")
-    config['edges']['failed'] += 1
-    if config['edges']['failed'] > 2:
+    config['edges_failed'] += 1
+    if config['edges_failed'] > 2:
       owed = get_val(db_file, config['user_id'], 'sessions_owed')
       set_val(db_file, config['user_id'], 'sessions_owed', owed + 1)
   else:
-    config['edges']['remain'] -= 1
+    config['edges_left'] -= 1
     owed = get_val(db_file, config['user_id'], 'sessions_owed')
     set_val(db_file, config['user_id'], 'sessions_owed', owed - 1)
 
     # Reduce edge window... dun dun duuuuunnnnnn!
-    if elapsed > config['goal']['min'] and elapsed < config['goal']['max']:
-      config['goal']['max'] = elapsed
+    if elapsed > config['goal_min'] and elapsed < config['goal_max']:
+      config['goal_max'] = elapsed
 
   # Cool down after edging
-  time.sleep(random.randint(config['stroke']['cooldown']['min'],
-                            config['stroke']['cooldown']['max']))
+  time.sleep(random.randint(config['cooldown_min'], config['cooldown_max']))
 
-  if config['edges']['remain'] == 0 and config['green']['chances'] > 0:
-    config['green']['chances'] -= 1
-
+  if config['edges_left'] == 0 and config['enable_green'] > 0:
     # Flip 3 coins
     head1 = random.randint(0, 1)
     head2 = random.randint(0, 1)
     head3 = random.randint(0, 1)
 
+    green_time_min = get_val(db_file, config['user_id'], 'green_time_min')
+    green_time_max = get_val(db_file, config['user_id'], 'green_time_max')
+
     # If HHH, green light
     if head1 and head2 and head3:
-      green_light(config['green']['min'], config['green']['max'])
-    else:
-      config['edges']['remain'] += head1 + head2 + head3
+      green_light(green_time_min, green_time_max)
 
-      # Penalty for TTT
-      if config['edges']['remain'] == 0:
-        config['edges']['remain'] = random.randint(3, 5)
+      try_again = random.randint(0, 20) + 3
+
+      # Hope you got off, here's some more sessions
+      set_val(db_file, config['user_id'], 'session_owed', try_again)
 
 def cli_args():
   parser = argparse.ArgumentParser()
@@ -199,6 +219,10 @@ def cli_args():
   return parser.parse_args()
 
 def green_light(time_min, time_max):
+  print("Get ready to edge, stroke yourself!")
+  play_rand_sound(f'{audio_dir}/stroke', 0)
+  time.sleep(random.randint(3, 30))
+
   print("Green light! Cum for me!")
   play_rand_sound(f'{audio_dir}/finish', 0)
   time.sleep(random.randint(time_min, time_max))
