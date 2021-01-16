@@ -76,7 +76,7 @@ def main():
     else:
       count = count[0] + 1
 
-      if saves == 0:
+      if saves <= 0:
         print(f'Seen {count}x')
 
       query = 'update seen_images set count=? where user_id=? and filename=?'
