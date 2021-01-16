@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sessions
+import sys
 
 def main():
   # Create a new session using the default database
