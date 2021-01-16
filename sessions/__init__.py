@@ -89,6 +89,7 @@ class session(object):
     if self.edges_left > 0:
       self.add('sessions_owed')
 
+    self._dbh.close()
     sys.exit(1)
 
   def log_session(self):
@@ -122,8 +123,6 @@ class session(object):
             self.session_id,
           ))
     self._dbh.commit()
-    self._dbh.close()
-
 
   def do_session(self):
     while self.edges_left > 0:
@@ -152,6 +151,7 @@ class session(object):
       self.finish()
 
     self.end_session()
+    self._dbh.close()
 
   def get(self, key):
     query = 'select val from settings where key = ?'
