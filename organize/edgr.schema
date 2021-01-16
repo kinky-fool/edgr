@@ -1,11 +1,13 @@
-drop table if exists sets;
-create table sets (
-  id          integer primary key autoincrement,
-  user_id     integer
-);
-
 drop table if exists sessions;
 create table sessions (
+  id              integer primary key autoincrement,
+  user_id         integer,
+  edges           integer,
+  green_light     integer default 0
+);
+
+drop table if exists sets;
+create table sets (
   id          integer primary key autoincrement,
   user_id     integer
 );
