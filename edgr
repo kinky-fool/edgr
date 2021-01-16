@@ -12,20 +12,22 @@ import threading
 import sqlite3
 import yaml
 
+# Import local class sessions
+import sessions
+
 home_dir = os.environ['HOME']
 config_file = f'{home_dir}/.config/edgr.yaml'
 audio_dir   = f'{home_dir}/lib/audio'
 db_file     = f'{home_dir}/.config/edgr.sqlite'
 
-def main(config_file, audio_dir, db_file):
-  # Read command-line args
-  args = cli_args()
+def main():
+  # Create a new session using the default database
+  session = sessions.session()
 
-  if args.config is not None:
-    config_file = args.config
+  # Run the session
+  session.do_session()
 
-  # Read config file
-  config = read_config(config_file)
+  sys.exit(0)
 
   # Is green light active?
   green = get_val(db_file, config['user_id'], 'enable_green')
@@ -194,56 +196,6 @@ def stroke(config, audio_dir, db_file):
       # Hope you got off, here's some more sessions
       set_val(db_file, config['user_id'], 'session_owed', try_again)
 
-def cli_args():
-  parser = argparse.ArgumentParser(
-            description='A script to do edging sessions',
-            epilog='-=-= Have fun. :D =-=-',
-            formatter_class=argparse.MetavarTypeHelpFormatter)
-
-  parser.add_argument(
-    '--nogreen',
-    default=0,
-    type=int,
-    help='Disable green light'
-  )
-
-  parser.add_argument(
-    '--edges',
-    default=0,
-    type=int,
-    help='Specify the number of edges'
-  )
-
-  parser.add_argument(
-    '--config',
-    default=None,
-    type=str,
-    help='Path to config file'
-  )
-
-  parser.add_argument(
-    'right',
-    default=None,
-    type=int,
-    help='Longest streak of right guesses from Thong Game',
-  )
-
-  parser.add_argument(
-    'wrong',
-    default=None,
-    type=int,
-    help='Longest streak of wrong guesses from Thong Gmae',
-  )
-
-  parser.add_argument(
-    'percent',
-    default=None,
-    type=float,
-    help='Combined percent score from Thong Game',
-  )
-
-  return parser.parse_args()
-
 def green_light(time_min, time_max):
   print("Get ready to edge, stroke yourself!")
   play_rand_sound(f'{audio_dir}/stroke', 0)
@@ -329,4 +281,4 @@ def play_rand_sound(directory, blocking = 0):
 
 if __name__ == '__main__':
   # Run handler() when SIGINT received
-  main(config_file, audio_dir, db_file)
+  main()
