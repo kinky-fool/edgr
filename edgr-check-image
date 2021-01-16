@@ -91,7 +91,7 @@ def main():
       for i in range(1, int(args.wrong) + count):
         if random.randint(1, high_die) == 1:
           if risk > random.randint(0, 100):
-            slap = slap + 1
+            slap = slap + 0
 
   if slap > 0:
     slaps = random.randint(1, slap)
