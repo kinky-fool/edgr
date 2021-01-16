@@ -1,0 +1,43 @@
+drop table if exists sessions;
+create table sessions (
+  id              integer primary key autoincrement,
+  time            timestamp default current_timestamp,
+  user_id         integer,
+  edges           integer,
+  fail            integer default 0,
+  done            integer default 0,
+  left            integer default 0,
+  cum_chance      integer default 0
+);
+
+drop table if exists settings;
+create table settings (
+  key         varchar,
+  val         varchar
+);
+
+insert into settings (key, val) values
+  ('sessions_owed',     13),
+  ('edges_min',         4),
+  ('edges_max',         12),
+  ('stroke_min',        20),
+  ('stroke_max',        90),
+  ('stroke_skew',       70),
+  ('stroke_add_min',    10),
+  ('stroke_add_max',    40),
+  ('cooldown_min',      10),
+  ('cooldown_max',      40),
+  ('green_min',         5),
+  ('green_max',         20),
+  ('goal_min',          15),
+  ('goal_max',          60),
+  ('enable_green',      1)
+;
+
+drop table if exists users;
+create table users (
+  id          integer primary key autoincrement,
+  name        text unique
+);
+
+insert into users (name) values ('BobDobberson');
