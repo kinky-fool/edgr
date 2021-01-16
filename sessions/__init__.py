@@ -31,9 +31,9 @@ class session(object):
       sys.exit(2)
 
     self.database = database
-    self._setters = [ 'sessions_owed' ]
 
-    self._user_id = 1
+    # Mutable DB variables
+    self._setters = [ 'sessions_owed' ]
 
     # By default, green light is active
     self._green = 1
@@ -67,6 +67,9 @@ class session(object):
 
     self.audio_dir = audio_dir
 
+    self.goal_min = int(self.get('goal_min'))
+    self.goal_max = int(self.get('goal_max'))
+
     # Allow --edges to override rolled edges; but only if more are requested
     if args.edges > self.edges_left:
       self.edges_left = args.edges
@@ -79,9 +82,9 @@ class session(object):
   def sig_handler(self, *args):
     self.end_session()
 
-    print
+    print()
     print('Session Aborted!', file=sys.stderr)
-    print
+    print()
 
     if self.edges_left > 0:
       self.add('sessions_owed')
@@ -90,9 +93,9 @@ class session(object):
 
   def log_session(self):
     # Get a session id
-    query = 'insert into sessions (user_id, edges) values (?, ?)'
+    query = 'insert into sessions (edges) values (?)'
     sth = self._dbh.cursor()
-    sth.execute(query, (self._user_id, self.edges_left))
+    sth.execute(query, (self.edges_left,))
     session_id = sth.lastrowid
     self._dbh.commit()
 
@@ -103,7 +106,7 @@ class session(object):
     done_plural = 'edge' if self.edges_done == 1 else 'edges'
     fail_plural = 'edge' if self.edges_fail == 1 else 'edges'
 
-    print
+    print()
     print(f'{self.edges_fail} {fail_plural} failed')
     print(f'{self.edges_done} {done_plural} done')
     print(f'{self.edges_left} {left_plural} left')
@@ -187,6 +190,7 @@ class session(object):
     coin3 = random.randint(0, 1)
 
     if coin1 and coin2 and coin3:
+      print()
       print('Continue stroking your cock.')
       sound = self.choose_sound(f'{self.audio_dir}/continue')
       self.play_sound(sound, 0)
@@ -205,9 +209,9 @@ class session(object):
 
       sound = self.choose_sound(f'{self.audio_dir}/stop')
       self.play_sound(sound, 0)
-      print
+      print()
       print('    Hands off your cock!')
-      print
+      print()
       self.cum_chance = 1
 
   def stroke(self):
@@ -216,6 +220,7 @@ class session(object):
       sound = self.choose_sound(f'{self.audio_dir}/start')
       self.play_sound(sound, 0)
     else:
+      print()
       print('Continue stroking your cock.')
       sound = self.choose_sound(f'{self.audio_dir}/continue')
       self.play_sound(sound, 0)
@@ -251,32 +256,32 @@ class session(object):
     return elapsed
 
   def log_edge(self, elapsed):
-    query = ''' insert into edges (session_id, to_edge, max_min, max)
-                values (?, ?, ?, ?) '''
+    query = 'insert into edges (session_id, to_edge, max) values (?, ?, ?)'
     sth = self._dbh.cursor()
     sth.execute(query, (self.session_id,
                         elapsed,
-                        int(self.get('goal_min')),
-                        int(self.get('goal_max')),
+                        self.goal_max,
                       ))
     self._dbh.commit()
 
   def judge_edge(self, elapsed):
-    if elapsed > int(self.get('goal_max')):
-      print("    Too Slow. Try Again.")
+    if elapsed > self.goal_max:
       sound = self.choose_sound(f'{self.audio_dir}/slow')
       self.play_sound(sound, 0)
       self.edges_fail += 1
+      print("    Too Slow. Try Again.")
+
       if self.edges_fail > 2:
         self.add('sessions_owed')
+
     else:
       sound = self.choose_sound(f'{self.audio_dir}/good')
       self.play_sound(sound, 0)
       self.edges_left -= 1
+      print("    Good Boy!")
 
-    if (elapsed > int(self.get('goal_min'))
-            and elapsed < int(self.get('goal_max'))):
-      self.set('goal_max', elapsed)
+    if (elapsed > self.goal_min and elapsed < self.goal_max):
+      self.goal_max = elapsed
 
   def cli_args(self):
     parser = argparse.ArgumentParser(
@@ -303,6 +308,13 @@ class session(object):
       default=0,
       type=int,
       help='Specify the number of edges',
+    )
+
+    parser.add_argument(
+      '--test',
+      action='store_true',
+      default=False,
+      help="Don't play sounds, wait, or log sessions and edges",
     )
 
     parser.add_argument(
@@ -343,6 +355,9 @@ class session(object):
     return None
 
   def play_sound(self, sound, blocking = 0):
+    if sound is None:
+      return
+
     if blocking == 1:
       playsound.playsound(sound)
     else:
