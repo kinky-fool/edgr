@@ -10,14 +10,13 @@ import sqlite3
 
 from playsound import playsound
 
-
 def main():
   home_dir = os.environ['HOME']
   print('Listening for slaps, CTRL-C to stop.')
   dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
 
   while True:
-    time.sleep(2)
+    time.sleep(5)
     sth = dbh.cursor()
     query = 'select value from settings where name = ?'
     sth.execute(query,(f'slaps',))
