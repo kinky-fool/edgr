@@ -48,18 +48,28 @@ class session(object):
     edges_min = int(self.get('edges_min'))
     edges_max = int(self.get('edges_max'))
 
-    # Do special things if Thong Game data used
-    if args.percent and args.right and args.wrong:
-      for save in range(1, args.right):
-        if random.randint(0, 50) == 0:
-          edges_min -= random.choice([1, 1, 1, 1, 2, 2, 3])
+    spread = abs(int(edges_min - edges_max))
+    plus_minus = int(spread / 2)
 
-      for risk in range(1, args.wrong):
-        if random.randint(0, 25) == 0:
-          edges_max += random.choice([1, 1, 2, 2, 3, 3, 3])
+    # If the spread is odd; e.g. 5, randomly pick 2 or 3 as the plus_minus
+    if spread > (plus_minus * 2) and random.randint(0, 1) == 1:
+      plus_minus = plus_minus + 1
 
-    # Set number of edges for this session
-    self.edges_left = random.randint(edges_min, edges_max)
+    # set edges as middle value, then randomly add / remove
+    # edges to favor the middle, but allow for the extremes
+    edges = edges_min + int(spread / 2)
+
+    for foo in range(1, plus_minus):
+      # Randomly add an edge
+      if random.randint(0, 1) == 1:
+        edges = edges + 1
+
+      # Randomly remove an edge
+      if random.randint(0, 1) == 1:
+        edges = edges - 1
+
+    # set the session edge count
+    self.edges_left = edges
 
     # Initialize counters
     self.edges_fail = 0
