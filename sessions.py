@@ -327,30 +327,6 @@ class session(object):
       help="Don't play sounds, wait, or log sessions and edges",
     )
 
-    parser.add_argument(
-      'right',
-      nargs='?',
-      default=None,
-      type=int,
-      help='Longest streak of right guesses from Thong Game',
-    )
-
-    parser.add_argument(
-      'wrong',
-      nargs='?',
-      default=None,
-      type=int,
-      help='Longest streak of wrong guesses from Thong Gmae',
-    )
-
-    parser.add_argument(
-      'percent',
-      nargs='?',
-      default=None,
-      type=float,
-      help='Combined percent score from Thong Game',
-    )
-
     return parser.parse_args()
 
   def choose_sound(self, directory):
