@@ -102,7 +102,6 @@ $HOME/bin/feh -f "$slideshow" \
   --hide-pointer \
   --borderless \
   --no-jump-on-resort \
-  --fullscreen \
   --randomize \
   --scale-down \
   --image-bg black \
