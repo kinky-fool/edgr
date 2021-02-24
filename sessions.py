@@ -45,8 +45,24 @@ class session(object):
     # Flag to track if there was a chance to finish this session
     self.cum_chance = 0
 
+
+    # Check to see how many sessions have been done in the cooldown window
+    self.cooldown = self.check_cooldown()
+
+    # only allow 1 'bonus' session
+    if self.cooldown > 1:
+      print('Only one bonus session allowed. Wait for cooldown.')
+      sys.exit(1)
+
+    # get the min / max number of edges from DB
     edges_min = int(self.get('edges_min'))
     edges_max = int(self.get('edges_max'))
+
+    # increase min/max edges if doing a 'bonus' session
+    if self.cooldown > 0:
+      print('Bonus Session. Will not decrement session counter.')
+      edges_min += 3
+      edges_max += 3
 
     spread = abs(int(edges_min - edges_max))
     plus_minus = int(spread / 2)
@@ -112,6 +128,18 @@ class session(object):
 
     return session_id
 
+  def check_cooldown(self):
+    # get the cooldown window
+    window = str(self.get('cooldown_window'))
+
+    # return number of sessions done in the cooldown window
+    query = f'select count(*) from sessions where time > datetime(?, ?)'
+    sth = self._dbh.cursor()
+    sth.execute(query, ('now', f'-{window}'))
+    count = int(sth.fetchone()[0])
+
+    return count
+
   def end_session(self):
     left_plural = 'edge' if self.edges_left == 1 else 'edges'
     done_plural = 'edge' if self.edges_done == 1 else 'edges'
@@ -152,7 +180,9 @@ class session(object):
     sound = self.choose_sound(f'{self.audio_dir}/stop')
     self.play_sound(sound)
 
-    self.sub('sessions_owed')
+    # don't decrement sessions_owed if on cooldown
+    if self.cooldown == 0:
+      self.sub('sessions_owed')
 
     # Current state of green light -- setting may have changed during play
     owed = int(self.get('sessions_owed'))
