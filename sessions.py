@@ -61,11 +61,11 @@ class session(object):
 
     for foo in range(1, plus_minus):
       # Randomly add an edge
-      if random.randint(0, 1) == 1:
+      if random.randint(0, 2) == 1:
         edges = edges + 1
 
       # Randomly remove an edge
-      if random.randint(0, 1) == 1:
+      if random.randint(0, 2) == 1:
         edges = edges - 1
 
     # set the session edge count
