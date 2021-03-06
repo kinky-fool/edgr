@@ -45,7 +45,6 @@ class session(object):
     # Flag to track if there was a chance to finish this session
     self.cum_chance = 0
 
-
     # Check to see how many sessions have been done in the cooldown window
     self.cooldown = self.check_cooldown()
 
