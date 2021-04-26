@@ -8,30 +8,30 @@ import os
 
 from playsound import playsound
 
-__home_dir = os.environ['HOME']
+home_dir = os.environ['HOME']
 
-__tick_sound = f'{__home_dir}/lib/audio/tick.wav'
-__tock_sound = f'{__home_dir}/lib/audio/tock.wav'
+tick_sound = f'{home_dir}/lib/audio/tick.wav'
+tock_sound = f'{home_dir}/lib/audio/tock.wav'
 
 # min / max time per step of the journey between waypoints
-__journey_secs_min = 5
-__journey_secs_max = 20
+journey_secs_min = 5
+journey_secs_max = 15
 
 # min / max time at each waypoint
-__waypoint_secs_min = 10
-__waypoint_secs_max = 30
+waypoint_secs_min = 15
+waypoint_secs_max = 30
 
 # step size for slowing down
-__step_slow     = 0.005
+step_slow     = 0.005
 
 # step size for speeding up
-__step_fast     = 0.001
+step_fast     = 0.001
 
 # default length of stroke -- down*(stroke_time pause)*up
-__stroke_time = 0.34
+stroke_time = 0.34
 
 # default speed-step waypoints for strokes
-__waypoints = [
+waypoints = [
   0.18,
   0.20,
   0.22,
@@ -40,52 +40,60 @@ __waypoints = [
   0.34,
   0.42,
   0.50,
-  0.65
+  0.65,
 ]
 
+def main():
+  session = beater()
+  session.start()
+
 def play_sound(file=None, blocking=False):
+  import sys
   import threading
   from playsound import playsound
 
-  if sound is None:
-    return
+  if file == None:
+    print("filename not provided")
+    sys.exit(1)
+
+  if not os.path.isfile(file):
+    print(f"filename provided ('{filename}') is not a file")
+    sys.exit(1)
 
   if blocking:
-    playsound.playsound(file)
+    playsound(file)
 
   else:
-    thread = threading.Thread(target = playsound.playsound, args = (file,))
-    thread.start()
+    sound_thread = threading.Thread(target=playsound, args=(file,))
+    sound_thread.start()
 
   return
 
-class beater(object,
-              tock=False,
-              waypoints=None,
-              tick_sound=None,
-              tock_sound=None,
-              step_slow=None,
-              step_fast=None,
-              stroke_time=None
-              journey_secs_min=None,
-              journey_secs_max=None,
-              waypoint_secs_min=None,
-              waypoint_secs_max=None,
-            ):
 
-  def __init__(self):
+class beater(object):
+
+  def __init__(self, tock=False):
+    import signal
+
+    # handle ctrl-c gracefully with sig_handler()
+    signal.signal(signal.SIGINT, self.sig_handler)
+
     # whether to 'tock' or not -- 'up' stroke
     self.tock               = False
-    self.waypoints          = __waypoints.copy()
-    self.tick_sound         = __tick_sound
-    self.tock_sound         = __tock_sound
-    self.step_slow          = __step_slow
-    self.step_fast          = __step_fast
-    self.stroke_time        = __stroke_time
-    self.journey_secs_min   = __journey_secs_min
-    self.journey_secs_max   = __journey_secs_max
-    self.waypoint_secs_min  = __waypoint_secs_min
-    self.waypoint_secs_max  = __waypoint_secs_max
+
+    self.waypoints          = waypoints.copy()
+    self.tick_sound         = tick_sound
+    self.tock_sound         = tock_sound
+    self.step_slow          = step_slow
+    self.step_fast          = step_fast
+    self.stroke_time        = stroke_time
+    self.journey_secs_min   = journey_secs_min
+    self.journey_secs_max   = journey_secs_max
+    self.waypoint_secs_min  = waypoint_secs_min
+    self.waypoint_secs_max  = waypoint_secs_max
+
+    # flag if session / stroking is done (ctrl c or time-out)
+    self.done               = False
 
     if tock:
       self.tock = True
@@ -111,6 +119,13 @@ class beater(object,
     # set the initial pace
     self.stroke_pace = random.choice(self.waypoints[1:-1])
 
+  # handle ctrl-c with this function
+  def sig_handler(self, *args):
+    import sys
+
+    self.done = True
+    sys.exit(1)
+
   # create and start the ticker thread
   def start(self):
     import threading
@@ -130,6 +145,10 @@ class beater(object,
 
         time.sleep(random.uniform(self.waypoint_secs_max,
                                   self.waypoint_secs_max * 3))
+
+      # end loop if aborted
+      if self.done == True:
+        return
 
   def change_pace(self, pace_new=None):
     if isinstance(pace_new, int) or isinstance(pace_new, float):
@@ -158,7 +177,7 @@ class beater(object,
   # set the stroke pace
   def set_pace(self, pace_new=None):
     if isinstance(pace_new, int) or isinstance(pace_new, float):
-      self.stroke_pace = new_pace
+      self.stroke_pace = pace_new
 
   def __ticker(self):
     while True:
@@ -169,92 +188,11 @@ class beater(object,
       if self.tock:
         play_sound(self.tock_sound)
 
-      time.sleep(get_pace())
+      time.sleep(self.get_pace())
 
-
-def main():
-  delay = delay_max
-
-  pace_set_time = int(time.time()) + random.randint(15,45)
-  get_faster = True
-
-  while True:
-    play_sound(tick)
-    time.sleep(stroke_time)
-    #play_sound(tock)
-    time.sleep(delay)
-
-    now = int(time.time())
-
-    if now > pace_set_time:
-      if get_faster:
-        if delay > delay_max:
-          delay = delay_max
-
-        if delay > delay_min:
-          delay = delay - step_up
-          percent = (delay - delay_min) / (delay_max - delay_min)
-          time_at_pace = (random.randint(2, 5) * (1 - percent)) + 1
-          pace_set_time = int(time.time()) + time_at_pace
-
-        if delay <= delay_min:
-          # get even faster
-          delay = delay_min - 0.1
-          pace_set_time += random.randint(45, 240)
-          get_faster = False
-
-      if not get_faster:
-        # make the bonus speed-up from the get-fast crescendo more apparent
-        if delay < delay_min:
-          delay = delay_min
-
-        if delay < delay_max:
-          delay = delay + step_down
-          percent = (delay - delay_min) / (delay_max - delay_min)
-          time_at_pace = (random.randint(2, 5) * (1 - percent)) + 1
-          pace_set_time = int(time.time()) + time_at_pace
-
-        if delay >= delay_max:
-          # get slower
-          delay += 0.1
-          pace_set_time += random.randint(30, 90)
-          get_faster = True
-
-  sys.exit()
-
-def play_rand_sound(directory, blocking=False):
-
-  if os.path.isdir(directory):
-    filename = ''
-
-    while not os.path.isfile(f'{directory}/{filename}'):
-      # select a random file from the provided directory
-      filename = random.choice(os.listdir(directory))
-
-    mp3 = f'{directory}/{filename}'
-
-    play_sound(mp3, blocking)
-
-  return
-
-def play_sound(filename=None, blocking=False):
-
-  if filename == None:
-    print("filename not provided")
-    sys.exit(1)
-
-  if not os.path.isfile(filename):
-    print(f"filename provided ('{filename}') is not a file")
-    sys.exit(1)
-
-  if blocking:
-    playsound(filename)
-
-  else:
-    sound_thread = threading.Thread(target=playsound, args=(filename,))
-    sound_thread.start()
-
-  return
+      # end loop if aborted
+      if self.done == True:
+        return
 
 if __name__ == '__main__':
   main()
