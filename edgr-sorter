@@ -4,7 +4,7 @@ source $HOME/lib/edgr_funcs.sh
 
 right="${1:-4}"
 wrong="${2:-0}"
-saves="${3:-20}"
+to_purge="${3:-40}"
 
 script="$HOME/projects/edgr/edgr-check-image"
 pics_count="$HOME/.edge_pics"
@@ -16,7 +16,7 @@ slideshow="$HOME/.slideshow"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
           "update settings set value = 0 where name = 'slaps'"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
-          "update settings set value = $saves where name = 'save_pics'"
+          "update settings set value = $to_purge where name = 'to_purge'"
 
 now=$(date "+%s")
 
@@ -49,34 +49,13 @@ while [[ "$dupes" -lt "$dupes_min" ]]; do
 
   for i in $(seq 1 $right); do
     if [[ "$((RANDOM % 3))" -eq 0 ]]; then
-      dupes=$((dupes - RANDOM % 10))
+      dupes=$((dupes - RANDOM % 5))
     fi
   done
 
   for i in $(seq 1 $((wrong * 2))); do
     if [[ "$((RANDOM % 3))" -eq 0 ]]; then
-      dupes=$((dupes + RANDOM % 10))
-    fi
-  done
-done
-
-countdown=0
-countdown_min=5
-countdown_max=7
-
-while [[ "$countdown" -lt "$countdown_min" ]] || \
-      [[ "$countdown" -gt "$countdown_max" ]]; do
-  countdown=$((RANDOM % 3 + countdown_min))
-
-  for i in $(seq 1 $right); do
-    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
-      countdown=$((countdown - 1))
-    fi
-  done
-
-  for i in $(seq 1 $((wrong * 2))); do
-    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
-      countdown=$((countdown + 1))
+      dupes=$((dupes + 4 + RANDOM % 7))
     fi
   done
 done
@@ -85,7 +64,7 @@ echo 0 > "$HOME/.edge_remains"
 echo "$start_pics" > "$pics_count"
 
 porn_pics=500
-caption_pics=125
+caption_pics=150
 
 random_pic_playlist "$HOME/files/images/porn_pics/pool" $porn_pics > "$slideshow"
 random_pic_playlist "$HOME/files/images/captions" $caption_pics >> "$slideshow"
@@ -95,6 +74,7 @@ random_pic_playlist "$HOME/files/images/risky" "$dupes" >> "$slideshow"
 shuf "$slideshow" -o "$slideshow"
 
 $HOME/projects/edgr/edgr-slappr &
+$HOME/projects/edgr/edgr-beater &
 
 $HOME/bin/feh -f "$slideshow" \
   --info "$script --file %f --right $right --wrong $wrong" \
@@ -109,8 +89,7 @@ $HOME/bin/feh -f "$slideshow" \
   --slideshow-delay 10 \
   --slideshow-delay-min 10 \
   --slideshow-delay-max 10 \
-  --action "$HOME/projects/edgr/edgr-good-porn %F" \
-  --action1 "$HOME/projects/edgr/edgr-good-porn %F 1" \
+  --action "$HOME/projects/edgr/edgr-bad-porn %F" \
   --fontpath "$HOME/.local/share/fonts/Lexend_Giga/" \
   --font "LexendGiga-Regular/22"
 
@@ -121,3 +100,4 @@ stroke_time=$((end_time - now))
 printf "\nStroked for %s\n" "$(sec_to_human $stroke_time)"
 
 pkill -f edgr-slappr
+pkill -f edgr-beater
