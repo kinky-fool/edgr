@@ -24,9 +24,10 @@ def main():
   image = str(args.file[0])
 
   query = """ select value from settings where name = ? """
-  sth.execute(query,('save_pics',))
-  saves = int(sth.fetchone()[0])
+  sth.execute(query,('to_purge',))
+  to_purge = int(sth.fetchone()[0])
 
+  # if the image is in the risky directory, increase the risk
   if (image.find('risky')) > 0:
     add_risk = 1
     if (image.find('key')) > 0:
@@ -35,22 +36,28 @@ def main():
     if (image.find('mags')) > 0:
       add_risk = add_risk * 5
 
-    query = """ update settings set value = value + ? where name = ? """
-    sth.execute(query,(add_risk,'risk'))
-    dbh.commit()
+    # increase the risk level if the purge count is above 0
+    if to_purge > 0:
+      query = """ update settings set value = value + ? where name = ? """
+      sth.execute(query,(add_risk,'risk'))
+      dbh.commit()
 
+    # get the current risk level
     query = """ select value from settings where name = ? """
     sth.execute(query, ('risk',))
     risk = sth.fetchone()[0]
 
+    # get the current slap count
     sth.execute(query,('slaps',))
     active_slaps = sth.fetchone()[0]
 
+    # if, for some reason, active_slaps is negative, set to 0
     if active_slaps < 0:
       query = """ update settings set value = ? where name = ? """
       sth.execute(query,(0,'slaps'))
       dbh.commit()
 
+    # if there are slaps actively being dished out, add some more
     if active_slaps > 0:
       for i in range(1,int(args.wrong)):
         if risk > random.randint(0, 150):
@@ -76,7 +83,7 @@ def main():
     else:
       count = count[0] + 1
 
-      if saves <= 0:
+      if to_purge <= 0:
         print(f'Seen {count}x')
 
       query = 'update seen_images set count=? where user_id=? and filename=?'
@@ -99,10 +106,7 @@ def main():
     sth.execute(query,(slaps,'slaps'))
     dbh.commit()
 
-  if saves > 1:
-    print(f'Saves: {saves}')
-  elif saves == 1:
-    print(f'Save: {saves}')
+  print(f'to purge: {to_purge}')
 
   dbh.close()
 
