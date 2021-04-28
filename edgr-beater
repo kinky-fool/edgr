@@ -8,25 +8,19 @@ def main():
     choice = random.randint(0, 2)
 
     if choice == 0:
-      session.pace_random()
+      session.random_pace()
     else:
-      elif random.randint(0, 5) == 0:
-        session.pace_blue_balls(max_peak=4, max_secs=120)
+      if random.randint(0, 5) == 0:
+        session.blue_balls(max_peak=4, max_secs=120)
 
       elif random.randint(0, 5) == 0:
-        session.pace_random()
+        session.blue_balls(min_peak=3, max_peak=6, min_secs=30, max_secs=180)
 
       elif random.randint(0, 5) == 0:
-        session.pace_blue_balls(min_peak=3, max_peak=6, min_secs=30, max_secs=180)
-
-      elif random.randint(0, 5) == 0:
-        session.pace_random()
-
-      elif random.randint(0, 5) == 0:
-        session.pace_blue_balls(min_peak=4, max_peak=8, min_secs=60, max_secs=120)
+        session.blue_balls(min_peak=4, max_peak=8, min_secs=60, max_secs=120)
 
       else:
-        session.pace_random()
+        session.random_pace()
 
   cleanup()
 
@@ -185,16 +179,9 @@ class beater(object):
     thread = threading.Thread(target = self.__ticker)
     thread.start()
 
-#    while thread.is_alive():
-#      try:
-#        thread.join(1)
-#
-#      except KeyboardInterrupt:
-#        self.alive = False
-#        cleanup()
-
-  def pace_blue_balls(self, min_peak=1, max_peak=8, min_secs=5, max_secs=600):
-    print(f'blue balls: {min_peak}-{max_peak} peaks {min_secs}-{max_secs} seconds')
+  def blue_balls(self, min_peak=1, max_peak=8, min_secs=5, max_secs=600):
+    if debug_enabled == True:
+      print(f'blue balls: {min_peak}-{max_peak} peaks {min_secs}-{max_secs} seconds')
     waypoints = sorted(self.waypoints)
     reset_pace = waypoints[0] + ((waypoints[-1] - waypoints[0]) / 2)
     peaks = random.randint(min_peak, max_peak)
@@ -207,57 +194,10 @@ class beater(object):
       self.change_pace(reset_pace, random.randint(1, 2))
       time.sleep(random.uniform(10, 20))
 
-  def pace_fast_slow_fast(self, loops=2, min_time=5, max_time=10):
-    print(f'fast slow fast: {loops} loops')
-    waypoints = sorted(self.waypoints)[0:3]
-    for loop in range(0, loops):
-      for step in waypoints:
-        self.change_pace(step, 2)
-        time.sleep(random.uniform(min_time, max_time))
-
-      for step in sorted(waypoints, reverse=True)[1:]:
-        self.change_pace(step, 4)
-        time.sleep(random.uniform(min_time, max_time))
-
-  # go to the slowest pace and stay there for specified range
-  def pace_slowest(self, peak_secs=30):
-    print(f'slowest {peak_secs}')
-    self.change_pace(sorted(self.waypoints, reverse=True)[0])
-    time.sleep(peak_secs, 4)
-
-  # go to the fastest pace and stay there for specified range
-  def pace_fastest(self, peak_secs=90):
-    print(f'fastest {peak_secs}')
-    self.change_pace(sorted(self.waypoints)[0])
-    time.sleep(peak_secs, 4)
-
-  # change pace to slowest, then to fastest, remain at fastest for 4-8x max
-  def pace_down_up(self):
-    print('down up')
-    for step in sorted(self.waypoints, reverse=True):
-      self.change_pace(step, 4)
-      time.sleep(random.uniform(self.waypoint_secs_min,
-                                self.waypoint_secs_max))
-
-    # stay at the quickest pace for this long
-    time.sleep(random.uniform(self.waypoint_secs_max * 4,
-                              self.waypoint_secs_max * 8))
-
-  # change pace to fastest, then to slowst, remain at slowest for 2-6x max
-  def pace_up_down(self):
-    print('up down')
-    for step in sorted(self.waypoints):
-      self.change_pace(step, 4)
-      time.sleep(random.uniform(self.waypoint_secs_min,
-                                self.waypoint_secs_max))
-
-    # stay at the quickest pace for this long
-    time.sleep(random.uniform(self.waypoint_secs_max * 2,
-                              self.waypoint_secs_max * 6))
-
   # change to a randomly chosen pace waypoint
-  def pace_random(self):
-    print('random')
+  def random_pace(self):
+    if debug_enabled == True:
+      print('random')
     self.change_pace(random.choice(self.waypoints[1:-1]))
     time.sleep(random.uniform(self.waypoint_secs_min,
                               self.waypoint_secs_max))
