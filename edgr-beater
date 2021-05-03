@@ -54,7 +54,7 @@ stroke_time = 0.32
 
 # default speed-step waypoints for strokes
 waypoints = [
-  0.05,
+  0.16,
   0.23,
   0.30,
   0.42,
@@ -191,7 +191,7 @@ class beater(object):
       endure = random.uniform(min_secs, max_secs)
       time.sleep(endure)
 
-      self.change_pace(reset_pace, random.randint(1, 2))
+      self.change_pace(reset_pace, random.randint(2, 4))
       time.sleep(random.uniform(10, 20))
 
   # change to a randomly chosen pace waypoint
@@ -297,7 +297,9 @@ class beater(object):
   def sig_handler(self, *args):
     self.alive = False
     cleanup()
-    pass
 
 if __name__ == '__main__':
-  main()
+  try:
+    main()
+  except KeyboardInterrupt:
+    print('\naborting.')
