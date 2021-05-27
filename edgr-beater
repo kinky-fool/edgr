@@ -5,22 +5,14 @@ def main():
   session.start()
 
   while session.alive:
-    choice = random.randint(0, 2)
+    if random.randint(0, 5) == 0:
+      session.blue_balls(60, 90)
 
-    if choice == 0:
-      session.random_pace()
+    elif random.randint(0, 5) == 0:
+      session.blue_balls(30, 120)
+
     else:
-      if random.randint(0, 5) == 0:
-        session.blue_balls(max_peak=4, max_secs=120)
-
-      elif random.randint(0, 5) == 0:
-        session.blue_balls(min_peak=3, max_peak=6, min_secs=30, max_secs=180)
-
-      elif random.randint(0, 5) == 0:
-        session.blue_balls(min_peak=4, max_peak=8, min_secs=60, max_secs=120)
-
-      else:
-        session.random_pace()
+      session.blue_balls(5, 90)
 
   cleanup()
 
@@ -37,30 +29,17 @@ home_dir = os.environ['HOME']
 tick_sound = f'{home_dir}/lib/audio/tick.wav'
 tock_sound = f'{home_dir}/lib/audio/tock.wav'
 
-# number of steps between waypoints
-journey_steps_min = 3
-journey_steps_max = 8
+# default length of stroke -- tick {stroke_time in sec} tock
+stroke_time = 0.32
+
+# time, in seconds, between tick {stroke_time s} tock {pace_lo/pace_hi s}
+pace_lo = 0.42
+pace_hi = 0.15
 
 # min / max time per step of the journey between waypoints
 journey_secs_min = 2
 journey_secs_max = 5
 
-# min / max time at each waypoint
-waypoint_secs_min = 5
-waypoint_secs_max = 15
-
-# default length of stroke -- down*(stroke_time pause)*up
-stroke_time = 0.32
-
-# default speed-step waypoints for strokes
-waypoints = [
-  0.16,
-  0.23,
-  0.30,
-  0.42,
-  0.50,
-  0.60,
-]
 
 debug_enabled = False
 
@@ -153,16 +132,13 @@ class beater(object):
     # whether to 'tock' or not -- 'up' stroke
     self.tock               = False
 
-    self.waypoints          = waypoints.copy()
     self.tick_sound         = tick_sound
     self.tock_sound         = tock_sound
     self.stroke_time        = stroke_time
-    self.journey_steps_min  = journey_steps_min
-    self.journey_steps_max  = journey_steps_max
+    self.pace_lo            = pace_lo
+    self.pace_hi            = pace_hi
     self.journey_secs_min   = journey_secs_min
     self.journey_secs_max   = journey_secs_max
-    self.waypoint_secs_min  = waypoint_secs_min
-    self.waypoint_secs_max  = waypoint_secs_max
 
     # flag if session / stroking is done (ctrl c or time-out)
     self.alive              = True
@@ -171,7 +147,7 @@ class beater(object):
       self.tock = True
 
     # set the initial pace
-    self.stroke_pace = random.choice(self.waypoints[1:-1])
+    self.stroke_pace = self.pace_lo
 
   # create and start the ticker thread
   def start(self):
@@ -179,20 +155,60 @@ class beater(object):
     thread = threading.Thread(target = self.__ticker)
     thread.start()
 
-  def blue_balls(self, min_peak=1, max_peak=8, min_secs=5, max_secs=600):
+  def blue_balls(self, secs_min=5, secs_max=90):
     if debug_enabled == True:
-      print(f'blue balls: {min_peak}-{max_peak} peaks {min_secs}-{max_secs} seconds')
-    waypoints = sorted(self.waypoints)
-    reset_pace = waypoints[0] + ((waypoints[-1] - waypoints[0]) / 2)
-    peaks = random.randint(min_peak, max_peak)
+      print(f'blue balls: {secs_min}-{secs_max} seconds')
 
-    for loop in range(0, peaks):
-      self.change_pace(waypoints[0], random.randint(3, 4))
-      endure = random.uniform(min_secs, max_secs)
-      time.sleep(endure)
+    # get the current pace
+    pace_cur = self.get_pace()
 
-      self.change_pace(reset_pace, random.randint(2, 4))
-      time.sleep(random.uniform(10, 20))
+    # number of steps to take to get to fastest pace
+    steps = random.randint(3, 6)
+
+    # amount to change pace by per step
+    step_size = abs(pace_lo - pace_hi) / steps
+
+    # flag for done with fastest pace
+    slow_down = False
+
+    while not slow_down:
+      while pace_cur - step_size > pace_hi:
+        # get the current pace
+        pace_cur = self.get_pace()
+
+        self.change_pace(pace_cur - step_size, random.choice((2, 3, 3, 3, 4, 4)))
+        time.sleep(random.uniform(2, 5))
+
+      # explicitly set fastest pace
+      self.change_pace(pace_hi, random.choice((0, 1, 1, 1, 2, 2)))
+
+      # stay at fastest pace for some time
+      time.sleep(random.uniform(secs_min, secs_max))
+
+      if random.randint(0, 2) == 0:
+        # go up 2 steps
+        for fake_slow in range(0, 2):
+          # get the current pace
+          pace_cur = self.get_pace()
+
+          self.change_pace(pace_cur + step_size, random.choice((2, 3, 3, 3, 4, 4)))
+          time.sleep(random.uniform(3, 6))
+
+      else:
+        slow_down = True
+
+    while pace_lo > pace_cur + step_size:
+      # get the current pace
+      pace_cur = self.get_pace()
+
+      self.change_pace(pace_cur + step_size, random.choice((2, 3, 3, 3, 4, 4)))
+      time.sleep(random.uniform(3, 6))
+
+    # explicitly set slowest pace
+    self.change_pace(pace_lo, random.choice((0, 1, 1, 1, 2, 2)))
+
+    # stay slow for some time
+    time.sleep(random.uniform(2, 10))
 
   # change to a randomly chosen pace waypoint
   def random_pace(self):
