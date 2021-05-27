@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+
+import glob
+import os
+import random
+import sys
+import tkinter
+
+from itertools import cycle
+from PIL import Image, ImageTk
+
+home_dir = os.environ['HOME']
+caps_dir = f'{home_dir}/files/images/captions'
+porn_dir = f'{home_dir}/files/images/porn_pics/pool'
+risk_dir = f'{home_dir}/files/images/risky'
+
+def main():
+  ss = slideshow()
+
+  images = []
+  images.extend(choose(caps_dir, 150))
+  images.extend(choose(porn_dir, 500))
+  images.extend(choose(risk_dir, 50))
+
+  random.shuffle(images)
+
+  ss.start(images)
+  ss.mainloop()
+
+def choose(dir, count):
+  files = []
+
+  while len(files) < count:
+    files.extend(glob.glob(f'{dir}/*.jpeg'))
+    files.extend(glob.glob(f'{dir}/*.png'))
+
+  return random.sample(files, count)
+
+class slideshow(tkinter.Tk):
+  def __init__(self, *args, **kwargs):
+    tkinter.Tk.__init__(self, *args, **kwargs)
+
+    self.title("Slideshow")
+    self.geometry("256x256")
+    #self.geometry("+0+0")
+    self.resizable(width=False, height=False)
+    self.current_slide = tkinter.Label(self)
+    self.current_slide.pack()
+    self.duration_ms = 1000
+
+  def center(self):
+    """Center the slide window on the screen"""
+    self.update_idletasks()
+    w = self.winfo_screenwidth()
+    h = self.winfo_screenheight()
+    size = tuple(int(_) for _ in self.geometry().split('+')[0].split('x'))
+    x = w / 2 - size[0] / 2
+    y = h / 2 - size[1] / 2
+    self.geometry("+%d+%d" % (x, y))
+
+  def display_next_slide(self):
+    name, self.next_image = next(self.photos)
+    self.current_slide.config(image=self.next_image)
+    self.title(name)
+    self.after(self.duration_ms, self.display_next_slide)
+
+  def start(self, images):
+    self.center()
+    print(images)
+    self.photos = cycle(ImageTk.PhotoImage(Image.open(image)) for image in images)
+    self.display_next_slide()
+
+if __name__ == "__main__":
+  main()
+  sys.exit()
