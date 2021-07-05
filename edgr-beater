@@ -33,13 +33,12 @@ tock_sound = f'{home_dir}/lib/audio/tock.wav'
 stroke_time = 0.32
 
 # time, in seconds, between tick {stroke_time s} tock {pace_lo/pace_hi s}
-pace_lo = 0.42
-pace_hi = 0.15
+pace_lo = 0.35
+pace_hi = 0.13
 
 # min / max time per step of the journey between waypoints
 journey_secs_min = 2
-journey_secs_max = 5
-
+journey_secs_max = 10
 
 debug_enabled = False
 
