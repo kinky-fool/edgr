@@ -166,7 +166,7 @@ class beater(object):
     steps = random.randint(3, 6)
 
     # amount to change pace by per step
-    step_size = abs(pace_lo - pace_hi) / steps
+    step_size = abs(self.pace_lo - self.pace_hi) / steps
 
     # flag for done with fastest pace
     slow_down = False
@@ -197,7 +197,7 @@ class beater(object):
       else:
         slow_down = True
 
-    while pace_lo > pace_cur + step_size:
+    while self.pace_lo > pace_cur + step_size:
       # get the current pace
       pace_cur = self.get_pace()
 
@@ -205,7 +205,7 @@ class beater(object):
       time.sleep(random.uniform(3, 6))
 
     # explicitly set slowest pace
-    self.change_pace(pace_lo, random.choice((0, 1, 1, 1, 2, 2)))
+    self.change_pace(self.pace_lo, random.choice((0, 1, 1, 1, 2, 2)))
 
     # stay slow for some time
     time.sleep(random.uniform(2, 10))
