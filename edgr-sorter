@@ -2,82 +2,41 @@
 
 source $HOME/lib/edgr_funcs.sh
 
-right="${1:-4}"
-wrong="${2:-0}"
-to_purge="${3:-40}"
+streak_right="${1:-4}"
+streak_wrong="${2:-0}"
+wrong_answers="${3:-40}"
 
 script="$HOME/projects/edgr/edgr-check-image"
-pics_count="$HOME/.edge_pics"
 images="$HOME/files/images/porn_pics/pool"
-slideshow="$HOME/.slideshow"
+slideshow="$HOME/.edgr_slideshow"
 
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
           "update settings set value = 0 where name = 'risk'"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
           "update settings set value = 0 where name = 'slaps'"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
-          "update settings set value = $to_purge where name = 'to_purge'"
+          "update settings set value = 'yellow' where name = 'light_color'"
+/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
+          "update settings set value = $wrong_answers where name = 'to_purge'"
 
 now=$(date "+%s")
 
-pics=2
-
-start_pics=0
-start_pics_min=50
-
-while [[ "$start_pics" -lt "$start_pics_min" ]]; do
-  start_pics=$((RANDOM % 50 + start_pics_min))
-
-  for i in $(seq 1 $right); do
-    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
-      start_pics=$((start_pics - RANDOM % 5))
-    fi
-  done
-
-  for i in $(seq 1 $((wrong * 2))); do
-    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
-      start_pics=$((start_pics + RANDOM % 5))
-    fi
-  done
-done
-
-dupes=0
-dupes_min=40
-
-while [[ "$dupes" -lt "$dupes_min" ]]; do
-  dupes=$((RANDOM % 10 + dupes_min))
-
-  for i in $(seq 1 $right); do
-    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
-      dupes=$((dupes - RANDOM % 5))
-    fi
-  done
-
-  for i in $(seq 1 $((wrong * 2))); do
-    if [[ "$((RANDOM % 3))" -eq 0 ]]; then
-      dupes=$((dupes + 4 + RANDOM % 7))
-    fi
-  done
-done
-
-echo 0 > "$HOME/.edge_remains"
-echo "$start_pics" > "$pics_count"
-
 porn_pics=500
 caption_pics=150
+risky_pics=$(((streak_wrong + 1) * 25))
+caption_pics=$((caption_pics + streak_right * 10))
 
 random_pic_playlist "$HOME/files/images/porn_pics/pool" $porn_pics > "$slideshow"
 random_pic_playlist "$HOME/files/images/captions" $caption_pics >> "$slideshow"
-random_pic_playlist "$HOME/files/images/risky" "$dupes" >> "$slideshow"
+random_pic_playlist "$HOME/files/images/risky" "$risky_pics" >> "$slideshow"
 
-# Shuffle the slideshow list
-shuf "$slideshow" -o "$slideshow"
+red_light=$(random_pic_playlist "$HOME/files/images/risky" 1)
 
-$HOME/projects/edgr/edgr-slappr &
+#$HOME/projects/edgr/edgr-slappr &
 $HOME/projects/edgr/edgr-beater &
 
 $HOME/bin/feh -f "$slideshow" \
-  --info "$script --file %f --right $right --wrong $wrong" \
+  --info "$script --file %f --right $streak_right --wrong $streak_wrong --red $red_light" \
   --auto-zoom \
   --hide-pointer \
   --borderless \
@@ -86,9 +45,9 @@ $HOME/bin/feh -f "$slideshow" \
   --scale-down \
   --image-bg black \
   --geometry 1500x1050+15+15 \
-  --slideshow-delay 10 \
-  --slideshow-delay-min 10 \
-  --slideshow-delay-max 10 \
+  --slideshow-delay 7 \
+  --slideshow-delay-min 7 \
+  --slideshow-delay-max 7 \
   --action "$HOME/projects/edgr/edgr-bad-porn %F" \
   --fontpath "$HOME/.local/share/fonts/Lexend_Giga/" \
   --font "LexendGiga-Regular/22"
