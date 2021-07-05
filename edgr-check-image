@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import glob
 import time
 import random
 import re
@@ -9,6 +10,10 @@ import argparse
 import subprocess
 
 home_dir = os.environ['HOME']
+caps_dir = f'{home_dir}/files/images/captions'
+porn_dir = f'{home_dir}/files/images/porn_pics/pool'
+risk_dir = f'{home_dir}/files/images/risky'
+
 
 def main():
   user_id = 1
@@ -22,24 +27,69 @@ def main():
   risk  = 0
 
   image = str(args.file[0])
+  latest_risk = str(args.red)
+
+  #risky_files = glob.glob(f'{risk_dir}/*.jpg')
+  #latest_risk = max(risky_files, key=os.path.getctime)
+
+  # randomly choose a redlight picture, every time...
+  #latest_risk = random.choice(risky_files)
 
   query = """ select value from settings where name = ? """
   sth.execute(query,('to_purge',))
   to_purge = int(sth.fetchone()[0])
 
+  query = """ select value from settings where name = ? """
+  sth.execute(query,('light_color',))
+  color = sth.fetchone()[0]
+
   # if the image is in the risky directory, increase the risk
   if (image.find('risky')) > 0:
+    spins       = 2
+    free_spins  = 4
+
+    if color == 'red':
+      spins += 1
+      free_spins += 1
+
+    if to_purge <= 0:
+      spins += 2
+      free_spins += 4
+
     add_risk = 1
+
+    if (image == latest_risk):
+      spins += 4
+      free_spins += 2
+
+      query = """ update settings set value = ? where name = ? """
+      sth.execute(query,('red', 'light_color'))
+      dbh.commit()
+
     if (image.find('key')) > 0:
-      add_risk = 10
+      spins += 2
+      free_spins += 1
 
     if (image.find('mags')) > 0:
+      spins += 2
+      free_spins += 2
+
       add_risk = add_risk * 5
+
+    # add pics to purge
+    to_purge += penalty_adder(spins, free_spins)
+
+    if to_purge > 30:
+      to_purge = 25
+
+    query = """ update settings set value = ? where name = ? """
+    sth.execute(query,(to_purge, 'to_purge'))
+    dbh.commit()
 
     # increase the risk level if the purge count is above 0
     if to_purge > 0:
       query = """ update settings set value = value + ? where name = ? """
-      sth.execute(query,(add_risk,'risk'))
+      sth.execute(query,(add_risk, 'risk'))
       dbh.commit()
 
     # get the current risk level
@@ -83,9 +133,6 @@ def main():
     else:
       count = count[0] + 1
 
-      if to_purge <= 0:
-        print(f'Seen {count}x')
-
       query = 'update seen_images set count=? where user_id=? and filename=?'
       sth.execute(query,(count, user_id, image))
       dbh.commit()
@@ -100,15 +147,62 @@ def main():
           if risk > random.randint(0, 100):
             slap = slap + 0
 
+  query = """ select value from settings where name = ? """
+  sth.execute(query,('light_color',))
+  color = sth.fetchone()[0]
+
+  if color == 'yellow' and to_purge <= 0:
+    color = 'green'
+
+  if color == 'red' and to_purge > 0:
+    color = 'yellow'
+
+  print(f'  {color} {to_purge}')
+
   if slap > 0:
     slaps = random.randint(1, slap)
     query = """ update settings set value = value + ? where name = ? """
     sth.execute(query,(slaps,'slaps'))
     dbh.commit()
 
-  print(f'to purge: {to_purge}')
-
   dbh.close()
+
+def ztf():
+  # zero to five
+  # on average return a low val from 0-5
+  # return 0-2 more often than 3-5
+  count = 0
+
+  if random.randint(0, 3) == 0:
+    count += 1
+
+    if random.randint(0, 3) == 0:
+      count += 1
+
+      # nested so far, but now 3 at the same level
+      if random.randint(0, 3) == 0:
+        count += 1
+
+      if random.randint(0, 3) == 0:
+        count += 1
+
+      if random.randint(0, 3) == 0:
+        count += 1
+
+  return count
+
+def penalty_adder(spins=1, free_spins=0):
+  count = 0
+  while spins > 0:
+    spins -= 1
+
+    if random.randint(0, 3) == 0:
+      count += 1
+      if free_spins > 0:
+        free_spins -= 1
+        spins += 1
+
+  return count
 
 def do_cli_args():
   parser = argparse.ArgumentParser()
@@ -125,6 +219,11 @@ def do_cli_args():
     default=4,
     type=int,
     help='Number pictures in a row wrong from Thong Game',
+  )
+
+  parser.add_argument(
+    '-R', '--red',
+    help='Full path of red light image',
   )
 
   parser.add_argument(
