@@ -291,6 +291,13 @@ class beater(object):
 
   # set the stroke pace
   def set_pace(self, pace_new=None):
+
+    if pace_new < self.pace_hi:
+      pace_new = self.pace_hi
+
+    if pace_new > self.pace_lo:
+      pace_new = self.pace_lo
+
     if isinstance(pace_new, int) or isinstance(pace_new, float):
       self.stroke_pace = pace_new
       if debug_enabled == True:
