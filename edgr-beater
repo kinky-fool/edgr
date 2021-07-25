@@ -5,14 +5,7 @@ def main():
   session.start()
 
   while session.alive:
-    if random.randint(0, 5) == 0:
-      session.blue_balls(60, 90)
-
-    elif random.randint(0, 5) == 0:
-      session.blue_balls(30, 120)
-
-    else:
-      session.blue_balls(5, 90)
+    session.blue_balls(15, 90)
 
   cleanup()
 
@@ -33,7 +26,7 @@ tock_sound = f'{home_dir}/lib/audio/tock.wav'
 stroke_time = 0.32
 
 # time, in seconds, between tick {stroke_time s} tock {pace_lo/pace_hi s}
-pace_lo = 0.35
+pace_lo = 0.40
 pace_hi = 0.13
 
 # min / max time per step of the journey between waypoints
@@ -158,11 +151,8 @@ class beater(object):
     if debug_enabled == True:
       print(f'blue balls: {secs_min}-{secs_max} seconds')
 
-    # get the current pace
-    pace_cur = self.get_pace()
-
     # number of steps to take to get to fastest pace
-    steps = random.randint(3, 6)
+    steps = random.randint(5, 12)
 
     # amount to change pace by per step
     step_size = abs(self.pace_lo - self.pace_hi) / steps
@@ -170,13 +160,19 @@ class beater(object):
     # flag for done with fastest pace
     slow_down = False
 
-    while not slow_down:
-      while pace_cur - step_size > pace_hi:
-        # get the current pace
-        pace_cur = self.get_pace()
+    # get the current pace
+    pace_cur = self.get_pace()
 
-        self.change_pace(pace_cur - step_size, random.choice((2, 3, 3, 3, 4, 4)))
+    pace_new = pace_cur - step_size
+
+    while not slow_down:
+      while pace_new > self.pace_hi:
+        self.change_pace(pace_new, random.choice((2, 3, 3, 3, 4, 4)))
         time.sleep(random.uniform(2, 5))
+
+        # Update paces
+        pace_cur = self.get_pace()
+        pace_new = pace_cur - step_size
 
       # explicitly set fastest pace
       self.change_pace(pace_hi, random.choice((0, 1, 1, 1, 2, 2)))
@@ -184,30 +180,25 @@ class beater(object):
       # stay at fastest pace for some time
       time.sleep(random.uniform(secs_min, secs_max))
 
-      if random.randint(0, 2) == 0:
-        # go up 2 steps
-        for fake_slow in range(0, 2):
+      if random.randint(0, 2) != 0:
+        for step in range(0, int(steps / 3)):
+          self.change_pace(pace_cur + step_size, random.choice((2, 3, 3, 3, 4, 4)))
+          time.sleep(random.uniform(6, 12))
+
           # get the current pace
           pace_cur = self.get_pace()
-
-          self.change_pace(pace_cur + step_size, random.choice((2, 3, 3, 3, 4, 4)))
-          time.sleep(random.uniform(3, 6))
 
       else:
         slow_down = True
 
-    while self.pace_lo > pace_cur + step_size:
-      # get the current pace
-      pace_cur = self.get_pace()
-
+    while self.pace_lo - 0.1 > pace_cur + step_size:
       self.change_pace(pace_cur + step_size, random.choice((2, 3, 3, 3, 4, 4)))
       time.sleep(random.uniform(3, 6))
 
-    # explicitly set slowest pace
-    self.change_pace(self.pace_lo, random.choice((0, 1, 1, 1, 2, 2)))
+      # get the current pace
+      pace_cur = self.get_pace()
 
-    # stay slow for some time
-    time.sleep(random.uniform(2, 10))
+    self.change_pace(self.pace_lo, random.choice((0, 0, 1, 1, 1, 2, 2)))
 
   # change to a randomly chosen pace waypoint
   def random_pace(self):
@@ -234,13 +225,13 @@ class beater(object):
       pace_cur = self.get_pace()
 
       # default speed
-      step_size = 0.01
+      step_size = 0.001
 
       if speed == 5:
-        step_size = 0.1
+        step_size = 0.05
 
       if speed == 4:
-        step_size = 0.05
+        step_size = 0.03
 
       if speed == 3:
         step_size = 0.01
