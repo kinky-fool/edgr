@@ -152,7 +152,7 @@ class beater(object):
       print(f'blue balls: {secs_min}-{secs_max} seconds')
 
     # number of steps to take to get to fastest pace
-    steps = random.randint(5, 12)
+    steps = random.randint(5, 8)
 
     # amount to change pace by per step
     step_size = abs(self.pace_lo - self.pace_hi) / steps
@@ -160,12 +160,11 @@ class beater(object):
     # flag for done with fastest pace
     slow_down = False
 
-    # get the current pace
-    pace_cur = self.get_pace()
-
-    pace_new = pace_cur - step_size
-
     while not slow_down:
+      # get the current pace
+      pace_cur = self.get_pace()
+      pace_new = pace_cur - step_size
+
       while pace_new > self.pace_hi:
         self.change_pace(pace_new, random.choice((2, 3, 3, 3, 4, 4)))
         time.sleep(random.uniform(2, 5))
@@ -175,24 +174,27 @@ class beater(object):
         pace_new = pace_cur - step_size
 
       # explicitly set fastest pace
-      self.change_pace(pace_hi, random.choice((0, 1, 1, 1, 2, 2)))
+      self.change_pace(self.pace_hi, random.choice((0, 1, 1, 1, 3, 4)))
 
       # stay at fastest pace for some time
       time.sleep(random.uniform(secs_min, secs_max))
 
-      if random.randint(0, 2) != 0:
-        for step in range(0, int(steps / 3)):
-          self.change_pace(pace_cur + step_size, random.choice((2, 3, 3, 3, 4, 4)))
-          time.sleep(random.uniform(6, 12))
+      if random.randint(0, 3) != 0:
+        # go up 2 steps
+        self.change_pace(pace_cur + step_size, random.choice((2, 3, 3, 3, 4, 4)))
+        time.sleep(random.uniform(6, 12))
 
-          # get the current pace
-          pace_cur = self.get_pace()
+        self.change_pace(pace_cur + step_size, random.choice((2, 3, 3, 3, 4, 4)))
+        time.sleep(random.uniform(6, 12))
 
       else:
         slow_down = True
 
+    # get the current pace
+    pace_cur = self.get_pace()
+
     while self.pace_lo - 0.1 > pace_cur + step_size:
-      self.change_pace(pace_cur + step_size, random.choice((2, 3, 3, 3, 4, 4)))
+      self.change_pace(pace_cur + (step_size * 2), random.choice((2, 3, 3, 3, 4, 4)))
       time.sleep(random.uniform(3, 6))
 
       # get the current pace
