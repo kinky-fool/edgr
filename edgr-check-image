@@ -14,6 +14,7 @@ caps_dir = f'{home_dir}/files/images/captions'
 porn_dir = f'{home_dir}/files/images/porn_pics/pool'
 risk_dir = f'{home_dir}/files/images/risky'
 
+keyword_file = f'{home_dir}/.config/edgr.keywords'
 
 def main():
   user_id = 1
@@ -26,8 +27,14 @@ def main():
   slap  = 0
   risk  = 0
 
+  # full path for image to check
   image = str(args.file[0])
+
+  # red light picture -- if this shows up, no green light
   latest_risk = str(args.red)
+
+  # to_purge is above this number, stop adding penalties
+  purge_limit = int(args.purgelimit)
 
   #risky_files = glob.glob(f'{risk_dir}/*.jpg')
   #latest_risk = max(risky_files, key=os.path.getctime)
@@ -43,17 +50,19 @@ def main():
   sth.execute(query,('light_color',))
   color = sth.fetchone()[0]
 
+  penalty = 0
+
   # if the image is in the risky directory, increase the risk
   if (image.find('risky')) > 0:
-    spins       = 2
+    spins       = 1
     free_spins  = 4
 
-    if color == 'red':
-      spins += 1
+    if color != 'red':
+      spins += 2
       free_spins += 1
 
     if to_purge <= 0:
-      spins += 2
+      spins += 3
       free_spins += 4
 
     add_risk = 1
@@ -66,21 +75,19 @@ def main():
       sth.execute(query,('red', 'light_color'))
       dbh.commit()
 
-    if (image.find('key')) > 0:
-      spins += 2
-      free_spins += 1
-
-    if (image.find('mags')) > 0:
-      spins += 2
-      free_spins += 2
-
-      add_risk = add_risk * 5
+    with open(keyword_file, 'r') as fh:
+      for line in fh:
+        keyword, spins_add, freespins_add = line.split()
+        if image.find(keyword) > 0:
+          spins += int(spins_add)
+          free_spins += int(freespins_add)
 
     # add pics to purge
-    to_purge += penalty_adder(spins, free_spins)
-
-    if to_purge > 30:
-      to_purge = 25
+    penalty = penalty_adder(spins, free_spins)
+    if to_purge < purge_limit:
+      to_purge += penalty
+    else:
+      penalty = 0
 
     query = """ update settings set value = ? where name = ? """
     sth.execute(query,(to_purge, 'to_purge'))
@@ -157,7 +164,10 @@ def main():
   if color == 'red' and to_purge > 0:
     color = 'yellow'
 
-  print(f'  {color} {to_purge}')
+  if penalty == 0:
+    print(f'  {color} {to_purge}\n')
+  else:
+    print(f'  {color} +{penalty}\n')
 
   if slap > 0:
     slaps = random.randint(1, slap)
@@ -196,7 +206,7 @@ def penalty_adder(spins=1, free_spins=0):
   while spins > 0:
     spins -= 1
 
-    if random.randint(0, 3) == 0:
+    if random.randint(0, 4) == 0:
       count += 1
       if free_spins > 0:
         free_spins -= 1
@@ -230,6 +240,13 @@ def do_cli_args():
     '-f', '--file',
     nargs='+',
     help='Full path of file',
+  )
+
+  parser.add_argument(
+    '-l', '--purgelimit',
+    default=4,
+    type=int,
+    help='Limit for images to purge',
   )
 
   return parser.parse_args()
