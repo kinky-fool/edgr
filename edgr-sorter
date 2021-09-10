@@ -6,6 +6,8 @@ streak_right="${1:-4}"
 streak_wrong="${2:-0}"
 wrong_answers="${3:-40}"
 
+purge_limit=$((wrong_answers + 15))
+
 script="$HOME/projects/edgr/edgr-check-image"
 images="$HOME/files/images/porn_pics/pool"
 slideshow="$HOME/.edgr_slideshow"
@@ -23,7 +25,7 @@ now=$(date "+%s")
 
 porn_pics=500
 caption_pics=150
-risky_pics=$(((streak_wrong + 1) * 25))
+risky_pics=$(((streak_wrong + 1) * 15))
 caption_pics=$((caption_pics + streak_right * 10))
 
 random_pic_playlist "$HOME/files/images/porn_pics/pool" $porn_pics > "$slideshow"
@@ -36,7 +38,7 @@ red_light=$(random_pic_playlist "$HOME/files/images/risky" 1)
 $HOME/projects/edgr/edgr-beater &
 
 $HOME/bin/feh -f "$slideshow" \
-  --info "$script --file %f --right $streak_right --wrong $streak_wrong --red $red_light" \
+  --info "$script --file %f --right $streak_right --wrong $streak_wrong --red $red_light --purgelimit $purge_limit" \
   --auto-zoom \
   --hide-pointer \
   --borderless \
