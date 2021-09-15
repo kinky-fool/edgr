@@ -19,11 +19,11 @@ stroke_time = 0.32
 
 # time, in seconds, between tick {stroke_time s} tock {pace_slow/pace_fast s}
 pace_slow = 0.45
-pace_fast = 0.10
+pace_fast = 0.085
 
 # min / max time per step of the journey between waypoints
-journey_secs_min = 2
-journey_secs_max = 10
+journey_secs_min = 0.25
+journey_secs_max = 1.50
 
 debug_enabled = False
 
@@ -232,6 +232,96 @@ class beater(object):
 
     self.change_pace(self.pace_fast, 0)
     time.sleep(random.choice((5, 10, 15, 30, 45, 60, 90)))
+
+
+  def pattern02(self):
+    pace_spread = abs(self.pace_slow - self.pace_fast)
+    # go to slowest speed and stay there for 5 - 25 seconds
+    self.change_pace(self.pace_slow, 4)
+    time.sleep(random.uniform(5, 25))
+
+    # increase to 3/4 speed
+    # TODO: once using percents
+    #self.pace_percent(0.75, 3)
+
+    self.change_pace(self.pace_fast + (pace_spread * 0.90), 4)
+    time.sleep(random.uniform(3, 10))
+
+    self.change_pace(self.pace_fast + (pace_spread * 0.80), 2)
+
+    self.change_pace(self.pace_fast + (pace_spread * 0.60), 5)
+    time.sleep(random.uniform(1, 8))
+
+    self.change_pace(self.pace_fast + (pace_spread * 0.50), 4)
+    time.sleep(random.uniform(1, 8))
+
+    for weee in range(0, 3):
+      self.change_pace(self.pace_fast + (pace_spread * 0.35), 3)
+      time.sleep(random.uniform(1, 8))
+
+      self.change_pace(self.pace_fast + (pace_spread * 0.30), 2)
+      time.sleep(random.uniform(1, 8))
+
+      self.change_pace(self.pace_fast + (pace_spread * 0.20), 1)
+      time.sleep(random.uniform(1, 30))
+
+      self.change_pace(self.pace_fast, 5)
+      time.sleep(random.choice((5, 10, 15, 30, 45, 60, 90)))
+
+      self.change_pace(self.pace_fast + (pace_spread * 0.30), 2)
+      time.sleep(random.uniform(1, 15))
+
+      self.change_pace(self.pace_fast + (pace_spread * 0.50), 5)
+      time.sleep(random.uniform(5, 10))
+
+
+  def pattern03(self):
+    pace_spread = abs(self.pace_slow - self.pace_fast)
+    # go to slowest speed and stay there for 5 - 25 seconds
+    self.change_pace(self.pace_slow, 4)
+    time.sleep(random.uniform(5, 25))
+
+    self.change_pace(self.pace_fast + (pace_spread * 0.90), 4)
+    time.sleep(random.uniform(3, 10))
+
+    self.change_pace(self.pace_fast + (pace_spread * 0.80), 2)
+
+    self.change_pace(self.pace_fast + (pace_spread * 0.50), 4)
+    time.sleep(random.uniform(1, 8))
+
+    self.change_pace(self.pace_fast + (pace_spread * 0.30), 3)
+    time.sleep(random.uniform(1, 8))
+
+    for weee in range(0, 3):
+      self.change_pace(self.pace_fast + (pace_spread * 0.25), 2)
+      time.sleep(random.choice((5, 15, 30)))
+
+      self.change_pace(self.pace_fast, 5)
+      time.sleep(random.choice((5, 15, 30)))
+
+
+  def pattern04(self):
+    # go to slowest speed and stay there for 5 - 25 seconds
+    self.change_percent(0, 0.5)
+    time.sleep(random.uniform(5, 25))
+
+    self.change_percent(10, 1)
+    time.sleep(random.uniform(3, 10))
+
+    self.change_percent(20, 0.25)
+
+    self.change_percent(50, 2)
+    time.sleep(random.uniform(1, 8))
+
+    self.change_percent(70, 1.25)
+    time.sleep(random.uniform(1, 8))
+
+    for weee in range(0, random.choice((1, 3, 3, 3, 5, 5))):
+      self.change_percent(80, 0.25)
+      time.sleep(random.choice((5, 15, 10)))
+
+      self.change_percent(100, 4)
+      time.sleep(random.choice((5, 15, 30)))
 
 
   # change to a randomly chosen pace waypoint
