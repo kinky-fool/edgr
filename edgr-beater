@@ -254,6 +254,44 @@ class beater(object):
                                 self.waypoint_secs_max * 8))
 
 
+  def change_percent(self, percent_new=None, step_size=None):
+    if not isinstance(percent_new, (float, int)):
+      if debug_enabled == True:
+        print(f'change_percent failed, percent_new ({percent_new}) not float or int')
+        return
+
+    if step_size is None:
+      step_size = 0.5
+
+    percent_cur = self.get_percent()
+
+    if percent_cur > percent_new:
+      while percent_cur > percent_new:
+        percent_next = percent_cur - step_size
+
+        if percent_next < percent_new:
+          percent_next = percent_new
+
+        self.set_percent(percent_next)
+        time.sleep(random.uniform(self.journey_secs_min,
+                                  self.journey_secs_max))
+
+        percent_cur = self.get_percent()
+
+    if percent_new > percent_cur:
+      while percent_new > percent_cur:
+        percent_next = percent_cur + step_size
+
+        if percent_next > percent_new:
+          percent_next = percent_new
+
+        self.set_percent(percent_next)
+        time.sleep(random.uniform(self.journey_secs_min,
+                                  self.journey_secs_max))
+
+        percent_cur = self.get_percent()
+
+
   def change_pace(self, pace_new=None, speed=3):
     if isinstance(pace_new, int) or isinstance(pace_new, float):
 
@@ -316,6 +354,30 @@ class beater(object):
   # return the current stroke pace
   def get_pace(self):
     return self.stroke_pace
+
+
+  def get_percent(self):
+    spread = abs(self.pace_slow - self.pace_fast)
+    pace = self.get_pace()
+    pace_rel = pace - self.pace_fast
+    return float("{0:.6f}".format(float(100 - (pace_rel / spread * 100))))
+
+
+  def set_percent(self, percent=None):
+    if isinstance(percent, int) or isinstance(percent, float):
+      if percent > 100:
+        percent = 100
+
+      if percent < 0:
+        percent = 0
+
+      spread = abs(self.pace_slow - self.pace_fast)
+      # Invert percent, since 'fast' "should" be lower / smaller than 'slow'
+      new_pace = self.pace_fast + (spread * (100 - percent) / 100)
+      self.stroke_pace = self.pace_fast + (spread * (100 - percent) / 100)
+
+      if debug_enabled == True:
+        print(f'pace set to {percent}%')
 
 
   # set the stroke pace
