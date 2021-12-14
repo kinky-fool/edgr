@@ -8,6 +8,7 @@ import re
 import sqlite3
 import argparse
 import subprocess
+import hashlib
 
 home_dir = os.environ['HOME']
 caps_dir = f'{home_dir}/files/images/captions'
@@ -46,134 +47,161 @@ def main():
   sth.execute(query,('to_purge',))
   to_purge = int(sth.fetchone()[0])
 
-  query = """ select value from settings where name = ? """
   sth.execute(query,('light_color',))
   color = sth.fetchone()[0]
 
+  sth.execute(query,('edges',))
+  edges = sth.fetchone()[0]
+
+  sth.execute(query,('cooldown',))
+  cooldown = sth.fetchone()[0]
+
   penalty = 0
 
-  # if the image is in the risky directory, increase the risk
-  if (image.find('risky')) > 0:
-    spins       = 1
-    free_spins  = 4
+  md5 = hashlib.md5(open(image, 'rb').read()).hexdigest()
+  query = """ select seen from edge_images where md5 = ? """
+  sth.execute(query,(md5,))
+  seen = sth.fetchone()
 
-    if color != 'red':
-      spins += 2
-      free_spins += 1
-
-    if to_purge <= 0:
-      spins += 3
-      free_spins += 4
-
-    add_risk = 1
-
-    if (image == latest_risk):
-      spins += 4
-      free_spins += 2
-
-      query = """ update settings set value = ? where name = ? """
-      sth.execute(query,('red', 'light_color'))
-      dbh.commit()
-
-    with open(keyword_file, 'r') as fh:
-      for line in fh:
-        keyword, spins_add, freespins_add = line.split()
-        if image.find(keyword) > 0:
-          spins += int(spins_add)
-          free_spins += int(freespins_add)
-
-    # add pics to purge
-    penalty = penalty_adder(spins, free_spins)
-    if to_purge < purge_limit:
-      to_purge += penalty
-    else:
-      penalty = 0
-
-    query = """ update settings set value = ? where name = ? """
-    sth.execute(query,(to_purge, 'to_purge'))
+  if cooldown > 0 and (image.find('risky') == -1 and image.find('captions') == -1):
+    query = """ update settings set value = value - 1 where name = 'cooldown' """
+    sth.execute(query)
     dbh.commit()
 
-    # increase the risk level if the purge count is above 0
-    if to_purge > 0:
-      query = """ update settings set value = value + ? where name = ? """
-      sth.execute(query,(add_risk, 'risk'))
-      dbh.commit()
-
-    # get the current risk level
-    query = """ select value from settings where name = ? """
-    sth.execute(query, ('risk',))
-    risk = sth.fetchone()[0]
-
-    # get the current slap count
-    sth.execute(query,('slaps',))
-    active_slaps = sth.fetchone()[0]
-
-    # if, for some reason, active_slaps is negative, set to 0
-    if active_slaps < 0:
-      query = """ update settings set value = ? where name = ? """
-      sth.execute(query,(0,'slaps'))
-      dbh.commit()
-
-    # if there are slaps actively being dished out, add some more
-    if active_slaps > 0:
-      for i in range(1,int(args.wrong)):
-        if risk > random.randint(0, 150):
-          slap = slap + 1
-
-    # Up to 3 slaps per 'risky' picture
-    for i in range(1, 3):
-      if risk > random.randint(0, 100):
-        slap = slap + 1
-
-  else:
-    query = 'select count from seen_images where user_id=? and filename=?'
-    sth.execute(query,(user_id, image))
+  if seen is not None and edges > 0 and (cooldown > 0 or edges <= 3):
+    query = """ update settings set value = value + 2 where name = 'edges' """
+    edges += 2
+    sth.execute(query)
     dbh.commit()
-    count = sth.fetchone()
 
-    if count == None:
-      count = 1
-      query = """insert into seen_images ('user_id', 'filename', 'count')
-                  values (?,?,?)"""
-      sth.execute(query, (user_id, image, 1))
+  if edges <= 0:
+    # if the image is in the risky directory, increase the risk
+    if (image.find('risky')) > 0:
+      spins       = 1
+      free_spins  = 4
+
+      if color != 'red':
+        spins += 2
+        free_spins += 1
+
+      if to_purge <= 0:
+        spins += 3
+        free_spins += 4
+
+      add_risk = 1
+
+      if (image == latest_risk):
+        spins += 4
+        free_spins += 2
+
+        query = """ update settings set value = ? where name = ? """
+        sth.execute(query,('red', 'light_color'))
+        dbh.commit()
+
+      with open(keyword_file, 'r') as fh:
+        for line in fh:
+          keyword, spins_add, freespins_add = line.split()
+          if image.find(keyword) > 0:
+            spins += int(spins_add)
+            free_spins += int(freespins_add)
+
+      # add pics to purge
+      penalty = penalty_adder(spins, free_spins)
+      if to_purge < purge_limit:
+        to_purge += penalty
+      else:
+        penalty = 0
+
+      query = """ update settings set value = ? where name = ? """
+      sth.execute(query,(to_purge, 'to_purge'))
       dbh.commit()
-    else:
-      count = count[0] + 1
 
-      query = 'update seen_images set count=? where user_id=? and filename=?'
-      sth.execute(query,(count, user_id, image))
-      dbh.commit()
+      # increase the risk level if the purge count is above 0
+      if to_purge > 0:
+        query = """ update settings set value = value + ? where name = ? """
+        sth.execute(query,(add_risk, 'risk'))
+        dbh.commit()
 
+      # get the current risk level
       query = """ select value from settings where name = ? """
       sth.execute(query, ('risk',))
       risk = sth.fetchone()[0]
 
-      high_die = int(3 + int(args.right))
-      for i in range(1, int(args.wrong) + count):
-        if random.randint(1, high_die) == 1:
-          if risk > random.randint(0, 100):
-            slap = slap + 0
+      # get the current slap count
+      sth.execute(query,('slaps',))
+      active_slaps = sth.fetchone()[0]
 
-  query = """ select value from settings where name = ? """
-  sth.execute(query,('light_color',))
-  color = sth.fetchone()[0]
+      # if, for some reason, active_slaps is negative, set to 0
+      if active_slaps < 0:
+        query = """ update settings set value = ? where name = ? """
+        sth.execute(query,(0,'slaps'))
+        dbh.commit()
 
-  if color == 'yellow' and to_purge <= 0:
-    color = 'green'
+      # if there are slaps actively being dished out, add some more
+      if active_slaps > 0:
+        for i in range(1,int(args.wrong)):
+          if risk > random.randint(0, 150):
+            slap = slap + 1
 
-  if color == 'red' and to_purge > 0:
-    color = 'yellow'
+      # Up to 3 slaps per 'risky' picture
+      for i in range(1, 3):
+        if risk > random.randint(0, 100):
+          slap = slap + 1
 
-  if penalty == 0:
-    print(f'  {color} {to_purge}\n')
+    else:
+      query = 'select count from seen_images where user_id=? and filename=?'
+      sth.execute(query,(user_id, image))
+      dbh.commit()
+      count = sth.fetchone()
+
+      if count == None:
+        count = 1
+        query = """insert into seen_images ('user_id', 'filename', 'count')
+                    values (?,?,?)"""
+        sth.execute(query, (user_id, image, 1))
+        dbh.commit()
+      else:
+        count = count[0] + 1
+
+        query = 'update seen_images set count=? where user_id=? and filename=?'
+        sth.execute(query,(count, user_id, image))
+        dbh.commit()
+
+        query = """ select value from settings where name = ? """
+        sth.execute(query, ('risk',))
+        risk = sth.fetchone()[0]
+
+        high_die = int(3 + int(args.right))
+        for i in range(1, int(args.wrong) + count):
+          if random.randint(1, high_die) == 1:
+            if risk > random.randint(0, 100):
+              slap = slap + 0
+
+    query = """ select value from settings where name = ? """
+    sth.execute(query,('light_color',))
+    color = sth.fetchone()[0]
+
+    if color == 'yellow' and to_purge <= 0:
+      color = 'green'
+
+    if color == 'red' and to_purge > 0:
+      color = 'yellow'
+
+    if penalty == 0:
+      print(f'  {color} {to_purge}\n')
+    else:
+      print(f'  {color} +{penalty}\n')
+
+    if slap > 0:
+      slaps = random.randint(1, slap)
+      query = """ update settings set value = value + ? where name = ? """
+      sth.execute(query,(slaps,'slaps'))
+      dbh.commit()
   else:
-    print(f'  {color} +{penalty}\n')
-
-  if slap > 0:
-    slaps = random.randint(1, slap)
-    query = """ update settings set value = value + ? where name = ? """
-    sth.execute(query,(slaps,'slaps'))
-    dbh.commit()
+    if cooldown > 0:
+      print(f'cooldown\n')
+    else:
+      print(f'  edges: {edges}\n')
 
   dbh.close()
 

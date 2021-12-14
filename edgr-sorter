@@ -17,6 +17,8 @@ slideshow="$HOME/.edgr_slideshow"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
           "update settings set value = 0 where name = 'slaps'"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
+          "update settings set value = 0 where name = 'edges'"
+/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
           "update settings set value = 'yellow' where name = 'light_color'"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
           "update settings set value = $wrong_answers where name = 'to_purge'"
@@ -50,7 +52,8 @@ $HOME/bin/feh -f "$slideshow" \
   --slideshow-delay 7 \
   --slideshow-delay-min 7 \
   --slideshow-delay-max 7 \
-  --action "$HOME/projects/edgr/edgr-bad-porn %F" \
+  --action "$HOME/projects/edgr/edgr-sortedge %F" \
+  --action1 ";$HOME/projects/edgr/edgr-edge %F" \
   --fontpath "$HOME/.local/share/fonts/Lexend_Giga/" \
   --font "LexendGiga-Regular/22"
 

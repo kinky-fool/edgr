@@ -1,0 +1,66 @@
+#!/bin/bash
+
+file="$1"
+
+db="$HOME/.config/edgr.sqlite"
+bad_porn_dir="$HOME/files/images/bad_porn"
+bad_caps_dir="$HOME/files/images/captions/wordy"
+
+if [[ -z "$file" ]]; then
+  echo "Please pass path of image to move to $good_porn_dir"
+  exit 1
+fi
+
+if [[ ! -f "$file" ]]; then
+  echo "File does not exist or is not a file; $file"
+  exit 2
+fi
+
+query="select value from settings where name == 'edges'"
+edges=$(/usr/bin/sqlite3 "$db" "$query")
+
+query="select count from seen_images where filename == '$file'"
+seen=$(/usr/bin/sqlite3 "$db" "$query")
+
+query="select value from settings where name == 'to_purge'"
+to_purge=$(/usr/bin/sqlite3 "$db" "$query")
+
+if [[ "$edges" -gt 0 ]]; then
+  query="update settings set value = 3 where name == 'cooldown'"
+  /usr/bin/sqlite3 "$db" "$query"
+
+  if [[ "$file" =~ risky ]]; then
+    query="update settings set value = 5 where name == 'cooldown'"
+    /usr/bin/sqlite3 "$db" "$query"
+
+    query="update settings set value = value + 2 where name == 'edges'"
+
+    if $HOME/projects/edgr/edgr-isedge "$file"; then
+      query="update settings set value = value + 5 where name == 'edges'"
+    fi
+
+    /usr/bin/sqlite3 "$db" "$query"
+  else
+    query="update settings set value = value - 1 where name == 'edges'"
+
+    if $HOME/projects/edgr/edgr-isedge "$file"; then
+      query="update settings set value = value - 4 where name == 'edges'"
+    fi
+
+    /usr/bin/sqlite3 "$db" "$query"
+  fi
+elif [[ "$to_purge" -gt 0 ]]; then
+  if [[ "$file" =~ risky ]]; then
+    echo "Not touching risky file; $file"
+    exit 3
+  fi
+
+  if [[ "$file" =~ captions ]]; then
+    mv "$file" "$bad_caps_dir"
+  else
+    mv "$file" "$bad_porn_dir"
+    # Decrement number of saves.
+    query="update settings set value = value - 1 where name == 'to_purge'"
+    /usr/bin/sqlite3 "$db" "$query"
+  fi
+fi

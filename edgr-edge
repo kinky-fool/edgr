@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+
+import hashlib
+import sqlite3
+import random
+import sys
+import os
+
+home_dir = os.environ['HOME']
+
+image = str(sys.argv[1])
+
+md5 = hashlib.md5(open(image, 'rb').read()).hexdigest()
+
+dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
+sth = dbh.cursor()
+
+query = """ select value from settings where name = ? """
+sth.execute(query, ('edges',))
+edges = int(sth.fetchone()[0])
+
+sth.execute(query, ('to_purge',))
+to_purge = int(sth.fetchone()[0])
+
+# if not edging, start edging
+if edges <= 0:
+  query = """ update settings set value = ? where name = ? """
+  sth.execute(query, (to_purge, 'edges'))
+
+else:
+  query = """ select seen from edge_images where md5 = ? """
+  sth.execute(query, (md5,))
+  seen = sth.fetchone()
+
+  if seen is None:
+    query = """ insert into edge_images (md5) values (?) """
+    sth.execute(query,(md5,))
+
+dbh.commit()
+dbh.close()

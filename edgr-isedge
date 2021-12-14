@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+
+import hashlib
+import sqlite3
+import random
+import sys
+import os
+
+home_dir = os.environ['HOME']
+
+image = str(sys.argv[1])
+
+md5 = hashlib.md5(open(image, 'rb').read()).hexdigest()
+
+dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
+
+sth = dbh.cursor()
+
+query = """ select seen from edge_images where md5 = ? """
+sth.execute(query, (md5,))
+seen = sth.fetchone()
+
+if seen is None:
+  sys.exit(1)
+
+sys.exit(0)
