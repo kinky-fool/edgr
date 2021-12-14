@@ -25,9 +25,33 @@ seen=$(/usr/bin/sqlite3 "$db" "$query")
 query="select value from settings where name == 'to_purge'"
 to_purge=$(/usr/bin/sqlite3 "$db" "$query")
 
-if [[ "$edges" -gt 0 ]]; then
-  query="update settings set value = 3 where name == 'cooldown'"
-  /usr/bin/sqlite3 "$db" "$query"
+query="select value from settings where name == 'stage'"
+stage=$(/usr/bin/sqlite3 "$db" "$query")
+
+if [[ "$stage" == 0 ]]; then
+
+  if [[ "$file" =~ risky ]]; then
+    echo "Not touching risky file; $file"
+    exit 3
+  fi
+
+  if [[ "$to_purge" == 1 ]]; then
+    query="update settings set value = 1 where name = 'stage'"
+    /usr/bin/sqlite3 "$db" "$query"
+  fi
+
+  if [[ "$file" =~ captions ]]; then
+    mv "$file" "$bad_caps_dir"
+  else
+    mv "$file" "$bad_porn_dir"
+
+    # Decrement number of saves.
+    query="update settings set value = value - 1 where name == 'to_purge'"
+    /usr/bin/sqlite3 "$db" "$query"
+  fi
+fi
+
+if [[ "$stage" == 1 ]]; then
 
   if [[ "$file" =~ risky ]]; then
     query="update settings set value = 5 where name == 'cooldown'"
@@ -35,32 +59,17 @@ if [[ "$edges" -gt 0 ]]; then
 
     query="update settings set value = value + 2 where name == 'edges'"
 
-    if $HOME/projects/edgr/edgr-isedge "$file"; then
-      query="update settings set value = value + 5 where name == 'edges'"
-    fi
-
     /usr/bin/sqlite3 "$db" "$query"
   else
+    query="update settings set value = 3 where name == 'cooldown'"
+    /usr/bin/sqlite3 "$db" "$query"
+
     query="update settings set value = value - 1 where name == 'edges'"
 
     if $HOME/projects/edgr/edgr-isedge "$file"; then
-      query="update settings set value = value - 4 where name == 'edges'"
+      query="update settings set value = value - 2 where name == 'edges'"
     fi
 
-    /usr/bin/sqlite3 "$db" "$query"
-  fi
-elif [[ "$to_purge" -gt 0 ]]; then
-  if [[ "$file" =~ risky ]]; then
-    echo "Not touching risky file; $file"
-    exit 3
-  fi
-
-  if [[ "$file" =~ captions ]]; then
-    mv "$file" "$bad_caps_dir"
-  else
-    mv "$file" "$bad_porn_dir"
-    # Decrement number of saves.
-    query="update settings set value = value - 1 where name == 'to_purge'"
     /usr/bin/sqlite3 "$db" "$query"
   fi
 fi

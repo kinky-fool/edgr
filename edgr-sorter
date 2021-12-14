@@ -6,7 +6,9 @@ streak_right="${1:-4}"
 streak_wrong="${2:-0}"
 wrong_answers="${3:-40}"
 
-purge_limit=$((wrong_answers + 15))
+edge_limit=$((wrong_answers + 15))
+
+edge_limit=23
 
 script="$HOME/projects/edgr/edgr-check-image"
 images="$HOME/files/images/porn_pics/pool"
@@ -16,19 +18,24 @@ slideshow="$HOME/.edgr_slideshow"
           "update settings set value = 0 where name = 'risk'"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
           "update settings set value = 0 where name = 'slaps'"
+#/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
+#          "update settings set value = 1 where name = 'edges'"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
-          "update settings set value = 0 where name = 'edges'"
+          "update settings set value = 0 where name = 'stage'"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
-          "update settings set value = 'yellow' where name = 'light_color'"
+          "update settings set value = 0 where name = 'red_light'"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
           "update settings set value = $wrong_answers where name = 'to_purge'"
 
 now=$(date "+%s")
 
 porn_pics=500
-caption_pics=150
-risky_pics=$(((streak_wrong + 1) * 15))
-caption_pics=$((caption_pics + streak_right * 10))
+
+caption_pct=$((40 - (streak_right * 5)))
+caption_pics=$((porn_pics * caption_pct / 100))
+
+risky_pct=$((5 + (streak_wrong * 5)))
+risky_pics=$(((porn_pics + caption_pics) * risky_pct / 100))
 
 random_pic_playlist "$HOME/files/images/porn_pics/pool" $porn_pics > "$slideshow"
 random_pic_playlist "$HOME/files/images/captions" $caption_pics >> "$slideshow"
@@ -40,7 +47,7 @@ red_light=$(random_pic_playlist "$HOME/files/images/risky" 1)
 $HOME/projects/edgr/edgr-beater &
 
 $HOME/bin/feh -f "$slideshow" \
-  --info "$script --file %f --right $streak_right --wrong $streak_wrong --red $red_light --purgelimit $purge_limit" \
+  --info "$script --file %f --right $streak_right --wrong $streak_wrong --red $red_light --edgelimit $edge_limit" \
   --auto-zoom \
   --hide-pointer \
   --borderless \
