@@ -136,8 +136,8 @@ def main():
       dbh.commit()
 
     if seen is not None and edges > 0 and (cooldown > 0 or edges <= 3):
-      query = """ update settings set value = value + 2 where name = 'edges' """
-      edges += 2
+      query = """ update settings set value = value + 1 where name = 'edges' """
+      edges += 1
       sth.execute(query)
       dbh.commit()
 
