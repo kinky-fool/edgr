@@ -8,7 +8,13 @@ wrong_answers="${3:-40}"
 
 edge_limit=$((wrong_answers + 15))
 
-edge_limit=23
+edge_limit=1024
+
+# string accepted by date '-d' option
+pic_window='12 hours ago'
+
+wrong_answers=$((find $HOME/files/images/porn_pics -type f -newermt "$pic_window"; \
+                 find $HOME/files/images/captions  -type f -newermt "$pic_window") | wc -l)
 
 script="$HOME/projects/edgr/edgr-check-image"
 images="$HOME/files/images/porn_pics/pool"
