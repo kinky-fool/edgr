@@ -102,6 +102,17 @@ def main():
       # add pics to purge
       penalty = penalty_adder(spins, free_spins)
 
+      # nerf excess edges
+      if edges > 10:
+        if penalty > 0:
+          if penalty > 3:
+            penalty = 2
+          else:
+            penalty = 1
+
+        if random.randint(0, 2) != 0:
+          penalty = 0
+
       if edges < edge_limit:
         edges += penalty
 
