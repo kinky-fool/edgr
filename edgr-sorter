@@ -11,10 +11,34 @@ edge_limit=$((wrong_answers + 15))
 edge_limit=1024
 
 # string accepted by date '-d' option
-pic_window='12 hours ago'
+pic_window='36 hours ago'
 
-wrong_answers=$((find $HOME/files/images/porn_pics -type f -newermt "$pic_window"; \
-                 find $HOME/files/images/captions  -type f -newermt "$pic_window") | wc -l)
+new_pics=$(find $HOME/files/images/porn_pics -type f -newermt "$pic_window" | wc -l)
+new_caps=$(find $HOME/files/images/captions -type f -newermt "$pic_window" | wc -l)
+
+new_pics=$((new_pics + new_caps))
+
+echo "$new_pics downloaded since $pic_window"
+
+if [[ "$new_pics" -gt 60 ]]; then
+  wrong_answers=20
+  new_edges=20
+elif [[ "$new_pics" -eq 42 ]]; then
+  wrong_answers=15
+  new_edges=3
+elif [[ "$new_pics" -gt 40 ]]; then
+  wrong_answers=15
+  new_edges=15
+elif [[ "$new_pics" -gt 20 ]]; then
+  wrong_answers=10
+  new_edges=10
+elif [[ "$new_pics" -gt 5 ]]; then
+  wrong_answers=5
+  new_edges=$((new_pics - 10))
+else
+  wrong_answers=5
+  new_edges=$((new_pics - 5))
+fi
 
 script="$HOME/projects/edgr/edgr-check-image"
 images="$HOME/files/images/porn_pics/pool"
@@ -32,15 +56,21 @@ slideshow="$HOME/.edgr_slideshow"
           "update settings set value = 0 where name = 'red_light'"
 /usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
           "update settings set value = $wrong_answers where name = 'to_purge'"
+/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
+          "update settings set value = value + $new_edges where name = 'edges'"
 
 now=$(date "+%s")
 
 porn_pics=500
 
-caption_pct=$((40 - (streak_right * 5)))
+caption_pct=$((30 - (streak_right * 3)))
+if [[ "$caption_pct" -lt 0 ]]; then
+  caption_pct=0
+fi
+caption_pct=$((caption_pct + (streak_wrong * 6)))
 caption_pics=$((porn_pics * caption_pct / 100))
 
-risky_pct=$((5 + (streak_wrong * 5)))
+risky_pct=$((2 + (streak_wrong * 7)))
 risky_pics=$(((porn_pics + caption_pics) * risky_pct / 100))
 
 random_pic_playlist "$HOME/files/images/porn_pics/pool" $porn_pics > "$slideshow"
