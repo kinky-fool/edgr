@@ -1,0 +1,29 @@
+#!/bin/bash
+
+new_pics_begin=1644652474
+days_back=30
+min_per_existing_pic=5
+min_per_new_pic=10
+db="$HOME/.config/edgr.sqlite"
+
+old_pics_begin=$((new_pics_begin - (days_back * 24 * 60 * 60)))
+
+directories=( "$HOME/files/images/porn_pics" "$HOME/files/images/captions" )
+
+all_pics=$(for dir in ${directories[@]}; do
+  find "$dir" -type f -newermt "@${old_pics_begin}"
+done | wc -l)
+
+new_pics=$(for dir in ${directories[@]}; do
+  find "$dir" -type f -newermt "@${new_pics_begin}"
+done | wc -l)
+
+seconds=$((((all_pics - new_pics) * 5 + new_pics * 10) * 60))
+
+stroked=$(sqlite3 "$db" "select sum(duration) from session_time where time > $new_pics_begin")
+
+if [[ "$stroked" -gt "$seconds"  ]]; then
+  printf "green light\n"
+else
+  printf "red light\n"
+fi
