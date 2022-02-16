@@ -1,28 +1,39 @@
 #!/bin/bash
 
-new_pics_begin=1644652474
-days_back=30
-min_per_existing_pic=5
-min_per_new_pic=10
+prior_days=10
+new_pic_start=1644959565
+old_pic_start=$((new_pic_start - (prior_days * 24 * 60 * 60)))
+
+old_pic_mins=5
+new_pic_mins=20
+
 db="$HOME/.config/edgr.sqlite"
 
-old_pics_begin=$((new_pics_begin - (days_back * 24 * 60 * 60)))
 
 directories=( "$HOME/files/images/porn_pics" "$HOME/files/images/captions" )
 
-all_pics=$(for dir in ${directories[@]}; do
-  find "$dir" -type f -newermt "@${old_pics_begin}"
+all_pic_count=$(for dir in ${directories[@]}; do
+  find "$dir" -type f -newermt "@${old_pic_start}"
 done | wc -l)
 
-new_pics=$(for dir in ${directories[@]}; do
-  find "$dir" -type f -newermt "@${new_pics_begin}"
+new_pic_count=$(for dir in ${directories[@]}; do
+  find "$dir" -type f -newermt "@${new_pic_start}"
 done | wc -l)
 
-seconds=$((((all_pics - new_pics) * 5 + new_pics * 10) * 60))
+init_time=$(((all_pic_count - new_pic_count) * old_pic_mins))
+more_time=$((new_pics * new_pics_mins))
 
-stroked=$(sqlite3 "$db" "select sum(duration) from session_time where time > $new_pics_begin")
+owed_sex=$(((init_time + more_time) * 60))
 
-if [[ "$stroked" -gt "$seconds"  ]]; then
+stroked=$(sqlite3 "$db" "select sum(duration) from session_time where time > $new_pic_start")
+
+if [[ "$stroked" -gt 0 ]]; then
+  echo "$($HOME/tools/human-sex "$stroked") stroked so far"
+fi
+
+echo "$($HOME/tools/human-sex "$((owed_sex - stroked))") left to stroke"
+
+if [[ "$stroked" -gt "$owed_sex"  ]]; then
   printf "green light\n"
 else
   printf "red light\n"
