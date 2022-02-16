@@ -1,52 +1,38 @@
-drop table if exists sessions;
-create table sessions (
-  id              integer primary key autoincrement,
-  time            timestamp default current_timestamp,
-  edges           integer,
-  fail            integer default 0,
-  done            integer default 0,
-  left            integer default 0,
-  cum_chance      integer default 0
+CREATE TABLE seen_images (
+  user_id     integer,
+  filename    text,
+  count       integer
 );
 
-drop table if exists edges;
-create table edges (
-  id              integer primary key autoincrement,
-  time            timestamp default current_timestamp,
-  session_id      integer,
-  to_edge         float,
-  max             float
+CREATE TABLE settings (
+  name        varchar,
+  value       integer
 );
 
-drop table if exists settings;
-create table settings (
-  key         varchar,
-  val         varchar
+CREATE TABLE edges (
+  edge_id     integer primary key asc,
+  time        integer default(STRFTIME('%s','NOW')),
+  to_edge     real,
+  max         real,
+  max_min     real,
+  session_id  integer
 );
 
-insert into settings (key, val) values
-  ('sessions_owed',     13),
-  ('edges_min',         4),
-  ('edges_max',         8),
-  ('stroke_min',        20),
-  ('stroke_max',        90),
-  ('stroke_skew',       70),
-  ('stroke_add_min',    10),
-  ('stroke_add_max',    40),
-  ('cooldown_min',      10),
-  ('cooldown_max',      40),
-  ('cooldown_window',   '4 hours'),
-  ('green_min',         5),
-  ('green_max',         20),
-  ('goal_min',          10),
-  ('goal_max',          60),
-  ('enable_green',      1)
-;
-
-drop table if exists users;
-create table users (
+CREATE TABLE sessions (
   id          integer primary key autoincrement,
-  name        text unique
+  user_id     integer,
+  edges       integer,
+  green_light integer default 0
 );
 
-insert into users (name) values ('BobDobberson');
+CREATE TABLE edge_images (
+  id          integer primary key autoincrement,
+  md5         text unique,
+  seen        integer default 1
+);
+
+CREATE TABLE session_time (
+  id          integer primary key autoincrement,
+  time        integer default(STRFTIME('%s','NOW')),
+  duration    integer
+);
