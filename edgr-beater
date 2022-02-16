@@ -15,11 +15,11 @@ tick_sound = f'{home_dir}/lib/audio/tick.wav'
 tock_sound = f'{home_dir}/lib/audio/tock.wav'
 
 # default length of stroke -- tick {stroke_time in sec} tock
-stroke_time = 0.32
+stroke_time = 0.28
 
 # time, in seconds, between tick {stroke_time s} tock {pace_slow/pace_fast s}
-pace_slow = 0.7
-pace_fast = 0.065
+pace_slow = 0.8
+pace_fast = 0.050
 
 # min / max time per step of the journey between waypoints
 journey_secs_min = 0.25
