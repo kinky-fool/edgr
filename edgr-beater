@@ -634,6 +634,30 @@ class beater(object):
         sets += random.randint(2, 5)
 
 
+  def pattern11(self):
+    # go to the slowest pace
+    self.change_percent(0, 1.5)
+
+    time.sleep(10)
+
+    self.change_percent(50, 1.5)
+    self.change_percent(80, 2)
+    self.change_percent(70, 0.5)
+
+    sets = 3
+
+    while sets > 0:
+      self.change_percent(80, 0.25)
+      self.change_percent(90, 1)
+      self.change_percent(70, 1)
+      self.change_percent(90, 2)
+      self.change_percent(100, 0.5)
+      time.sleep(20)
+      self.change_percent(70, 1)
+
+      sets = sets - 1
+
+
   # change to a randomly chosen pace waypoint
   def random_pace(self):
     if debug_enabled == True:
