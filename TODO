@@ -1,3 +1,35 @@
+2022-02-16
+- clean up code-base
+  - remove unused scripts
+  - remove 'organize' directory
+  - create libraries / classes
+
+- create a slideshow-less edgr option (CLI)
+  - add option to have edges reduce required stroke time
+
+- set up 2 modes w/ flags for edging mode or chill stroke mode
+
+- green light options
+  - green when all requirements met (stroke time, edges)
+  - green when one requirement is met
+  - green when X requirements met, when 2+ possible requirements
+
+- concept of 'contracts', track:
+  - initial edges
+  - initial time
+  - earned edges
+  - earned time
+  - owed edges
+  - owed time
+  - settings for edgr-beater
+
+- edgr-beater should be the main app
+- edgr-partybus will be the slideshow version
+
+--
+
+OLDER TODOS
+
 - Add sqlite back-end for edge-for-me toy
 - Figure out how to do maths / stddev and the like in python
 - Figure out how to take my fuzzy algorithim from thong-game(? n = 5, for 1-n,
