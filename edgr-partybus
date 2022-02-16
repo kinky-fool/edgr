@@ -15,38 +15,45 @@ porn_dir = f'{home_dir}/files/images/porn_pics/pool'
 risk_dir = f'{home_dir}/files/images/risky'
 
 def main():
-  ss = slideshow()
-
   images = []
-  images.extend(choose(caps_dir, 150))
-  images.extend(choose(porn_dir, 500))
-  images.extend(choose(risk_dir, 50))
-
+  images.extend(choose(caps_dir, 1))
+  images.extend(choose(porn_dir, 5))
+  images.extend(choose(risk_dir, 5))
   random.shuffle(images)
 
-  ss.start(images)
-  ss.mainloop()
+  slideShow = HiddenRoot()
+
+  slideshow.load(images)
+
+  slideShow.bind("<Escape>", lambda e: slideShow.destroy())  # exit on esc
+
+  slideshow.center()
+
+  slideShow.mainloop()
+
 
 def choose(dir, count):
   files = []
 
   while len(files) < count:
     files.extend(glob.glob(f'{dir}/*.jpeg'))
+    files.extend(glob.glob(f'{dir}/*.jpg'))
     files.extend(glob.glob(f'{dir}/*.png'))
 
   return random.sample(files, count)
 
-class slideshow(tkinter.Tk):
-  def __init__(self, *args, **kwargs):
-    tkinter.Tk.__init__(self, *args, **kwargs)
-
+class HiddenRoot(tkinter.Tk):
+  def __init__(self, images):
+    tk.Tk.__init__(self)
+    #hackish way, essentially makes root window
+    #as small as possible but still "focused"
+    #enabling us to use the binding on <esc>
+    self.wm_geometry("0x0+0+0")
     self.title("Slideshow")
-    self.geometry("256x256")
-    #self.geometry("+0+0")
     self.resizable(width=False, height=False)
-    self.current_slide = tkinter.Label(self)
-    self.current_slide.pack()
-    self.duration_ms = 1000
+
+    self.window = slideshow(self, images)
+    self.window.start_slideshow()
 
   def center(self):
     """Center the slide window on the screen"""
@@ -58,16 +65,56 @@ class slideshow(tkinter.Tk):
     y = h / 2 - size[1] / 2
     self.geometry("+%d+%d" % (x, y))
 
+class slideshow(tkinter.Toplevel):
+  def __init__(self, *args, **kwargs):
+    tkinter.Toplevel.__init__(self, *args, **kwargs)
+
+    #remove window decorations
+    self.overrideredirect(True)
+
+    self.duration_ms = 1000
+    self.images = []
+
+    #used to display as background image
+    self.label = tk.Label(self)
+    self.label.pack(side="top", fill="both", expand=True)
+
+    self.getImages()
+
+  def showImage(self, filename):
+    image = Image.open(filename)
+
+    img_w, img_h = image.size
+    scr_w, scr_h = self.winfo_screenwidth(), self.winfo_screenheight()
+    width, height = min(scr_w, img_w), min(scr_h, img_h)
+    image.thumbnail((width, height), Image.ANTIALIAS)
+
+    #set window size after scaling the original image up/down to fit screen
+    #removes the border on the image
+    scaled_w, scaled_h = image.size
+    self.wm_geometry("{}x{}+{}+{}".format(scaled_w,scaled_h,0,0))
+
+    # create new image
+    self.persistent_image = ImageTk.PhotoImage(image)
+    self.label.configure(image=self.persistent_image)
+
   def display_next_slide(self):
-    name, self.next_image = next(self.photos)
+    name, self.next_image = next(self.images)
     self.current_slide.config(image=self.next_image)
     self.title(name)
     self.after(self.duration_ms, self.display_next_slide)
 
-  def start(self, images):
+  def random_image(self):
+    myimage = random.choice(self.images)
+    self.showImage(myimage)
+    #its like a callback function after n seconds (cycle through pics)
+    self.after(self.duration_ms, self.randome_image)
+
+  def load(self, images):
+    self.images = images
+
+  def start(self):
     self.center()
-    print(images)
-    self.photos = cycle(ImageTk.PhotoImage(Image.open(image)) for image in images)
     self.display_next_slide()
 
 if __name__ == "__main__":
