@@ -36,10 +36,17 @@ def main():
   session.start()
 
   while session.alive:
-    if random.randint(0, 1) == 0:
+    pattern = random.randint(0, 4)
+    if pattern == 0:
       session.pattern08()
-    else:
+    if pattern == 1:
       session.pattern09()
+    if pattern == 2:
+      session.pattern11()
+    if pattern == 3:
+      session.pattern12()
+    if pattern == 4:
+      session.pattern13()
 
   cleanup()
 
