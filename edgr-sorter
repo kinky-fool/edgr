@@ -1,17 +1,37 @@
 #!/bin/bash
 
 source $HOME/lib/edgr_funcs.sh
+sqlite="/usr/bin/sqlite3"
+db="$HOME/.config/edgr.sqlite"
 
-streak_right="${1:-4}"
-streak_wrong="${2:-0}"
-wrong_answers="${3:-40}"
+# file containing list of slideshow files
+slideshow="$HOME/.edgr_slideshow"
 
-edge_limit=$((wrong_answers + 15))
+# edge after deleting required pics
+edge=1
 
-edge_limit=1024
+while getopts ":n" opt; do
+  case $opt in
+    n) edge=0 ;;
+  esac
+done
+
+# read in some db values
+query="select value from settings where name = 'tg_streak_right'"
+tg_streak_right=$($sqlite "$db" "$query")
+
+query="select value from settings where name = 'tg_streak_wrong'"
+tg_streak_wrong=$(printf "%i" $($sqlite "$db" "$query"))
+
+query="select value from settings where name = 'tg_wrong'"
+tg_wrong=$(printf "%i" $($sqlite "$db" "$query"))
 
 # string accepted by date '-d' option
 pic_window='36 hours ago'
+
+if [[ "$edge" -eq 0 ]]; then
+  pic_window='5 days ago'
+fi
 
 new_pics=$(find $HOME/files/images/porn_pics -type f -newermt "$pic_window" | wc -l)
 new_caps=$(find $HOME/files/images/captions -type f -newermt "$pic_window" | wc -l)
@@ -20,57 +40,72 @@ new_pics=$((new_pics + new_caps))
 
 echo "$new_pics downloaded since $pic_window"
 
+# purge = number of images that need to be deleted before edging
+purge=5
+
+# owed = initial number of edges owed in this session
+owed=$tg_streak_wrong
+
 if [[ "$new_pics" -gt 60 ]]; then
-  wrong_answers=20
-  new_edges=20
+  purge=20
+  owed=$((tg_streak_wrong * 5))
 elif [[ "$new_pics" -eq 42 ]]; then
-  wrong_answers=15
-  new_edges=3
+  purge=15
+  owed=$((tg_streak_wrong * 3))
 elif [[ "$new_pics" -gt 40 ]]; then
-  wrong_answers=15
-  new_edges=15
+  purge=15
+  owed=$((tg_streak_wrong * 4))
 elif [[ "$new_pics" -gt 20 ]]; then
-  wrong_answers=10
-  new_edges=10
+  purge=10
+  owed=$((tg_streak_wrong * 3))
 elif [[ "$new_pics" -gt 5 ]]; then
-  wrong_answers=5
-  new_edges=$((new_pics - 10))
-else
-  wrong_answers=5
-  new_edges=$((new_pics - 5))
+  purge=10
+  owed=$((tg_streak_wrong * 2))
 fi
 
-script="$HOME/projects/edgr/edgr-check-image"
-images="$HOME/files/images/porn_pics/pool"
-slideshow="$HOME/.edgr_slideshow"
+# bonus = edges added for each slideshow
+bonus=$tg_wrong
 
-/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
-          "update settings set value = 0 where name = 'risk'"
-/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
-          "update settings set value = 0 where name = 'slaps'"
-#/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
-#          "update settings set value = 1 where name = 'edges'"
-/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
-          "update settings set value = 0 where name = 'stage'"
-/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
-          "update settings set value = 0 where name = 'red_light'"
-/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
-          "update settings set value = $wrong_answers where name = 'to_purge'"
-/usr/bin/sqlite3 "$HOME/.config/edgr.sqlite" \
-          "update settings set value = value + $new_edges where name = 'edges'"
+# penalty for having more than 25 new pictures
+if [[ "$new_pics" -gt 25 ]]; then
+  penalty_pics=$((new_pics - 20))
+  penalty_reducer=$((tg_streak_right / 4))
+  if [[ "$penalty_reducer" -eq 0 ]]; then
+    penalty_reducer=1
+  fi
+  penalty_bonus=$((penalty_pics / penalty_reducer))
+  bonus=$((bonus + penalty_bonus))
+fi
+
+if [[ "$edge" -eq 0 ]]; then
+  purge=$new_pics
+  owed=0
+fi
+
+# set up database values
+$sqlite "$db" "update settings set value = 0 where name = 'risk'"
+$sqlite "$db" "update settings set value = 0 where name = 'stage'"
+$sqlite "$db" "update settings set value = 0 where name = 'red_light'"
+$sqlite "$db" "update settings set value = 0 where name = 'completed'"
+$sqlite "$db" "update settings set value = $purge where name = 'to_purge'"
+$sqlite "$db" "update settings set value = $owed where name = 'owed'"
+
+if [[ "$edge" -eq 1 ]]; then
+  $sqlite "$db" "update settings set value = value + $bonus where name = 'edges'"
+fi
 
 now=$(date "+%s")
 
 porn_pics=500
 
-caption_pct=$((30 - (streak_right * 3)))
+caption_pct=$((30 - (tg_streak_right * 3)))
 if [[ "$caption_pct" -lt 0 ]]; then
   caption_pct=0
 fi
-caption_pct=$((caption_pct + (streak_wrong * 6)))
+caption_pct=$((caption_pct + (tg_streak_wrong * 6)))
 caption_pics=$((porn_pics * caption_pct / 100))
 
-risky_pct=$((2 + (streak_wrong * 7)))
+risky_pct=$((2 + (tg_streak_wrong * 7)))
 risky_pics=$(((porn_pics + caption_pics) * risky_pct / 100))
 
 random_pic_playlist "$HOME/files/images/porn_pics/pool" $porn_pics > "$slideshow"
@@ -82,8 +117,11 @@ red_light=$(random_pic_playlist "$HOME/files/images/risky" 1)
 #$HOME/projects/edgr/edgr-slappr &
 $HOME/projects/edgr/edgr-beater &
 
+# script that feh runs every time an image is loaded
+script="$HOME/projects/edgr/edgr-check-image"
+
 $HOME/bin/feh -f "$slideshow" \
-  --info "$script --file %f --right $streak_right --wrong $streak_wrong --red $red_light --edgelimit $edge_limit" \
+  --info "$script --file %f --right $tg_streak_right --wrong $tg_streak_wrong --red $red_light" \
   --auto-zoom \
   --hide-pointer \
   --borderless \
@@ -105,6 +143,21 @@ end_time=$(date +"%s")
 stroke_time=$((end_time - now))
 
 printf "\nStroked for %s\n" "$(sec_to_human $stroke_time)"
+
+query="select value from settings where name = 'owed'"
+owed=$($sqlite "$db" "$query")
+
+query="select value from settings where name = 'completed'"
+completed=$($sqlite "$db" "$query")
+
+if [[ "$owed" -gt 0 ]]; then
+  penalty=$((owed + 10))
+  query="update settings set value = value + $penalty where name = 'edges'"
+  $sqlite "$db" "$query"
+else
+  query="update settings set value = value - $completed where name = 'edges'"
+  $sqlite "$db" "$query"
+fi
 
 pkill -f edgr-slappr
 pkill -f edgr-beater
