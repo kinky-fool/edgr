@@ -16,8 +16,11 @@ if [[ ! -f "$file" ]]; then
   exit 2
 fi
 
-query="select value from settings where name == 'edges'"
-edges=$(/usr/bin/sqlite3 "$db" "$query")
+query="select value from settings where name == 'owed'"
+owed=$(/usr/bin/sqlite3 "$db" "$query")
+
+query="select value from settings where name == 'completed'"
+completed=$(/usr/bin/sqlite3 "$db" "$query")
 
 query="select count from seen_images where filename == '$file'"
 seen=$(/usr/bin/sqlite3 "$db" "$query")
@@ -53,23 +56,30 @@ fi
 
 if [[ "$stage" == 1 ]]; then
 
+  # penalty for edging after completing edges
+  if [[ "$owed" -eq 0 ]]; then
+    query="update settings set value = 5 where name='owed'"
+    /usr/bin/sqlite3 "$db" "$query"
+  fi
+
+  # record a completed edge
+  query="update settings set value = value + 1 where name == 'completed'"
+  /usr/bin/sqlite3 "$db" "$query"
+
   if [[ "$file" =~ risky ]]; then
     query="update settings set value = 5 where name == 'cooldown'"
     /usr/bin/sqlite3 "$db" "$query"
 
-    query="update settings set value = value + 2 where name == 'edges'"
-
+    query="update settings set value = value + 2 where name == 'owed'"
     /usr/bin/sqlite3 "$db" "$query"
   else
     query="update settings set value = 3 where name == 'cooldown'"
     /usr/bin/sqlite3 "$db" "$query"
 
-    query="update settings set value = value - 1 where name == 'edges'"
-
+    query="update settings set value = value - 1 where name == 'owed'"
     if $HOME/projects/edgr/edgr-isedge "$file"; then
-      query="update settings set value = value - 2 where name == 'edges'"
+      query="update settings set value = value - 2 where name == 'owed'"
     fi
-
     /usr/bin/sqlite3 "$db" "$query"
   fi
 fi
