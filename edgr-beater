@@ -2,6 +2,7 @@
 
 
 import threading
+import sqlite3
 import random
 import time
 import sys
@@ -82,6 +83,15 @@ def cleanup():
   time_details = human_sex(elapsed)
   print()
   print(f'{time_details} elapsed')
+
+  # only log sessions lasting more than 30 minutes
+  if elapsed > 1800:
+    dbh = sqlite3.connect(f'{home_dir}/.config/edgr.sqlite')
+    sth = dbh.cursor()
+    query = 'insert into session_time (duration) values (?)'
+    sth.execute(query, (elapsed, ))
+    dbh.commit()
+    dbh.close()
 
   sys.exit()
 
