@@ -34,9 +34,6 @@ def main():
   # red light picture -- if this shows up, no green light
   latest_risk = str(args.red)
 
-  # edges is above this number, stop adding penalties
-  edge_limit = int(args.edgelimit)
-
   #risky_files = glob.glob(f'{risk_dir}/*.jpg')
   #latest_risk = max(risky_files, key=os.path.getctime)
 
@@ -48,8 +45,8 @@ def main():
   sth.execute(query, ('to_purge', ))
   to_purge = int(sth.fetchone()[0])
 
-  sth.execute(query, ('edges', ))
-  edges = int(sth.fetchone()[0])
+  sth.execute(query, ('owed', ))
+  owed = int(sth.fetchone()[0])
 
   sth.execute(query, ('cooldown', ))
   cooldown = int(sth.fetchone()[0])
@@ -103,28 +100,25 @@ def main():
       penalty = penalty_adder(spins, free_spins)
 
       # nerf excess edges
-      if edges > 10:
+      if owed > 10:
         if penalty > 0:
           if penalty > 3:
             penalty = 2
           else:
             penalty = 1
 
-        if random.randint(0, 2) != 0:
+        if random.randint(0, 3) != 0:
           penalty = 0
-
-      if edges < edge_limit:
-        edges += penalty
 
       else:
         penalty = 0
 
-      query = """ update settings set value = ? where name = ? """
-      sth.execute(query,(edges, 'edges'))
+      query = """ update settings set value = value + ? where name = ? """
+      sth.execute(query,(penalty, 'owed'))
       dbh.commit()
 
     if penalty == 0:
-      print(f'  {to_purge}\n')
+      print(f'   {to_purge}\n')
     else:
       print(f'  +{penalty}\n')
 
@@ -135,27 +129,27 @@ def main():
       sth.execute(query)
       dbh.commit()
 
-    if seen is not None and edges > 0 and (cooldown > 0 or edges <= 3):
-      query = """ update settings set value = value + 1 where name = 'edges' """
-      edges += 1
+    if seen is not None and owed > 0 and (cooldown > 0 or owed == 1):
+      query = """ update settings set value = value + 1 where name = 'owed' """
+      owed += 1
       sth.execute(query)
       dbh.commit()
 
-    if edges > 0:
-      if cooldown > 0:
-        print(f'  cooldown\n')
-
-      else:
-        print(f'  edges: {edges}\n')
-
+    if cooldown > 0:
+      print(f'  cooldown\n')
     else:
-      if red_light:
-        print(f'  red light\n')
+      if owed > 0:
+        print(f'  owed: {owed}\n')
 
       else:
-        print(f'  green light\n')
+        if red_light:
+          print(f'  red light\n')
+
+        else:
+          print(f'  green light\n')
 
   dbh.close()
+
 
 def ztf():
   # zero to five
@@ -181,6 +175,7 @@ def ztf():
 
   return count
 
+
 def penalty_adder(spins=1, free_spins=0):
   count = 0
   while spins > 0:
@@ -193,6 +188,7 @@ def penalty_adder(spins=1, free_spins=0):
         spins += 1
 
   return count
+
 
 def do_cli_args():
   parser = argparse.ArgumentParser()
@@ -220,13 +216,6 @@ def do_cli_args():
     '-f', '--file',
     nargs='+',
     help='Full path of file',
-  )
-
-  parser.add_argument(
-    '-l', '--edgelimit',
-    default=4,
-    type=int,
-    help='Limit for edges',
   )
 
   return parser.parse_args()
