@@ -9,7 +9,6 @@ new_pic_mins=20
 
 db="$HOME/.config/edgr.sqlite"
 
-
 directories=( "$HOME/files/images/porn_pics" "$HOME/files/images/captions" )
 
 all_pic_count=$(for dir in ${directories[@]}; do
@@ -21,7 +20,7 @@ new_pic_count=$(for dir in ${directories[@]}; do
 done | wc -l)
 
 init_time=$(((all_pic_count - new_pic_count) * old_pic_mins))
-more_time=$((new_pics * new_pics_mins))
+more_time=$((new_pic_count * new_pic_mins))
 
 owed_sex=$(((init_time + more_time) * 60))
 
