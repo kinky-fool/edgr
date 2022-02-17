@@ -1,7 +1,7 @@
 #!/bin/bash
 
 prior_days=10
-new_pic_start=1644959565
+new_pic_start=1644782400
 old_pic_start=$((new_pic_start - (prior_days * 24 * 60 * 60)))
 
 old_pic_mins=5
