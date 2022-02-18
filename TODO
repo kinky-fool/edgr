@@ -1,3 +1,13 @@
+2022-02-18
+- move everything into a program called 'edgr' that takes cli args to do various modes
+  - --checkimage - check a provided image filename
+  - --partybus - slideshow and edging
+  - --purge - purge porn pics slideshow
+  - --status
+    - show time remaining and edges required (if allowed)
+  - --beater - metronome beat, cli
+    - add edging ability for beater, maybe --sportscar? lol
+
 2022-02-16
 - clean up code-base
   - remove unused scripts
