@@ -117,10 +117,7 @@ def main():
       sth.execute(query,(penalty, 'owed'))
       dbh.commit()
 
-    if penalty == 0:
-      print(f'   {to_purge}\n')
-    else:
-      print(f'  +{penalty}\n')
+    print(f'   {to_purge}\n')
 
   # stage 1 -- doing edges that are owed
   if stage == 1:
