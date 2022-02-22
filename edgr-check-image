@@ -96,21 +96,18 @@ def main():
             spins += int(spins_add)
             free_spins += int(freespins_add)
 
-      # add pics to purge
+      # add edges
       penalty = penalty_adder(spins, free_spins)
 
       # nerf excess edges
-      if owed > 10:
-        if penalty > 0:
-          if penalty > 3:
-            penalty = 2
-          else:
-            penalty = 1
+      if penalty > 0:
+        if penalty > 3:
+          penalty = 2
+        else:
+          penalty = 1
 
-        if random.randint(0, 3) != 0:
-          penalty = 0
-
-      else:
+      # 1 in X chance to get penalty
+      if random.randint(0, 4) != 0:
         penalty = 0
 
       query = """ update settings set value = value + ? where name = ? """
