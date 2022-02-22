@@ -94,8 +94,6 @@ if [[ "$edge" -eq 1 ]]; then
   $sqlite "$db" "update settings set value = value + $bonus where name = 'edges'"
 fi
 
-now=$(date "+%s")
-
 porn_pics=500
 
 caption_pct=$((30 - (tg_streak_right * 3)))
@@ -138,12 +136,6 @@ $HOME/bin/feh -f "$slideshow" \
   --fontpath "$HOME/.local/share/fonts/Lexend_Giga/" \
   --font "LexendGiga-Regular/22"
 
-end_time=$(date +"%s")
-
-stroke_time=$((end_time - now))
-
-printf "\nStroked for %s\n" "$(sec_to_human $stroke_time)"
-
 query="select value from settings where name = 'owed'"
 owed=$($sqlite "$db" "$query")
 
@@ -159,5 +151,5 @@ else
   $sqlite "$db" "$query"
 fi
 
-pkill -f edgr-slappr
-pkill -f edgr-beater
+pkill --signal INT -f edgr-slappr
+pkill --signal INT -f edgr-beater
