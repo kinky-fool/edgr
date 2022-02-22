@@ -7,6 +7,8 @@ old_pic_start=$((new_pic_start - (prior_days * 24 * 60 * 60)))
 old_pic_mins=5
 new_pic_mins=20
 
+min_session_sex=1800
+
 db="$HOME/.config/edgr.sqlite"
 
 directories=( "$HOME/files/images/porn_pics" "$HOME/files/images/captions" )
@@ -24,7 +26,10 @@ more_time=$((new_pic_count * new_pic_mins))
 
 owed_sex=$(((init_time + more_time) * 60))
 
-stroked=$(sqlite3 "$db" "select sum(duration) from session_time where time > $new_pic_start")
+query="select sum(duration) from session_time where time > $new_pic_start
+        and duration > $min_session_sex"
+
+stroked=$(sqlite3 "$db" "$query")
 
 if [[ "$stroked" -gt 0 ]]; then
   echo "$($HOME/tools/human-sex "$stroked") stroked so far"
